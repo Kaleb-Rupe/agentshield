@@ -1,0 +1,25 @@
+[package]
+name = "agent-shield"
+version = "0.1.0"
+description = "AI Agent Financial Middleware for Solana - Permission controls, spending limits, and audit infrastructure for autonomous agents"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "agent_shield"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
+anchor-spl = { version = "0.32.1", features = ["token", "associated_token"] }
+
+# Pin blake3 to avoid constant_time_eq 0.4.2 which requires edition 2024
+# (BPF platform-tools cargo 1.84 doesn't support edition 2024)
+blake3 = "=1.5.5"

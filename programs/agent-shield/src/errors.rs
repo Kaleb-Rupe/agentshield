@@ -1,0 +1,88 @@
+use anchor_lang::prelude::*;
+
+#[error_code]
+pub enum AgentShieldError {
+    #[msg("Vault is not active")]
+    VaultNotActive,
+
+    #[msg("Unauthorized: signer is not the registered agent")]
+    UnauthorizedAgent,
+
+    #[msg("Unauthorized: signer is not the vault owner")]
+    UnauthorizedOwner,
+
+    #[msg("Token not in allowed list")]
+    TokenNotAllowed,
+
+    #[msg("Protocol not in allowed list")]
+    ProtocolNotAllowed,
+
+    #[msg("Transaction exceeds maximum single transaction size")]
+    TransactionTooLarge,
+
+    #[msg("Daily spending cap would be exceeded")]
+    DailyCapExceeded,
+
+    #[msg("Leverage exceeds maximum allowed")]
+    LeverageTooHigh,
+
+    #[msg("Maximum concurrent open positions reached")]
+    TooManyPositions,
+
+    #[msg("Cannot open new positions (policy disallows)")]
+    PositionOpeningDisallowed,
+
+    #[msg("Session has expired")]
+    SessionExpired,
+
+    #[msg("Session not authorized")]
+    SessionNotAuthorized,
+
+    #[msg("Invalid session: does not belong to this vault")]
+    InvalidSession,
+
+    #[msg("Vault has open positions, cannot close")]
+    OpenPositionsExist,
+
+    #[msg("Policy configuration invalid: too many allowed tokens")]
+    TooManyAllowedTokens,
+
+    #[msg("Policy configuration invalid: too many allowed protocols")]
+    TooManyAllowedProtocols,
+
+    #[msg("Agent already registered for this vault")]
+    AgentAlreadyRegistered,
+
+    #[msg("No agent registered for this vault")]
+    NoAgentRegistered,
+
+    #[msg("Vault is not frozen (expected frozen for reactivation)")]
+    VaultNotFrozen,
+
+    #[msg("Vault is already closed")]
+    VaultAlreadyClosed,
+
+    #[msg("Insufficient vault balance for withdrawal")]
+    InsufficientBalance,
+
+    #[msg("Developer fee rate exceeds maximum (50 / 1,000,000 = 0.5 BPS)")]
+    DeveloperFeeTooHigh,
+
+    #[msg("Fee destination account invalid")]
+    InvalidFeeDestination,
+
+    #[msg("Protocol treasury account does not match expected address")]
+    InvalidProtocolTreasury,
+
+    #[msg("Spend entry limit reached (too many active entries in rolling window)")]
+    TooManySpendEntries,
+
+    #[msg("Invalid agent: cannot be the zero address")]
+    InvalidAgentKey,
+
+    #[msg("Invalid agent: agent cannot be the vault owner")]
+    AgentIsOwner,
+
+    #[msg("Arithmetic overflow")]
+    Overflow,
+}

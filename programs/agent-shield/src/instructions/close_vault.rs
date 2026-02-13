@@ -1,0 +1,64 @@
+use anchor_lang::prelude::*;
+
+use crate::state::*;
+use crate::errors::AgentShieldError;
+use crate::events::VaultClosed;
+
+#[derive(Accounts)]
+pub struct CloseVault<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    #[account(
+        mut,
+        has_one = owner @ AgentShieldError::UnauthorizedOwner,
+        seeds = [b"vault", owner.key().as_ref(), vault.vault_id.to_le_bytes().as_ref()],
+        bump = vault.bump,
+        close = owner,
+    )]
+    pub vault: Account<'info, AgentVault>,
+
+    #[account(
+        mut,
+        has_one = vault,
+        seeds = [b"policy", vault.key().as_ref()],
+        bump = policy.bump,
+        close = owner,
+    )]
+    pub policy: Account<'info, PolicyConfig>,
+
+    #[account(
+        mut,
+        has_one = vault,
+        seeds = [b"tracker", vault.key().as_ref()],
+        bump = tracker.bump,
+        close = owner,
+    )]
+    pub tracker: Account<'info, SpendTracker>,
+
+    pub system_program: Program<'info, System>,
+}
+
+pub fn handler(ctx: Context<CloseVault>) -> Result<()> {
+    let vault = &ctx.accounts.vault;
+
+    require!(
+        vault.status != VaultStatus::Closed,
+        AgentShieldError::VaultAlreadyClosed
+    );
+    require!(
+        vault.open_positions == 0,
+        AgentShieldError::OpenPositionsExist
+    );
+
+    let clock = Clock::get()?;
+    emit!(VaultClosed {
+        vault: vault.key(),
+        owner: ctx.accounts.owner.key(),
+        timestamp: clock.unix_timestamp,
+    });
+
+    // Anchor `close = owner` handles the actual closing and rent reclamation
+
+    Ok(())
+}

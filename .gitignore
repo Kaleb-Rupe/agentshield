@@ -1,0 +1,21 @@
+node_modules/
+dist/
+target/
+.anchor/
+test-ledger/
+*.so
+.DS_Store
+
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+
+# Next.js build output (may contain baked-in env vars)
+.next/
+
+# Internal development docs (not for public repo)
+INSTRUCTIONS.md
+PROJECT.md
+TASKS.md
+CLAUDE.md
