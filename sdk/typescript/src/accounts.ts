@@ -58,6 +58,13 @@ export function getSessionPDA(
 }
 
 // --- Account Fetching ---
+// Note: Anchor 0.32.1 generates PascalCase type names but creates camelCase
+// properties at runtime. We cast through `any` to bridge this mismatch.
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function accounts(program: Program<AgentShield>): any {
+  return program.account;
+}
 
 export async function fetchVault(
   program: Program<AgentShield>,
@@ -65,9 +72,9 @@ export async function fetchVault(
   vaultId: BN
 ): Promise<AgentVaultAccount> {
   const [vaultPda] = getVaultPDA(owner, vaultId, program.programId);
-  return (await program.account.AgentVault.fetch(
+  return (await accounts(program).agentVault.fetch(
     vaultPda
-  )) as unknown as AgentVaultAccount;
+  )) as AgentVaultAccount;
 }
 
 export async function fetchPolicy(
@@ -75,9 +82,9 @@ export async function fetchPolicy(
   vault: PublicKey
 ): Promise<PolicyConfigAccount> {
   const [policyPda] = getPolicyPDA(vault, program.programId);
-  return (await program.account.PolicyConfig.fetch(
+  return (await accounts(program).policyConfig.fetch(
     policyPda
-  )) as unknown as PolicyConfigAccount;
+  )) as PolicyConfigAccount;
 }
 
 export async function fetchTracker(
@@ -85,9 +92,9 @@ export async function fetchTracker(
   vault: PublicKey
 ): Promise<SpendTrackerAccount> {
   const [trackerPda] = getTrackerPDA(vault, program.programId);
-  return (await program.account.SpendTracker.fetch(
+  return (await accounts(program).spendTracker.fetch(
     trackerPda
-  )) as unknown as SpendTrackerAccount;
+  )) as SpendTrackerAccount;
 }
 
 export async function fetchSession(
@@ -96,34 +103,34 @@ export async function fetchSession(
   agent: PublicKey
 ): Promise<SessionAuthorityAccount> {
   const [sessionPda] = getSessionPDA(vault, agent, program.programId);
-  return (await program.account.SessionAuthority.fetch(
+  return (await accounts(program).sessionAuthority.fetch(
     sessionPda
-  )) as unknown as SessionAuthorityAccount;
+  )) as SessionAuthorityAccount;
 }
 
 export async function fetchVaultByAddress(
   program: Program<AgentShield>,
   address: PublicKey
 ): Promise<AgentVaultAccount> {
-  return (await program.account.AgentVault.fetch(
+  return (await accounts(program).agentVault.fetch(
     address
-  )) as unknown as AgentVaultAccount;
+  )) as AgentVaultAccount;
 }
 
 export async function fetchPolicyByAddress(
   program: Program<AgentShield>,
   address: PublicKey
 ): Promise<PolicyConfigAccount> {
-  return (await program.account.PolicyConfig.fetch(
+  return (await accounts(program).policyConfig.fetch(
     address
-  )) as unknown as PolicyConfigAccount;
+  )) as PolicyConfigAccount;
 }
 
 export async function fetchTrackerByAddress(
   program: Program<AgentShield>,
   address: PublicKey
 ): Promise<SpendTrackerAccount> {
-  return (await program.account.SpendTracker.fetch(
+  return (await accounts(program).spendTracker.fetch(
     address
-  )) as unknown as SpendTrackerAccount;
+  )) as SpendTrackerAccount;
 }

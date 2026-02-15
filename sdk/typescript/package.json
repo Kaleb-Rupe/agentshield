@@ -1,6 +1,6 @@
 {
   "name": "@agent-shield/sdk",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "TypeScript SDK for AgentShield — AI Agent Financial Middleware on Solana",
   "main": "dist/index.js",
   "module": "dist/index.js",
