@@ -224,12 +224,14 @@
 - [x] Policy editor (PolicyEditor → client.updatePolicy())
 - [x] Kill switch (KillSwitchButton → client.revokeAgent())
 
-### 5.4 Missing Features — TODO
-- [ ] **Deposit/Withdraw UI** — VaultBalances shows balances but has no deposit/withdraw buttons
-- [ ] **Agent Registration UI** — no UI to call registerAgent() after vault creation
-- [ ] **Reactivate Vault UI** — KillSwitch freezes, but no button to reactivate + rotate agent
-- [ ] **Error toast notifications** — write ops log to console.error only, no user feedback
-- [ ] **Transaction history CSV export** — activity feed exists but no export button
+### 5.4 Write Operations (Extended) ✅
+- [x] **Deposit/Withdraw UI** — DepositWithdraw component with mint + amount input
+- [x] **Agent Registration UI** — RegisterAgent component shown when vault has no agent
+- [x] **Reactivate Vault UI** — ReactivateVault component with optional agent key rotation
+- [x] **Error toast notifications** — Toast system replacing console.error across all write ops
+- [x] **Transaction history CSV export** — Download button on ActivityFeed
+
+### 5.5 Remaining — TODO
 - [ ] **Real-time activity feed via Helius webhooks** — currently using account change listeners + polling
 
 ---
