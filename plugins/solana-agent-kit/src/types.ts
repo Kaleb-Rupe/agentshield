@@ -1,11 +1,6 @@
-import { PublicKey } from "@solana/web3.js";
-import { BN } from "@coral-xyz/anchor";
+import type { ShieldedWallet } from "@agent-shield/solana";
 
 export interface AgentShieldPluginConfig {
-  /** Vault owner public key */
-  vaultOwner: PublicKey;
-  /** Vault identifier (u64) */
-  vaultId: BN;
-  /** Optional program ID override (defaults to mainnet deployment) */
-  programId?: PublicKey;
+  /** A pre-created ShieldedWallet (from shield()) */
+  wallet: ShieldedWallet;
 }

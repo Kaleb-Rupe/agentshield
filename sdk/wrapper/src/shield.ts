@@ -1,9 +1,10 @@
 import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
-import { ShieldPolicies, resolvePolicies } from "./policies";
+import { ShieldPolicies, SpendingSummary, resolvePolicies } from "./policies";
 import { analyzeTransaction } from "./inspector";
 import { evaluatePolicy, recordTransaction } from "./engine";
 import { ShieldDeniedError } from "./errors";
 import { ShieldState, ShieldStorage } from "./state";
+import { getTokenInfo } from "./registry";
 
 /**
  * A wallet-like object that shield() can wrap.
@@ -29,10 +30,18 @@ export interface ShieldedWallet extends WalletLike {
   readonly shieldState: ShieldState;
   /** Whether this wallet has been hardened (on-chain enforcement) */
   readonly isHardened: boolean;
+  /** Whether policy enforcement is currently paused */
+  readonly isPaused: boolean;
   /** Update policies at runtime */
   updatePolicies(policies: ShieldPolicies): void;
   /** Reset all spending state */
   resetState(): void;
+  /** Pause policy enforcement — transactions pass through without checks or spend recording */
+  pause(): void;
+  /** Resume policy enforcement after a pause */
+  resume(): void;
+  /** Get a summary of current spending relative to policy limits */
+  getSpendingSummary(): SpendingSummary;
 }
 
 export interface ShieldOptions {
@@ -42,6 +51,12 @@ export interface ShieldOptions {
   onDenied?: (error: ShieldDeniedError) => void;
   /** Event handler called when a transaction is approved and signed */
   onApproved?: (txHash: string | null) => void;
+  /** Event handler called when policies are updated via updatePolicies() */
+  onPolicyUpdate?: (policies: ShieldPolicies) => void;
+  /** Event handler called when the shield is paused */
+  onPause?: () => void;
+  /** Event handler called when the shield is resumed */
+  onResume?: () => void;
 }
 
 /**
@@ -69,6 +84,10 @@ export function shield(
   const state = new ShieldState(options?.storage);
   const onDenied = options?.onDenied;
   const onApproved = options?.onApproved;
+  const onPolicyUpdate = options?.onPolicyUpdate;
+  const onPause = options?.onPause;
+  const onResume = options?.onResume;
+  let paused = false;
 
   const shielded: ShieldedWallet = {
     publicKey: wallet.publicKey,
@@ -76,9 +95,17 @@ export function shield(
     shieldState: state,
     isHardened: false,
 
+    get isPaused(): boolean {
+      return paused;
+    },
+
     async signTransaction<T extends Transaction | VersionedTransaction>(
       tx: T,
     ): Promise<T> {
+      if (paused) {
+        return wallet.signTransaction(tx);
+      }
+
       const analysis = analyzeTransaction(tx, wallet.publicKey);
       const violations = evaluatePolicy(analysis, resolved, state);
 
@@ -101,6 +128,13 @@ export function shield(
     async signAllTransactions<T extends Transaction | VersionedTransaction>(
       txs: T[],
     ): Promise<T[]> {
+      if (paused) {
+        if (wallet.signAllTransactions) {
+          return wallet.signAllTransactions(txs);
+        }
+        return Promise.all(txs.map((tx) => wallet.signTransaction(tx)));
+      }
+
       // Evaluate each transaction sequentially, recording spends into state
       // as we go so cumulative caps are enforced across the batch.
       const analyses = txs.map((tx) =>
@@ -132,10 +166,47 @@ export function shield(
 
     updatePolicies(newPolicies: ShieldPolicies): void {
       resolved = resolvePolicies(newPolicies);
+      onPolicyUpdate?.(newPolicies);
     },
 
     resetState(): void {
       state.reset();
+    },
+
+    pause(): void {
+      paused = true;
+      onPause?.();
+    },
+
+    resume(): void {
+      paused = false;
+      onResume?.();
+    },
+
+    getSpendingSummary(): SpendingSummary {
+      const tokens = resolved.spendLimits.map((limit) => {
+        const spent = state.getSpendInWindow(limit.mint, limit.windowMs ?? 86_400_000);
+        const remaining = limit.amount > spent ? limit.amount - spent : BigInt(0);
+        const tokenInfo = getTokenInfo(limit.mint);
+        return {
+          mint: limit.mint,
+          symbol: tokenInfo?.symbol,
+          spent,
+          limit: limit.amount,
+          remaining,
+          windowMs: limit.windowMs ?? 86_400_000,
+        };
+      });
+
+      const txCount = state.getTransactionCountInWindow(resolved.rateLimit.windowMs);
+      const rateLimit = {
+        count: txCount,
+        limit: resolved.rateLimit.maxTransactions,
+        remaining: Math.max(0, resolved.rateLimit.maxTransactions - txCount),
+        windowMs: resolved.rateLimit.windowMs,
+      };
+
+      return { tokens, rateLimit, isPaused: paused };
     },
   };
 

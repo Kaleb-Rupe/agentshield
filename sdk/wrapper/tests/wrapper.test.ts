@@ -704,6 +704,159 @@ describe("@agent-shield/solana", () => {
       expect(protected_.publicKey.equals(wallet.publicKey)).to.be.true;
     });
 
+    it("pause() allows transaction that would normally be blocked", async () => {
+      const wallet = createMockWallet();
+      const protected_ = shield(wallet, {
+        maxSpend: "100 USDC/day",
+      });
+
+      protected_.pause();
+
+      // This 200 USDC tx would normally be blocked by the 100 USDC cap
+      const tx = buildSplTransferTx(
+        wallet.publicKey,
+        USDC_MINT,
+        BigInt(200_000_000),
+        6,
+      );
+      await protected_.signTransaction(tx);
+      expect(wallet.signCount).to.equal(1);
+    });
+
+    it("resume() re-enables enforcement after pause", async () => {
+      const wallet = createMockWallet();
+      const protected_ = shield(wallet, {
+        maxSpend: "100 USDC/day",
+      });
+
+      protected_.pause();
+      protected_.resume();
+
+      const tx = buildSplTransferTx(
+        wallet.publicKey,
+        USDC_MINT,
+        BigInt(200_000_000),
+        6,
+      );
+
+      try {
+        await protected_.signTransaction(tx);
+        expect.fail("Should have thrown ShieldDeniedError");
+      } catch (e) {
+        expect(e).to.be.instanceOf(ShieldDeniedError);
+      }
+      expect(wallet.signCount).to.equal(0);
+    });
+
+    it("isPaused reflects correct state", () => {
+      const wallet = createMockWallet();
+      const protected_ = shield(wallet);
+
+      expect(protected_.isPaused).to.be.false;
+      protected_.pause();
+      expect(protected_.isPaused).to.be.true;
+      protected_.resume();
+      expect(protected_.isPaused).to.be.false;
+    });
+
+    it("spending is NOT tracked while paused", async () => {
+      const wallet = createMockWallet();
+      const protected_ = shield(wallet, {
+        maxSpend: "500 USDC/day",
+        blockUnknownPrograms: false,
+      });
+
+      protected_.pause();
+
+      // Sign a 300 USDC tx while paused — should not be tracked
+      const tx1 = buildSplTransferTx(
+        wallet.publicKey,
+        USDC_MINT,
+        BigInt(300_000_000),
+        6,
+      );
+      await protected_.signTransaction(tx1);
+
+      protected_.resume();
+
+      // Now try 300 USDC — should pass since paused spend wasn't tracked
+      const tx2 = buildSplTransferTx(
+        wallet.publicKey,
+        USDC_MINT,
+        BigInt(300_000_000),
+        6,
+      );
+      await protected_.signTransaction(tx2);
+      expect(wallet.signCount).to.equal(2);
+    });
+
+    it("getSpendingSummary() returns correct token spend and rate limit", async () => {
+      const wallet = createMockWallet();
+      const protected_ = shield(wallet, {
+        maxSpend: "500 USDC/day",
+        blockUnknownPrograms: false,
+      });
+
+      // Spend 200 USDC
+      const tx = buildSplTransferTx(
+        wallet.publicKey,
+        USDC_MINT,
+        BigInt(200_000_000),
+        6,
+      );
+      await protected_.signTransaction(tx);
+
+      const summary = protected_.getSpendingSummary();
+
+      expect(summary.isPaused).to.be.false;
+      expect(summary.tokens.length).to.equal(1);
+      expect(summary.tokens[0].mint).to.equal(USDC_MINT.toBase58());
+      expect(summary.tokens[0].symbol).to.equal("USDC");
+      expect(summary.tokens[0].spent).to.equal(BigInt(200_000_000));
+      expect(summary.tokens[0].limit).to.equal(BigInt(500_000_000));
+      expect(summary.tokens[0].remaining).to.equal(BigInt(300_000_000));
+
+      expect(summary.rateLimit.count).to.equal(1);
+      expect(summary.rateLimit.remaining).to.equal(
+        summary.rateLimit.limit - 1,
+      );
+    });
+
+    it("onPause callback fires on pause", () => {
+      const wallet = createMockWallet();
+      let pauseCalled = false;
+      const protected_ = shield(wallet, undefined, {
+        onPause: () => { pauseCalled = true; },
+      });
+
+      protected_.pause();
+      expect(pauseCalled).to.be.true;
+    });
+
+    it("onResume callback fires on resume", () => {
+      const wallet = createMockWallet();
+      let resumeCalled = false;
+      const protected_ = shield(wallet, undefined, {
+        onResume: () => { resumeCalled = true; },
+      });
+
+      protected_.pause();
+      protected_.resume();
+      expect(resumeCalled).to.be.true;
+    });
+
+    it("onPolicyUpdate callback fires on updatePolicies", () => {
+      const wallet = createMockWallet();
+      let updatedPolicies: any = null;
+      const protected_ = shield(wallet, undefined, {
+        onPolicyUpdate: (p) => { updatedPolicies = p; },
+      });
+
+      const newPolicies = { maxSpend: "1000 USDC/day" as const };
+      protected_.updatePolicies(newPolicies);
+      expect(updatedPolicies).to.deep.equal(newPolicies);
+    });
+
     it("applies secure defaults with no config", async () => {
       const wallet = createMockWallet();
       const protected_ = shield(wallet);

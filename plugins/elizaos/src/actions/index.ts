@@ -1,3 +1,2 @@
-export { swapAction } from "./swap";
-export { openPositionAction } from "./openPosition";
-export { closePositionAction } from "./closePosition";
+export { statusAction } from "./status";
+export { updatePolicyAction } from "./updatePolicy";

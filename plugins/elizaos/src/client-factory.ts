@@ -1,9 +1,35 @@
-import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { BN, Wallet } from "@coral-xyz/anchor";
-import { AgentShieldClient } from "@agent-shield/sdk";
+import {
+  Keypair,
+  PublicKey,
+  Transaction,
+  VersionedTransaction,
+} from "@solana/web3.js";
+import { shield } from "@agent-shield/solana";
+import type { ShieldedWallet, WalletLike } from "@agent-shield/solana";
 import { ENV_KEYS, AgentShieldElizaConfig } from "./types";
 
-const clientCache = new WeakMap<object, AgentShieldClient>();
+/** Minimal wallet wrapper around a Keypair (no Anchor dependency). */
+class KeypairWallet implements WalletLike {
+  publicKey: PublicKey;
+  constructor(private keypair: Keypair) {
+    this.publicKey = keypair.publicKey;
+  }
+  async signTransaction<T extends Transaction | VersionedTransaction>(
+    tx: T,
+  ): Promise<T> {
+    if (tx instanceof Transaction) {
+      tx.partialSign(this.keypair);
+    } else {
+      (tx as VersionedTransaction).sign([this.keypair]);
+    }
+    return tx;
+  }
+}
+
+const walletCache = new WeakMap<
+  object,
+  { wallet: ShieldedWallet; publicKey: PublicKey }
+>();
 
 /**
  * Reads AgentShield config from ElizaOS runtime settings.
@@ -11,15 +37,17 @@ const clientCache = new WeakMap<object, AgentShieldClient>();
 export function getConfig(runtime: any): AgentShieldElizaConfig {
   const get = (key: string): string => {
     const val = runtime.getSetting(key);
-    if (!val) throw new Error(`AgentShield: missing required setting '${key}'`);
+    if (!val)
+      throw new Error(`AgentShield: missing required setting '${key}'`);
     return val;
   };
 
+  const blockRaw = runtime.getSetting(ENV_KEYS.BLOCK_UNKNOWN);
+  const blockUnknown = blockRaw !== "false";
+
   return {
-    vaultOwner: get(ENV_KEYS.VAULT_OWNER),
-    vaultId: get(ENV_KEYS.VAULT_ID),
-    programId: runtime.getSetting(ENV_KEYS.PROGRAM_ID) || undefined,
-    rpcUrl: get(ENV_KEYS.RPC_URL),
+    maxSpend: runtime.getSetting(ENV_KEYS.MAX_SPEND) || undefined,
+    blockUnknown,
     walletPrivateKey: get(ENV_KEYS.WALLET_PRIVATE_KEY),
   };
 }
@@ -36,48 +64,31 @@ function parseKeypair(raw: string): Keypair {
   } catch {
     // Not JSON — try base58
   }
-  // base58 secret key (64 bytes)
   const bs58 = require("bs58");
   return Keypair.fromSecretKey(bs58.decode(raw));
 }
 
 /**
- * Gets or creates an AgentShieldClient for the given ElizaOS runtime.
+ * Gets or creates a ShieldedWallet for the given ElizaOS runtime.
  * Cached per runtime instance via WeakMap.
  */
-export function getOrCreateClient(runtime: any): {
-  client: AgentShieldClient;
-  vaultOwner: PublicKey;
-  vaultId: BN;
-  agentKey: PublicKey;
+export function getOrCreateShieldedWallet(runtime: any): {
+  wallet: ShieldedWallet;
+  publicKey: PublicKey;
 } {
-  const cached = clientCache.get(runtime);
+  const cached = walletCache.get(runtime);
+  if (cached) return cached;
+
   const config = getConfig(runtime);
-
-  if (cached) {
-    return {
-      client: cached,
-      vaultOwner: new PublicKey(config.vaultOwner),
-      vaultId: new BN(config.vaultId),
-      agentKey: parseKeypair(config.walletPrivateKey).publicKey,
-    };
-  }
-
-  const connection = new Connection(config.rpcUrl, "confirmed");
   const keypair = parseKeypair(config.walletPrivateKey);
-  const wallet = new Wallet(keypair);
+  const innerWallet = new KeypairWallet(keypair);
 
-  const programId = config.programId
-    ? new PublicKey(config.programId)
-    : undefined;
+  const shielded = shield(innerWallet, {
+    maxSpend: config.maxSpend,
+    blockUnknownPrograms: config.blockUnknown,
+  });
 
-  const client = new AgentShieldClient(connection, wallet, programId);
-  clientCache.set(runtime, client);
-
-  return {
-    client,
-    vaultOwner: new PublicKey(config.vaultOwner),
-    vaultId: new BN(config.vaultId),
-    agentKey: keypair.publicKey,
-  };
+  const result = { wallet: shielded, publicKey: keypair.publicKey };
+  walletCache.set(runtime, result);
+  return result;
 }

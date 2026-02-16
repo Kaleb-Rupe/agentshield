@@ -51,6 +51,25 @@ export interface TokenTransfer {
   destination?: PublicKey;
 }
 
+/** Summary of current spending state relative to policy limits */
+export interface SpendingSummary {
+  tokens: Array<{
+    mint: string;
+    symbol: string | undefined;
+    spent: bigint;
+    limit: bigint;
+    remaining: bigint;
+    windowMs: number;
+  }>;
+  rateLimit: {
+    count: number;
+    limit: number;
+    remaining: number;
+    windowMs: number;
+  };
+  isPaused: boolean;
+}
+
 /** Internal resolved policy representation (extends core with customCheck) */
 export interface ResolvedPolicies extends Core.ResolvedPolicies {
   customCheck:

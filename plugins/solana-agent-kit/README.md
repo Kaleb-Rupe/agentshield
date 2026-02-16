@@ -1,77 +1,60 @@
 # @agent-shield/plugin-solana-agent-kit
 
-AgentShield plugin for [Solana Agent Kit](https://github.com/sendaifun/solana-agent-kit) — routes agent DeFi actions through permission-guarded vaults with spending limits, token whitelists, and leverage controls.
+AgentShield plugin for [Solana Agent Kit](https://github.com/sendaifun/solana-agent-kit) — adds shield monitoring and management tools to any SAK agent. The shield wraps wallet signing transparently, so SAK's built-in swap/position tools are automatically policy-guarded.
 
 ## Installation
 
 ```bash
-npm install @agent-shield/plugin-solana-agent-kit @agent-shield/sdk
+npm install @agent-shield/plugin-solana-agent-kit @agent-shield/solana
 ```
 
-Peer dependencies: `solana-agent-kit >=2.0.0`, `@agent-shield/sdk >=0.1.0`, `@solana/web3.js >=1.90.0`, `@coral-xyz/anchor >=0.30.0`
+Peer dependencies: `solana-agent-kit >=2.0.0`, `@agent-shield/solana >=0.1.0`, `@solana/web3.js >=1.90.0`
 
 ## Quick Start
 
 ```typescript
+import { shield } from "@agent-shield/solana";
 import { createAgentShieldPlugin } from "@agent-shield/plugin-solana-agent-kit";
 import { SolanaAgentKit } from "solana-agent-kit";
-import { PublicKey } from "@solana/web3.js";
-import { BN } from "@coral-xyz/anchor";
 
-const plugin = createAgentShieldPlugin({
-  vaultOwner: new PublicKey("..."),  // vault owner pubkey
-  vaultId: new BN(1),               // vault identifier
-});
+// 1. Wrap your wallet with spending controls (one line)
+const protectedWallet = shield(wallet, { maxSpend: "500 USDC/day" });
 
-const agent = new SolanaAgentKit(wallet, rpcUrl, {
+// 2. Create the plugin (provides monitoring tools)
+const plugin = createAgentShieldPlugin({ wallet: protectedWallet });
+
+// 3. Create the agent — all actions are now policy-guarded
+const agent = new SolanaAgentKit(protectedWallet, rpcUrl, {
   plugins: [plugin],
 });
 ```
 
 ## Tools
 
-The plugin registers 6 tools on the agent:
-
-### Trading
+The plugin registers 3 monitoring/management tools on the agent:
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
-| `shield_swap` | Execute a token swap through Jupiter, routed through the AgentShield vault with policy enforcement | `inputMint`, `outputMint`, `amount`, `slippageBps` |
-| `shield_open_position` | Open a leveraged perpetual position on Flash Trade. Enforces leverage limits and position count caps | `collateralMint`, `targetMint`, `collateralAmount`, `side`, `leverage` |
-| `shield_close_position` | Close an existing perpetual position on Flash Trade | `positionMint`, `targetMint`, `side` |
-
-### Read-Only
-
-| Tool | Description | Parameters |
-|------|-------------|------------|
-| `shield_check_policy` | Read the vault policy: spending caps, allowed tokens/protocols, leverage limits, fee BPS | *(none)* |
-| `shield_check_balance` | Read vault balances, status, and statistics (total volume, open positions, fees collected) | *(none)* |
-| `shield_check_spending` | Read the rolling 24h spending tracker: per-token spend vs daily cap, recent transaction history | *(none)* |
+| `shield_status` | Check current spending vs limits, rate limit usage, and enforcement state | *(none)* |
+| `shield_update_policy` | Update spending limits or program blocking at runtime | `maxSpend?`, `blockUnknownPrograms?` |
+| `shield_pause_resume` | Pause or resume policy enforcement | `action: "pause" \| "resume"` |
 
 ## Configuration
 
 ```typescript
+import type { ShieldedWallet } from "@agent-shield/solana";
+
 interface AgentShieldPluginConfig {
-  /** Vault owner public key */
-  vaultOwner: PublicKey;
-  /** Vault identifier (u64) */
-  vaultId: BN;
-  /** Optional program ID override (defaults to mainnet deployment) */
-  programId?: PublicKey;
+  /** A pre-created ShieldedWallet (from shield()) */
+  wallet: ShieldedWallet;
 }
 ```
 
-The plugin creates an `AgentShieldClient` on initialization using the agent's connection and wallet. The client is cached per agent instance.
-
 ## How It Works
 
-All trading tools (`shield_swap`, `shield_open_position`, `shield_close_position`) build atomic composed transactions:
+The `shield()` wrapper intercepts `signTransaction` and `signAllTransactions` on the wallet. When the agent calls any SAK tool (swap, transfer, etc.), the transaction passes through the shield's policy engine before signing. If a policy is violated, the transaction is rejected with a descriptive error.
 
-```
-[ValidateAndAuthorize, DeFi instruction(s), FinalizeSession]
-```
-
-The on-chain program checks the agent's action against the vault policy (spending cap, token whitelist, protocol whitelist, leverage limits) before the DeFi instruction executes. If any check fails, the entire transaction reverts.
+The plugin's tools give the agent visibility into spending state and the ability to manage enforcement — no DeFi execution tools are needed since the shield guards signing transparently.
 
 ## License
 

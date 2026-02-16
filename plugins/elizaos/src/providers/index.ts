@@ -1,2 +1,2 @@
-export { vaultStatusProvider } from "./vaultStatus";
+export { shieldStatusProvider } from "./vaultStatus";
 export { spendTrackingProvider } from "./spendTracking";

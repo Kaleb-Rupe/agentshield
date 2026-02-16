@@ -2,7 +2,7 @@
 #
 # Runs on every push to main and on pull requests.
 # Three parallel jobs:
-#   1. build-lint-test  — TypeScript builds, Prettier, wrapper tests (41 tests)
+#   1. build-lint-test  — TypeScript builds, Prettier, wrapper tests (49 tests)
 #   2. rust-checks      — cargo fmt + cargo clippy
 #   3. on-chain-tests   — Anchor build + solana-test-validator + 57 on-chain tests
 
@@ -57,7 +57,7 @@ jobs:
         # TODO: enable repo-wide after running `npx prettier --write .`
         run: npx prettier --check "sdk/core/src/**/*.ts" "sdk/wrapper/src/**/*.ts"
 
-      - name: Wrapper tests (41 tests, no validator needed)
+      - name: Wrapper tests (49 tests, no validator needed)
         working-directory: sdk/wrapper
         run: pnpm test
 
@@ -131,6 +131,9 @@ jobs:
         run: |
           sh -c "$(curl -sSfL https://release.anza.xyz/${{ env.SOLANA_VERSION }}/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libudev-dev
 
       - name: Install Anchor CLI
         run: |

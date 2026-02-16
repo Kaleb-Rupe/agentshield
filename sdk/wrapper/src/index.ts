@@ -6,6 +6,7 @@ export type { ShieldedWallet, WalletLike, ShieldOptions } from "./shield";
 export type {
   ShieldPolicies,
   SpendLimit,
+  SpendingSummary,
   RateLimitConfig,
   PolicyCheckResult,
   TransactionAnalysis,

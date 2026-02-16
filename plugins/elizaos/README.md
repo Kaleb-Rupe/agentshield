@@ -1,14 +1,14 @@
 # @agent-shield/plugin-elizaos
 
-AgentShield plugin for [ElizaOS](https://github.com/elizaOS/eliza) — provides DeFi actions, vault status providers, and policy evaluators for AI agents operating through permission-guarded Solana vaults.
+AgentShield plugin for [ElizaOS](https://github.com/elizaOS/eliza) — provides shield status actions, spending providers, and policy evaluators for AI agents with client-side spending controls. Zero on-chain setup required.
 
 ## Installation
 
 ```bash
-npm install @agent-shield/plugin-elizaos @agent-shield/sdk
+npm install @agent-shield/plugin-elizaos @agent-shield/solana
 ```
 
-Peer dependencies: `@elizaos/core >=0.1.0`, `@agent-shield/sdk >=0.1.0`, `@solana/web3.js >=1.90.0`, `@coral-xyz/anchor >=0.30.0`
+Peer dependencies: `@elizaos/core >=0.1.0`, `@agent-shield/solana >=0.1.0`, `@solana/web3.js >=1.90.0`
 
 ## Quick Start
 
@@ -25,52 +25,47 @@ const character = {
 };
 ```
 
+The plugin reads environment variables to create a `ShieldedWallet` automatically.
+
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `AGENT_SHIELD_VAULT_OWNER` | Yes | Vault owner public key (base58) |
-| `AGENT_SHIELD_VAULT_ID` | Yes | Vault identifier (u64 as string) |
-| `SOLANA_RPC_URL` | Yes | Solana RPC endpoint |
 | `SOLANA_WALLET_PRIVATE_KEY` | Yes | Agent wallet private key (base58 or JSON array) |
-| `AGENT_SHIELD_PROGRAM_ID` | No | Custom program ID override |
+| `AGENT_SHIELD_MAX_SPEND` | No | Spending limit, e.g. `"500 USDC/day"`. Defaults to 1000 USDC/day, 1000 USDT/day, 10 SOL/day |
+| `AGENT_SHIELD_BLOCK_UNKNOWN` | No | Block unknown programs: `"true"` or `"false"` (default: `"true"`) |
 
 ## Actions
 
-The plugin provides 3 actions that agents can invoke conversationally:
+The plugin provides 2 actions that agents can invoke conversationally:
 
-| Action | Description |
-|--------|-------------|
-| `SHIELD_SWAP` | Execute a token swap through Jupiter, routed through the AgentShield vault with on-chain policy enforcement (spending caps, token whitelists) |
-| `SHIELD_OPEN_POSITION` | Open a leveraged perpetual position on Flash Trade through the vault. Enforces leverage limits and position count caps |
-| `SHIELD_CLOSE_POSITION` | Close an existing perpetual position on Flash Trade through the vault |
+| Action | Triggers | Description |
+|--------|----------|-------------|
+| `SHIELD_STATUS` | "shield status", "spending", "budget" | Returns current spending summary — per-token usage, rate limit, and enforcement state |
+| `SHIELD_UPDATE_POLICY` | "update policy", "change limit" | Update spending limits or program blocking at runtime |
 
 ## Providers
 
-Providers inject vault context into the agent's memory before each response:
+Providers inject shield context into the agent's memory before each response:
 
 | Provider | Description |
 |----------|-------------|
-| `vaultStatusProvider` | Injects current vault status, agent key, total volume, open positions, and fees collected into the agent's context |
-| `spendTrackingProvider` | Injects rolling 24h spending data per token and recent transaction history so the agent is aware of remaining budget |
+| `shieldStatusProvider` | Injects enforcement state (active/paused), wallet address, and spending overview |
+| `spendTrackingProvider` | Injects per-token spending data with usage percentages and remaining budget |
 
 ## Evaluators
 
-Evaluators run after shield actions to assess state:
+Evaluators run after actions to assess state:
 
 | Evaluator | Description |
 |-----------|-------------|
-| `policyCheckEvaluator` | Runs after any shield action. Warns in agent memory when rolling 24h spend exceeds 80% of the daily cap, helping the agent self-regulate |
+| `policyCheckEvaluator` | Warns in agent memory when any token's spending exceeds 80% of its cap, helping the agent self-regulate |
 
 ## How It Works
 
-The plugin reads environment variables at runtime to create an `AgentShieldClient`. All actions build atomic composed transactions:
+The plugin creates a `ShieldedWallet` from the agent's private key and policy config (env vars). The shield wraps `signTransaction` — any DeFi action the agent takes passes through the policy engine before signing. If a spending cap, rate limit, or program restriction is violated, the transaction is rejected.
 
-```
-[ValidateAndAuthorize, DeFi instruction(s), FinalizeSession]
-```
-
-Providers run before agent responses to inject vault context. The evaluator runs after shield actions to track budget usage.
+Providers give the agent awareness of its budget. The evaluator proactively warns when spending approaches limits. No on-chain vault setup is needed — everything runs client-side.
 
 ## License
 

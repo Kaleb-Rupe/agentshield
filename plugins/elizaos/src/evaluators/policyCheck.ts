@@ -1,56 +1,51 @@
-import { getOrCreateClient } from "../client-factory";
+import { getOrCreateShieldedWallet } from "../client-factory";
 
 /**
- * Policy Check Evaluator — runs after SHIELD actions and warns
- * if the vault is approaching its daily spending cap.
+ * Policy Check Evaluator — runs after agent actions and warns
+ * if spending is approaching any token's cap (>=80%).
  */
 export const policyCheckEvaluator = {
   name: "AGENT_SHIELD_POLICY_CHECK",
   description:
-    "Post-action evaluator that checks spending against the daily cap " +
-    "and warns if usage exceeds 80%.",
+    "Post-action evaluator that checks spending against caps " +
+    "and warns if any token usage exceeds 80%.",
   similes: ["check spending limits", "policy warning"],
 
   validate: async (_runtime: any, message: any): Promise<boolean> => {
-    // Only evaluate after shield actions
     const text = (message.content?.text || "").toLowerCase();
     return (
       text.includes("agentshield") ||
-      text.includes("shield vault") ||
+      text.includes("shield") ||
       text.includes("transaction:")
     );
   },
 
   handler: async (runtime: any, _message: any) => {
     try {
-      const { client, vaultOwner, vaultId } = getOrCreateClient(runtime);
-      const [vaultPda] = client.getVaultPDA(vaultOwner, vaultId);
+      const { wallet } = getOrCreateShieldedWallet(runtime);
+      const summary = wallet.getSpendingSummary();
 
-      const tracker = await client.fetchTracker(vaultPda);
-      const policy = await client.fetchPolicy(vaultPda);
+      if (summary.isPaused) return null;
 
-      const now = Math.floor(Date.now() / 1000);
-      const windowStart = now - 24 * 60 * 60;
+      const warnings: string[] = [];
 
-      let totalSpent = BigInt(0);
-      for (const entry of tracker.rollingSpends) {
-        if (entry.timestamp.toNumber() >= windowStart) {
-          totalSpent += BigInt(entry.amountSpent.toString());
+      for (const t of summary.tokens) {
+        if (t.limit === BigInt(0)) continue;
+        const pct = Number((t.spent * BigInt(100)) / t.limit);
+        if (pct >= 80) {
+          const label = t.symbol ?? t.mint.slice(0, 8) + "...";
+          warnings.push(
+            `${label}: ${pct}% used (${t.remaining.toString()} remaining)`,
+          );
         }
       }
 
-      const cap = BigInt(policy.dailySpendingCap.toString());
-      if (cap === BigInt(0)) return null;
-
-      const usagePct = Number((totalSpent * BigInt(100)) / cap);
-
-      if (usagePct >= 80) {
-        const remaining = cap > totalSpent ? cap - totalSpent : BigInt(0);
+      if (warnings.length > 0) {
         return {
           text:
-            `WARNING: AgentShield vault has used ${usagePct}% of the daily spending cap. ` +
-            `Remaining budget: ${remaining.toString()} lamports. ` +
-            `Consider reducing trade sizes or waiting for the rolling window to reset.`,
+            `WARNING: AgentShield spending approaching limits:\n` +
+            warnings.map((w) => `  ${w}`).join("\n") +
+            `\nConsider reducing trade sizes or waiting for the rolling window to reset.`,
           action: "POLICY_WARNING",
         };
       }
@@ -64,18 +59,19 @@ export const policyCheckEvaluator = {
 
   examples: [
     {
-      context: "Agent just executed a swap that pushed spending to 85% of daily cap",
+      context:
+        "Agent just executed a swap that pushed USDC spending to 85% of cap",
       messages: [
         {
           user: "{{agent}}",
           content: {
-            text: "Swap executed successfully through AgentShield vault.\nTransaction: 5xYz...",
+            text: "Swap executed successfully.\nTransaction: 5xYz...",
           },
         },
       ],
       outcome:
-        "WARNING: AgentShield vault has used 85% of the daily spending cap. " +
-        "Remaining budget: 150000000 lamports.",
+        "WARNING: AgentShield spending approaching limits:\n" +
+        "  USDC: 85% used (75000000 remaining)",
     },
   ],
 };
