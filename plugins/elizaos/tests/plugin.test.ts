@@ -318,8 +318,8 @@ describe("ElizaOS Plugin", () => {
 
       const result = await policyCheckEvaluator.handler(runtime, {});
       expect(result).to.not.be.null;
-      expect(result.text).to.include("WARNING");
-      expect(result.text).to.include("80%");
+      expect(result!.text).to.include("WARNING");
+      expect(result!.text).to.include("80%");
     });
 
     it("does not warn at 79% cap usage", async () => {
