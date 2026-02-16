@@ -96,4 +96,18 @@ describe("shield_open_position", () => {
     });
     expect(result).to.include("LeverageTooHigh");
   });
+
+  it("returns error for malformed vault address", async () => {
+    const client = createMockClient();
+    const result = await openPosition(client as any, config, {
+      vault: "not-valid-base58!!!",
+      market: "SOL",
+      collateralMint: TEST_MINT.toBase58(),
+      collateralAmount: "1000000000",
+      sizeUsd: "10000000000",
+      side: "long",
+      leverageBps: 20000,
+    });
+    expect(result).to.include("Invalid public key");
+  });
 });

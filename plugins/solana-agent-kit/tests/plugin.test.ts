@@ -246,4 +246,22 @@ describe("SAK Plugin", () => {
       expect(parsed.success).to.be.true;
     });
   });
+
+  describe("schema validation edge cases", () => {
+    it("pauseResumeSchema rejects invalid action string", () => {
+      const invalid = pauseResumeSchema.safeParse({ action: "invalid" });
+      expect(invalid.success).to.be.false;
+    });
+
+    it("double-pause → idempotent (still paused)", async () => {
+      const wallet = shield(createMockWallet());
+      await pauseResume(null, { wallet }, { action: "pause" });
+      expect(wallet.isPaused).to.be.true;
+
+      // Pause again
+      const result = await pauseResume(null, { wallet }, { action: "pause" });
+      expect(wallet.isPaused).to.be.true;
+      expect(result).to.include("paused");
+    });
+  });
 });

@@ -889,5 +889,50 @@ describe("@agent-shield/solana", () => {
       await protected_.signTransaction(tx);
       expect(wallet.signCount).to.equal(1);
     });
+
+    it("amount = 0n → allowed (below any cap)", async () => {
+      const wallet = createMockWallet();
+      const protected_ = shield(wallet, {
+        maxSpend: "100 USDC/day",
+      });
+
+      const tx = buildSplTransferTx(
+        wallet.publicKey,
+        USDC_MINT,
+        BigInt(0),
+        6,
+      );
+      await protected_.signTransaction(tx);
+      expect(wallet.signCount).to.equal(1);
+    });
+
+    it("amount = BigInt(Number.MAX_SAFE_INTEGER) → works without precision loss", async () => {
+      const wallet = createMockWallet();
+      const large = BigInt(Number.MAX_SAFE_INTEGER); // 9007199254740991
+      const protected_ = shield(wallet, {
+        blockUnknownPrograms: false,
+      });
+
+      const tx = buildSplTransferTx(
+        wallet.publicKey,
+        USDC_MINT,
+        large,
+        6,
+      );
+
+      const analysis = analyzeTransaction(tx, wallet.publicKey);
+      expect(analysis.transfers[0].amount).to.equal(large);
+    });
+
+    it("signAllTransactions([]) → returns empty array without error", async () => {
+      const wallet = createMockWallet();
+      const protected_ = shield(wallet, {
+        blockUnknownPrograms: false,
+      });
+
+      const result = await protected_.signAllTransactions!([]);
+      expect(result).to.deep.equal([]);
+      expect(wallet.signCount).to.equal(0);
+    });
   });
 });

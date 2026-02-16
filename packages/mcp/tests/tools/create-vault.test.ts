@@ -54,4 +54,26 @@ describe("shield_create_vault", () => {
     const result = await createVault(client as any, validInput);
     expect(result).to.include("DeveloperFeeTooHigh");
   });
+
+  it("handles empty allowedTokens array gracefully", async () => {
+    const client = createMockClient();
+    const result = await createVault(client as any, {
+      ...validInput,
+      allowedTokens: [],
+    });
+    expect(result).to.include("Vault Created Successfully");
+    const call = client.calls.find((c) => c.method === "createVault");
+    expect(call!.args[0].allowedTokens).to.have.length(0);
+  });
+
+  it("handles amount = '0' for dailySpendingCap", async () => {
+    const client = createMockClient();
+    const result = await createVault(client as any, {
+      ...validInput,
+      dailySpendingCap: "0",
+    });
+    expect(result).to.include("Vault Created Successfully");
+    const call = client.calls.find((c) => c.method === "createVault");
+    expect(call!.args[0].dailySpendingCap.toString()).to.equal("0");
+  });
 });

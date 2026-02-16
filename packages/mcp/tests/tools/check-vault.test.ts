@@ -46,4 +46,12 @@ describe("shield_check_vault", () => {
     });
     expect(result).to.include("Account not found");
   });
+
+  it("returns descriptive error for malformed base58 vault address", async () => {
+    const client = createMockClient();
+    const result = await checkVault(client as any, {
+      vault: "not-a-valid-base58-address!!!",
+    });
+    expect(result).to.include("Invalid public key");
+  });
 });

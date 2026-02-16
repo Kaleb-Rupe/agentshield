@@ -4,7 +4,7 @@
 # Three parallel jobs:
 #   1. build-lint-test  — TypeScript builds, Prettier, wrapper + plugin + MCP tests
 #   2. rust-checks      — cargo fmt + cargo clippy
-#   3. on-chain-tests   — Anchor build + solana-test-validator + 56 on-chain tests
+#   3. on-chain-tests   — Anchor build + solana-test-validator + 68 on-chain tests
 
 name: CI
 
@@ -57,19 +57,19 @@ jobs:
         # TODO: enable repo-wide after running `npx prettier --write .`
         run: npx prettier --check "sdk/core/src/**/*.ts" "sdk/wrapper/src/**/*.ts"
 
-      - name: Wrapper tests (49 tests, no validator needed)
+      - name: Wrapper tests (52 tests, no validator needed)
         working-directory: sdk/wrapper
         run: pnpm test
 
-      - name: SAK plugin tests (23 tests)
+      - name: SAK plugin tests (25 tests)
         working-directory: plugins/solana-agent-kit
         run: pnpm test
 
-      - name: ElizaOS plugin tests (30 tests)
+      - name: ElizaOS plugin tests (32 tests)
         working-directory: plugins/elizaos
         run: pnpm test
 
-      - name: MCP server tests (78 tests)
+      - name: MCP server tests (82 tests)
         working-directory: packages/mcp
         run: pnpm test
 
@@ -119,7 +119,7 @@ jobs:
   # Job 3: On-chain tests (requires Anchor + Solana validator)
   # ──────────────────────────────────────────────────────────────
   on-chain-tests:
-    name: On-Chain Tests (56 tests)
+    name: On-Chain Tests (68 tests)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

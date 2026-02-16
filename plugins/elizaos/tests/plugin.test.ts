@@ -305,6 +305,35 @@ describe("ElizaOS Plugin", () => {
       const valid = await policyCheckEvaluator.validate(runtime, message);
       expect(valid).to.be.true;
     });
+
+    it("warns at exactly 80% cap usage", async () => {
+      const { runtime } = createMockRuntime({
+        AGENT_SHIELD_MAX_SPEND: "100 USDC/day",
+      });
+      const { wallet } = getOrCreateShieldedWallet(runtime);
+
+      // Manually record 80% spending via the state
+      const usdcMint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+      wallet.shieldState.recordSpend(usdcMint, BigInt(80_000_000)); // 80 USDC of 100 cap
+
+      const result = await policyCheckEvaluator.handler(runtime, {});
+      expect(result).to.not.be.null;
+      expect(result.text).to.include("WARNING");
+      expect(result.text).to.include("80%");
+    });
+
+    it("does not warn at 79% cap usage", async () => {
+      const { runtime } = createMockRuntime({
+        AGENT_SHIELD_MAX_SPEND: "100 USDC/day",
+      });
+      const { wallet } = getOrCreateShieldedWallet(runtime);
+
+      const usdcMint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+      wallet.shieldState.recordSpend(usdcMint, BigInt(79_000_000)); // 79 USDC of 100 cap
+
+      const result = await policyCheckEvaluator.handler(runtime, {});
+      expect(result).to.be.null;
+    });
   });
 
   describe("event callback wiring", () => {
