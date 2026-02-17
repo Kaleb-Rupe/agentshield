@@ -139,10 +139,10 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            ~/.cargo/bin
             target
-          key: anchor-${{ runner.os }}-${{ hashFiles('programs/agent-shield/Cargo.lock') }}
-          restore-keys: anchor-${{ runner.os }}-
+          # Include runner image in key so ubuntu-22.04 vs 24.04 don't share binaries
+          key: anchor-22.04-${{ runner.os }}-${{ hashFiles('programs/agent-shield/Cargo.lock') }}
+          restore-keys: anchor-22.04-${{ runner.os }}-
 
       - name: Install Solana CLI
         run: |
