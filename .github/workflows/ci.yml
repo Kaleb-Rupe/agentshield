@@ -120,7 +120,12 @@ jobs:
   # ──────────────────────────────────────────────────────────────
   on-chain-tests:
     name: On-Chain Tests (68 tests, LiteSVM)
-    runs-on: ubuntu-latest
+    # Pin ubuntu-22.04 — litesvm NAPI-RS binary crashes on ubuntu-24.04/latest
+    # due to V8 GC corruption (upstream: https://github.com/LiteSVM/litesvm/issues/171)
+    runs-on: ubuntu-22.04
+    env:
+      # Extra heap room for the litesvm native addon
+      NODE_OPTIONS: "--max-old-space-size=4096"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -159,10 +164,11 @@ jobs:
         with:
           version: 10
 
+      # Pin Node 22.15.0 — litesvm NAPI binary has GC issues with newer Node on Linux
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: "22.15.0"
           cache: "pnpm"
 
       - name: Install dependencies
