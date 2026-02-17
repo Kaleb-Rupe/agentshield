@@ -4,7 +4,7 @@
 # Three parallel jobs:
 #   1. build-lint-test  — TypeScript builds, Prettier, wrapper + plugin + MCP tests
 #   2. rust-checks      — cargo fmt + cargo clippy
-#   3. on-chain-tests   — Anchor build + LiteSVM in-process + 68 on-chain tests
+#   3. on-chain-tests   — Anchor build + solana-test-validator + 68 on-chain tests
 
 name: CI
 
@@ -116,16 +116,11 @@ jobs:
             -A clippy::derivable_impls
 
   # ──────────────────────────────────────────────────────────────
-  # Job 3: On-chain tests (LiteSVM in-process, no validator)
+  # Job 3: On-chain tests (requires Anchor + Solana validator)
   # ──────────────────────────────────────────────────────────────
   on-chain-tests:
-    name: On-Chain Tests (68 tests, LiteSVM)
-    # litesvm NAPI-RS binary requires glibc ≥2.38 (ubuntu ≥24.04)
-    # See: https://github.com/LiteSVM/litesvm/issues/171
+    name: On-Chain Tests (68 tests)
     runs-on: ubuntu-latest
-    env:
-      # Extra heap room for the litesvm native addon
-      NODE_OPTIONS: "--max-old-space-size=4096"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -139,6 +134,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
+            ~/.cargo/bin
             target
           key: anchor-${{ runner.os }}-${{ hashFiles('programs/agent-shield/Cargo.lock') }}
           restore-keys: anchor-${{ runner.os }}-
@@ -163,22 +159,44 @@ jobs:
         with:
           version: 10
 
-      # Pin Node 22.15.0 — litesvm NAPI binary has GC issues with newer Node on Linux
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22.15.0"
+          node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Create test keypair
+        run: solana-keygen new --no-bip39-passphrase --silent
+
       - name: Build program
         run: anchor build --no-idl
 
-      - name: Run on-chain tests (LiteSVM, in-process)
+      - name: Run on-chain tests
         run: |
-          npx ts-mocha -p ./tsconfig.json -t 300000 \
-            tests/agent-shield.ts \
-            tests/jupiter-integration.ts \
-            tests/flash-trade-integration.ts
+          # Ensure ledger parent directory exists (.anchor/ is gitignored)
+          mkdir -p .anchor/test-ledger
+
+          # Start test validator with the built program
+          solana-test-validator \
+            --ledger .anchor/test-ledger \
+            --rpc-port 8899 \
+            --bpf-program 4ZeVCqnjUgUtFrHHPG7jELUxvJeoVGHhGNgPrhBPwrHL target/deploy/agent_shield.so \
+            --reset \
+            --quiet &
+
+          # Wait for validator to be ready
+          sleep 10
+
+          # Run tests (excluding devnet-smoke.ts which requires devnet)
+          ANCHOR_PROVIDER_URL=http://localhost:8899 \
+          ANCHOR_WALLET=~/.config/solana/id.json \
+            npx ts-mocha -p ./tsconfig.json -t 1000000 \
+              tests/agent-shield.ts \
+              tests/jupiter-integration.ts \
+              tests/flash-trade-integration.ts
+
+          # Clean up
+          pkill -f solana-test-validator || true
