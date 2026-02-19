@@ -1,6 +1,12 @@
 {
   "name": "@agent-shield/mcp",
-  "version": "0.2.0",
+  "version": "0.2.2",
+  "author": "Kaleb Rupe (https://x.com/MightieMags)",
+  "homepage": "https://github.com/Kaleb-Rupe/agentshield#readme",
+  "bugs": {
+    "url": "https://github.com/Kaleb-Rupe/agentshield/issues",
+    "email": "https://t.me/MightyMags"
+  },
   "description": "MCP server for AgentShield — manage on-chain vaults and enforce policies via AI tools",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -52,10 +58,21 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   },
+  "keywords": [
+    "mcp",
+    "solana",
+    "ai-agent",
+    "defi",
+    "security",
+    "spending-limits",
+    "policy-engine",
+    "claude",
+    "model-context-protocol"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agent-shield/agent-shield",
+    "url": "https://github.com/Kaleb-Rupe/agentshield",
     "directory": "packages/mcp"
   }
 }

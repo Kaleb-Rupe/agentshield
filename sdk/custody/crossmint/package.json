@@ -1,6 +1,12 @@
 {
   "name": "@agent-shield/custody-crossmint",
-  "version": "0.1.0",
+  "version": "0.1.2",
+  "author": "Kaleb Rupe (https://x.com/MightieMags)",
+  "homepage": "https://github.com/Kaleb-Rupe/agentshield#readme",
+  "bugs": {
+    "url": "https://github.com/Kaleb-Rupe/agentshield/issues",
+    "email": "https://t.me/MightyMags"
+  },
   "description": "Crossmint TEE custody adapter for AgentShield — hardware-enclave signing for AI agents",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -52,7 +58,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agent-shield/agent-shield",
+    "url": "https://github.com/Kaleb-Rupe/agentshield",
     "directory": "sdk/custody/crossmint"
   }
 }

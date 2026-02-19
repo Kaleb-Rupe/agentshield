@@ -1,6 +1,12 @@
 {
   "name": "@agent-shield/sdk",
-  "version": "0.2.0",
+  "version": "0.3.1",
+  "author": "Kaleb Rupe (https://x.com/MightieMags)",
+  "homepage": "https://github.com/Kaleb-Rupe/agentshield#readme",
+  "bugs": {
+    "url": "https://github.com/Kaleb-Rupe/agentshield/issues",
+    "email": "https://t.me/MightyMags"
+  },
   "description": "TypeScript SDK for AgentShield — permission-guarded DeFi access for AI agents on Solana",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -35,9 +41,20 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   },
+  "keywords": [
+    "solana",
+    "ai-agent",
+    "anchor",
+    "defi",
+    "security",
+    "spending-limits",
+    "policy-engine",
+    "mcp"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentshield/agent-middleware"
+    "url": "https://github.com/Kaleb-Rupe/agentshield",
+    "directory": "sdk/typescript"
   }
 }

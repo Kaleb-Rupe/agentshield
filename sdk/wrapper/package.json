@@ -1,6 +1,12 @@
 {
   "name": "@agent-shield/solana",
-  "version": "0.2.1",
+  "version": "0.3.1",
+  "author": "Kaleb Rupe (https://x.com/MightieMags)",
+  "homepage": "https://github.com/Kaleb-Rupe/agentshield#readme",
+  "bugs": {
+    "url": "https://github.com/Kaleb-Rupe/agentshield/issues",
+    "email": "https://t.me/MightyMags"
+  },
   "description": "Client-side spending controls for Solana AI agents. Three lines of code.",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -53,7 +59,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentshield/agent-middleware",
+    "url": "https://github.com/Kaleb-Rupe/agentshield",
     "directory": "sdk/wrapper"
   }
 }

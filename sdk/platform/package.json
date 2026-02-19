@@ -1,6 +1,12 @@
 {
   "name": "@agent-shield/platform",
-  "version": "0.1.0",
+  "version": "0.1.2",
+  "author": "Kaleb Rupe (https://x.com/MightieMags)",
+  "homepage": "https://github.com/Kaleb-Rupe/agentshield#readme",
+  "bugs": {
+    "url": "https://github.com/Kaleb-Rupe/agentshield/issues",
+    "email": "https://t.me/MightyMags"
+  },
   "description": "Platform client for AgentShield — request TEE wallet provisioning via Solana Actions",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -27,10 +33,19 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   },
+  "keywords": [
+    "solana",
+    "ai-agent",
+    "solana-actions",
+    "blinks",
+    "platform",
+    "tee",
+    "provisioning"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agent-shield/agent-shield",
+    "url": "https://github.com/Kaleb-Rupe/agentshield",
     "directory": "sdk/platform"
   }
 }

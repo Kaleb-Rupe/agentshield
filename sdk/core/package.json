@@ -1,6 +1,12 @@
 {
   "name": "@agent-shield/core",
-  "version": "0.1.2",
+  "version": "0.1.3",
+  "author": "Kaleb Rupe (https://x.com/MightieMags)",
+  "homepage": "https://github.com/Kaleb-Rupe/agentshield#readme",
+  "bugs": {
+    "url": "https://github.com/Kaleb-Rupe/agentshield/issues",
+    "email": "https://t.me/MightyMags"
+  },
   "description": "Pure TypeScript policy engine for AI agent spending controls — zero blockchain dependencies",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -36,7 +42,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentshield/agent-middleware",
+    "url": "https://github.com/Kaleb-Rupe/agentshield",
     "directory": "sdk/core"
   }
 }

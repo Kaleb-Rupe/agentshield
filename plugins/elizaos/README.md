@@ -258,6 +258,12 @@ npm test
 | [`@agent-shield/plugin-solana-agent-kit`](https://www.npmjs.com/package/@agent-shield/plugin-solana-agent-kit) | Solana Agent Kit integration |
 | [`@agent-shield/sdk`](https://www.npmjs.com/package/@agent-shield/sdk) | On-chain vault SDK |
 
+## Support
+
+- X/Twitter: [@MightieMags](https://x.com/MightieMags)
+- Telegram: [MightyMags](https://t.me/MightyMags)
+- Issues: [GitHub Issues](https://github.com/Kaleb-Rupe/agentshield/issues)
+
 ## License
 
 MIT

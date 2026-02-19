@@ -1,6 +1,12 @@
 {
   "name": "@agent-shield/plugin-elizaos",
-  "version": "0.3.2",
+  "version": "0.4.1",
+  "author": "Kaleb Rupe (https://x.com/MightieMags)",
+  "homepage": "https://github.com/Kaleb-Rupe/agentshield#readme",
+  "bugs": {
+    "url": "https://github.com/Kaleb-Rupe/agentshield/issues",
+    "email": "https://t.me/MightyMags"
+  },
   "description": "AgentShield plugin for ElizaOS — shield() wrapper actions, providers, and policy evaluators",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -40,10 +46,19 @@
     "mocha": "^10.3.0",
     "ts-node": "^10.9.2"
   },
+  "keywords": [
+    "solana",
+    "ai-agent",
+    "elizaos",
+    "defi",
+    "security",
+    "spending-limits",
+    "plugin"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agent-shield/agent-shield",
+    "url": "https://github.com/Kaleb-Rupe/agentshield",
     "directory": "plugins/elizaos"
   }
 }

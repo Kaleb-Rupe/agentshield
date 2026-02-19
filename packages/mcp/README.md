@@ -119,6 +119,12 @@ AGENTSHIELD_WALLET_PATH=~/.config/solana/id.json node dist/index.js
 - **SDK**: Wraps `AgentShieldClient` from `@agent-shield/sdk` — every tool delegates to a client method
 - **Error handling**: All 37 Anchor error codes mapped to human-readable messages with actionable suggestions
 
+## Support
+
+- X/Twitter: [@MightieMags](https://x.com/MightieMags)
+- Telegram: [MightyMags](https://t.me/MightyMags)
+- Issues: [GitHub Issues](https://github.com/Kaleb-Rupe/agentshield/issues)
+
 ## License
 
 MIT

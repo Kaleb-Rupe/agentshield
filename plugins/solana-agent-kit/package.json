@@ -1,6 +1,12 @@
 {
   "name": "@agent-shield/plugin-solana-agent-kit",
-  "version": "0.3.2",
+  "version": "0.4.1",
+  "author": "Kaleb Rupe (https://x.com/MightieMags)",
+  "homepage": "https://github.com/Kaleb-Rupe/agentshield#readme",
+  "bugs": {
+    "url": "https://github.com/Kaleb-Rupe/agentshield/issues",
+    "email": "https://t.me/MightyMags"
+  },
   "description": "AgentShield plugin for Solana Agent Kit — shield() wrapper monitoring and management tools",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -36,10 +42,19 @@
   "dependencies": {
     "zod": "^3.22.0"
   },
+  "keywords": [
+    "solana",
+    "ai-agent",
+    "solana-agent-kit",
+    "defi",
+    "security",
+    "spending-limits",
+    "plugin"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agent-shield/agent-shield",
+    "url": "https://github.com/Kaleb-Rupe/agentshield",
     "directory": "plugins/solana-agent-kit"
   }
 }

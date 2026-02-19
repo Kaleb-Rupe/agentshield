@@ -294,6 +294,12 @@ IDL account: `Ev3gSzxLw6RwExAMpTHUKvn2o9YVULxiWehrHee7aepP`
 | [`@agent-shield/plugin-solana-agent-kit`](https://www.npmjs.com/package/@agent-shield/plugin-solana-agent-kit) | Solana Agent Kit integration |
 | [`@agent-shield/plugin-elizaos`](https://www.npmjs.com/package/@agent-shield/plugin-elizaos) | ElizaOS integration |
 
+## Support
+
+- X/Twitter: [@MightieMags](https://x.com/MightieMags)
+- Telegram: [MightyMags](https://t.me/MightyMags)
+- Issues: [GitHub Issues](https://github.com/Kaleb-Rupe/agentshield/issues)
+
 ## License
 
 MIT

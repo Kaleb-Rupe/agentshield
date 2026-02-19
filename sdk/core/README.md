@@ -296,6 +296,12 @@ Used by:
 
 For Solana-specific integrations, use `@agent-shield/solana` which wraps this package with Solana transaction analysis and wallet signing.
 
+## Support
+
+- X/Twitter: [@MightieMags](https://x.com/MightieMags)
+- Telegram: [MightyMags](https://t.me/MightyMags)
+- Issues: [GitHub Issues](https://github.com/Kaleb-Rupe/agentshield/issues)
+
 ## License
 
 MIT
