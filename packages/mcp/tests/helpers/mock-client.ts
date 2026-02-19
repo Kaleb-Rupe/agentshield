@@ -34,6 +34,7 @@ export function makeVaultAccount(
     totalVolume: new BN("1000000000"),
     openPositions: 0,
     totalFeesCollected: new BN(5000),
+    trackerTier: { standard: {} } as AgentVaultAccount["trackerTier"],
     ...overrides,
   };
 }
@@ -62,7 +63,7 @@ export function makeSpendEntry(
   overrides: Partial<SpendEntry> = {}
 ): SpendEntry {
   return {
-    tokenMint: TEST_MINT,
+    tokenIndex: 0,
     usdAmount: new BN("500000000"),
     baseAmount: new BN("500000000"),
     timestamp: new BN(1700000100),
@@ -90,6 +91,8 @@ export function makeTrackerAccount(
 ): SpendTrackerAccount {
   return {
     vault: TEST_VAULT_PDA,
+    trackerTier: { standard: {} } as SpendTrackerAccount["trackerTier"],
+    maxSpendEntries: 200,
     rollingSpends: [makeSpendEntry()],
     recentTransactions: [makeTransactionRecord()],
     bump: 253,
