@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-  loadShieldConfig,
-  saveShieldConfig,
-  getCurrentTier,
-} from "../config";
+import { loadShieldConfig, saveShieldConfig, getCurrentTier } from "../config";
 
 const ACTIONS_SERVER_URL = "https://agent-middleware.vercel.app";
 
@@ -27,7 +23,7 @@ export async function upgradeTier(
   if (!config) {
     return (
       "AgentShield is not configured yet. " +
-      'Use shield_configure to set up from scratch instead of upgrading.'
+      "Use shield_configure to set up from scratch instead of upgrading."
     );
   }
 
@@ -134,9 +130,7 @@ export async function upgradeTier(
     }
 
     lines.push("");
-    lines.push(
-      "Sign the vault creation transaction to complete the upgrade:",
-    );
+    lines.push("Sign the vault creation transaction to complete the upgrade:");
     lines.push(`1. **Blink URL:** ${blinkUrl}`);
     lines.push(`2. **Action URL:** ${actionUrl}`);
     lines.push("");

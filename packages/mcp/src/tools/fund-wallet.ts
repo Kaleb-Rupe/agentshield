@@ -13,7 +13,9 @@ export const fundWalletSchema = z.object({
   amount: z
     .string()
     .optional()
-    .describe("Amount to fund (in human-readable units, e.g. '1.5' for 1.5 SOL)"),
+    .describe(
+      "Amount to fund (in human-readable units, e.g. '1.5' for 1.5 SOL)",
+    ),
 });
 
 export type FundWalletInput = z.infer<typeof fundWalletSchema>;

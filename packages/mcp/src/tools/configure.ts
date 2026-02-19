@@ -100,8 +100,9 @@ export async function configure(
       CONFIGURE_TEMPLATES.conservative;
 
     const dailyCapUsd = input.dailyCapUsd ?? template.dailyCapUsd;
-    const allowedProtocols =
-      input.allowedProtocols ?? [...template.allowedProtocols];
+    const allowedProtocols = input.allowedProtocols ?? [
+      ...template.allowedProtocols,
+    ];
     const maxLeverageBps = input.maxLeverageBps ?? template.maxLeverageBps;
     const rateLimit = input.rateLimit ?? template.rateLimit;
 
@@ -128,11 +129,9 @@ export async function configure(
         fs.mkdirSync(walletsDir, { recursive: true, mode: 0o700 });
       }
       walletPath = path.join(walletsDir, "agent.json");
-      fs.writeFileSync(
-        walletPath,
-        JSON.stringify(Array.from(kp.secretKey)),
-        { mode: 0o600 },
-      );
+      fs.writeFileSync(walletPath, JSON.stringify(Array.from(kp.secretKey)), {
+        mode: 0o600,
+      });
       walletPublicKey = kp.publicKey.toBase58();
     }
 
@@ -217,8 +216,7 @@ export async function configure(
           "- **Disclosure:** Your TEE wallet is custodied by AgentShield's platform. You can export or migrate later.",
         );
       } catch (error) {
-        const msg =
-          error instanceof Error ? error.message : String(error);
+        const msg = error instanceof Error ? error.message : String(error);
         return `Error connecting to AgentShield platform for TEE provisioning: ${msg}`;
       }
     }

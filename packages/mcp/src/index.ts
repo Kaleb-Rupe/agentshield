@@ -142,10 +142,7 @@ async function main() {
         .optional()
         .default("conservative")
         .describe("Policy template"),
-      dailyCapUsd: z
-        .number()
-        .optional()
-        .describe("Custom daily cap in USD"),
+      dailyCapUsd: z.number().optional().describe("Custom daily cap in USD"),
       allowedProtocols: z
         .array(z.string())
         .optional()
@@ -154,10 +151,7 @@ async function main() {
         .number()
         .optional()
         .describe("Custom max leverage in BPS"),
-      rateLimit: z
-        .number()
-        .optional()
-        .describe("Custom rate limit (tx/min)"),
+      rateLimit: z.number().optional().describe("Custom rate limit (tx/min)"),
       network: z
         .enum(["devnet", "mainnet-beta"])
         .optional()
@@ -182,10 +176,7 @@ async function main() {
         .string()
         .optional()
         .describe("Token mint (base58). Omit for SOL."),
-      amount: z
-        .string()
-        .optional()
-        .describe("Amount in human-readable units"),
+      amount: z.string().optional().describe("Amount in human-readable units"),
     },
     async (input) => ({
       content: [{ type: "text", text: await fundWallet(null, input) }],
@@ -584,9 +575,7 @@ async function main() {
         .describe("Custom max leverage in basis points"),
     },
     async (input) => ({
-      content: [
-        { type: "text", text: await provision(client as any, input) },
-      ],
+      content: [{ type: "text", text: await provision(client as any, input) }],
     }),
   );
 

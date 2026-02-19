@@ -77,16 +77,8 @@ export {
   setupStatus,
   setupStatusSchema,
 } from "./setup-status";
-export {
-  configureTool,
-  configure,
-  configureSchema,
-} from "./configure";
-export {
-  fundWalletTool,
-  fundWallet,
-  fundWalletSchema,
-} from "./fund-wallet";
+export { configureTool, configure, configureSchema } from "./configure";
+export { fundWalletTool, fundWallet, fundWalletSchema } from "./fund-wallet";
 export {
   upgradeTierTool,
   upgradeTier,

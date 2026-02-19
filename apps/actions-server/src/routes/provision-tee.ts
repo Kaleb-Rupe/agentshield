@@ -37,7 +37,7 @@ provisionTee.post("/api/actions/provision-tee", async (c) => {
 
     const body = await c.req
       .json<{ network?: string }>()
-      .catch(() => ({} as { network?: string }));
+      .catch(() => ({}) as { network?: string });
     const network = body.network === "mainnet-beta" ? "mainnet" : "testnet";
 
     // Crossmint API: create a Solana wallet
