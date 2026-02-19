@@ -20,7 +20,7 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "test": "mocha --require ts-node/register tests/**/*.test.ts --timeout 30000",
-    "prepublishOnly": "npm run clean && npm run build"
+    "prepublishOnly": "pnpm run clean && pnpm run build"
   },
   "dependencies": {
     "@solana/spl-token": "^0.4.0"
