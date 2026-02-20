@@ -123,13 +123,13 @@ describe("shield_upgrade_tier", () => {
     expect(config.layers.vault.enabled).to.be.true;
   });
 
-  it("warns when upgrading to Tier 3 without TEE", async () => {
+  it("provisions TEE first when upgrading to Tier 3 without TEE", async () => {
     writeConfig();
 
     const result = await upgradeTier(null, { targetTier: 3 });
-    // TEE provision will fail (no API key in test), so it returns an error
-    // about connecting to the platform
-    expect(result).to.include("Error");
+    // TEE is provisioned first, then vault Blink URL generated
+    expect(result).to.include("Upgraded to Tier 2");
+    expect(result).to.include("Tier 3");
   });
 
   it("preserves existing policy on upgrade", async () => {

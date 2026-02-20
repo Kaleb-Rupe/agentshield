@@ -158,16 +158,17 @@ describe("shield_configure", () => {
     expect(result).to.include("Error");
   });
 
-  it("Tier 3 attempts TEE provisioning first (fails in test env)", async () => {
-    // Tier 3 first tries TEE (tier >= 2), which fails without live server
+  it("Tier 3 provisions TEE and generates vault Blink URL", async () => {
+    // Tier 3 first provisions TEE (tier >= 2), then generates vault Blink URL
     const result = await configure(null, {
       tier: 3,
       template: "conservative",
       network: "devnet",
     });
 
-    // TEE provisioning fails in test env — returns error about TEE
-    expect(result).to.include("Error");
+    // TEE provisioning succeeds, vault Blink URL generated
+    expect(result).to.include("Tier 3");
+    expect(result).to.include("Configured");
   });
 
   it("Tier 1 next steps suggest upgrading to TEE", async () => {
