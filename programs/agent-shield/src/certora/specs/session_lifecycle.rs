@@ -3,8 +3,8 @@
 // Verifies properties of SessionAuthority::calculate_expiry() by calling
 // the actual program function with nondeterministic inputs.
 
-use certora::prelude::*;
 use crate::state::{SessionAuthority, SESSION_EXPIRY_SLOTS};
+use certora::prelude::*;
 
 // ─────────────────────────────────────────────────────────────────
 // Rule 1: calculate_expiry never returns less than the input slot

@@ -3,12 +3,12 @@
 // Verifies safety-critical constants and pure helper functions
 // that underpin AgentShield's authorization model.
 
-use certora::prelude::*;
 use crate::state::{
-    SessionAuthority, TrackerTier, MAX_DEVELOPER_FEE_RATE, SESSION_EXPIRY_SLOTS,
-    ROLLING_WINDOW_SECONDS, MAX_ALLOWED_TOKENS, MAX_ALLOWED_PROTOCOLS,
-    MAX_ALLOWED_DESTINATIONS, MAX_RECENT_TRANSACTIONS,
+    SessionAuthority, TrackerTier, MAX_ALLOWED_DESTINATIONS, MAX_ALLOWED_PROTOCOLS,
+    MAX_ALLOWED_TOKENS, MAX_DEVELOPER_FEE_RATE, MAX_RECENT_TRANSACTIONS, ROLLING_WINDOW_SECONDS,
+    SESSION_EXPIRY_SLOTS,
 };
+use certora::prelude::*;
 
 // ─────────────────────────────────────────────────────────────────
 // Rule 1: Developer fee rate ceiling
