@@ -304,6 +304,16 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Cache Cargo registry + binaries
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+          key: certora-${{ runner.os }}-cargo-certora-sbf
+          restore-keys: certora-${{ runner.os }}-
+
       - name: Install Python
         uses: actions/setup-python@v5
         with:
@@ -314,6 +324,9 @@ jobs:
           python -m venv .certora-venv
           source .certora-venv/bin/activate
           pip install certora-cli
+
+      - name: Install cargo-certora-sbf
+        run: cargo install cargo-certora-sbf
 
       - name: Run Certora Solana Prover
         env:
