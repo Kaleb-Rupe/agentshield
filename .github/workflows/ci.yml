@@ -3,7 +3,7 @@
 # Runs on every push to main and on pull requests.
 # Nine jobs (1 detection + 6 parallel + 1 CodeQL + 1 gate):
 #   0. changes                — Detect which file groups changed (path filtering)
-#   1. build-lint-test        — TypeScript builds, Prettier (10 packages), 466 TS tests across 8 suites
+#   1. build-lint-test        — TypeScript builds, Prettier (10 packages), 470 TS tests across 8 suites
 #   2. rust-checks            — cargo fmt + cargo clippy
 #   3. on-chain-tests         — Anchor build + LiteSVM in-process + 174 on-chain tests (93 core + 81 security exploits)
 #   4. security-scan          — Sec3 X-Ray static analysis (BLOCKING)
@@ -11,7 +11,7 @@
 #   6. fuzz-test              — Trident fuzz test: 1000 iterations (BLOCKING)
 #   7. security-gate          — All-pass gate for branch protection
 #
-# Total: 640 tests across 13 suites (466 TS + 174 on-chain)
+# Total: 644 tests across 13 suites (470 TS + 174 on-chain)
 # All security checks are BLOCKING — zero tolerance for known issues.
 
 name: CI
@@ -57,7 +57,7 @@ jobs:
               - 'trident-tests/**'
 
   # ──────────────────────────────────────────────────────────────
-  # Job 1: TypeScript build, lint, and tests (8 suites, 466 tests)
+  # Job 1: TypeScript build, lint, and tests (8 suites, 470 tests)
   # ──────────────────────────────────────────────────────────────
   build-lint-test:
     name: Build, Lint & TS Tests
@@ -135,7 +135,7 @@ jobs:
         working-directory: packages/mcp
         run: pnpm test
 
-      - name: Actions server tests (44 tests)
+      - name: Actions server tests (48 tests)
         working-directory: apps/actions-server
         run: pnpm test
 

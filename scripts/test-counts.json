@@ -12,6 +12,6 @@
     { "name": "SAK plugin (`@agent-shield/plugin-solana-agent-kit`)", "count": 25 },
     { "name": "ElizaOS plugin (`@agent-shield/plugin-elizaos`)", "count": 32 },
     { "name": "MCP server (`@agent-shield/mcp`)", "count": 118 },
-    { "name": "Actions server (`@agent-shield/actions-server`)", "count": 44 }
+    { "name": "Actions server (`@agent-shield/actions-server`)", "count": 48 }
   ]
 }

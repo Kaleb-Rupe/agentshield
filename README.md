@@ -1,7 +1,7 @@
 # AgentShield
 
 [![CI](https://github.com/Kaleb-Rupe/agentshield/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Kaleb-Rupe/agentshield/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-640-brightgreen)
+![Tests](https://img.shields.io/badge/tests-644-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 On-chain guardrails for AI agents on Solana. Your policies are enforced by Solana validators, not software promises.
@@ -176,7 +176,7 @@ npx ts-mocha -p ./tsconfig.json -t 300000 \
   tests/agent-shield.ts tests/jupiter-integration.ts \
   tests/flash-trade-integration.ts tests/security-exploits.ts
 
-# Run all TypeScript tests (466 tests across 8 suites)
+# Run all TypeScript tests (470 tests across 8 suites)
 pnpm -r run test
 
 # Lint
@@ -200,8 +200,8 @@ cargo fmt --check --manifest-path programs/agent-shield/Cargo.toml
 | SAK plugin (`@agent-shield/plugin-solana-agent-kit`) |      25 |
 | ElizaOS plugin (`@agent-shield/plugin-elizaos`)      |      32 |
 | MCP server (`@agent-shield/mcp`)                     |     118 |
-| Actions server (`@agent-shield/actions-server`)      |      44 |
-| **Total**                                            | **640** |
+| Actions server (`@agent-shield/actions-server`)      |      48 |
+| **Total**                                            | **644** |
 
 ## Security
 
