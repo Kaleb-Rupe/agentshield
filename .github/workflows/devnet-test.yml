@@ -46,7 +46,7 @@ jobs:
         run: |
           mkdir -p "$HOME/.config/solana"
           echo '${{ secrets.DEVNET_WALLET_KEYPAIR }}' > "$HOME/.config/solana/id.json"
-          solana config set --url https://api.devnet.solana.com --keypair "$HOME/.config/solana/id.json"
+          solana config set --url "${{ secrets.DEVNET_RPC_URL }}" --keypair "$HOME/.config/solana/id.json"
 
       - name: Fund wallet
         run: |
@@ -63,7 +63,7 @@ jobs:
       - name: Export wallet path
         run: |
           echo "ANCHOR_WALLET=$HOME/.config/solana/id.json" >> "$GITHUB_ENV"
-          echo "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com" >> "$GITHUB_ENV"
+          echo "ANCHOR_PROVIDER_URL=${{ secrets.DEVNET_RPC_URL }}" >> "$GITHUB_ENV"
 
       - name: Run devnet tests
         run: |
