@@ -5,7 +5,7 @@
 #   0. changes                — Detect which file groups changed (path filtering)
 #   1. build-lint-test        — TypeScript builds, Prettier (10 packages), 512 TS tests across 8 suites
 #   2. rust-checks            — cargo fmt + cargo clippy
-#   3. on-chain-tests         — Anchor build + LiteSVM in-process + 174 on-chain tests (93 core + 81 security exploits)
+#   3. on-chain-tests         — Anchor build + LiteSVM in-process + 174 on-chain tests
 #   4. security-scan          — Sec3 X-Ray static analysis (BLOCKING)
 #   5. formal-verification    — Certora Solana Prover (programs/ or certora/ changes only, BLOCKING)
 #   6. fuzz-test              — Trident fuzz test: 1000 iterations (BLOCKING)
@@ -232,7 +232,7 @@ jobs:
   # Job 3: On-chain tests (LiteSVM in-process, no validator)
   # ──────────────────────────────────────────────────────────────
   on-chain-tests:
-    name: On-Chain Tests (174 tests, LiteSVM)
+    name: On-Chain Tests (LiteSVM)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -317,8 +317,8 @@ jobs:
 
       - name: Check X-Ray findings
         run: |
-          # Extract all VULNERABLE lines from the report
-          grep "VULNERABLE" xray-report.txt > xray-all-findings.txt || true
+          # Extract real VULNERABLE findings (exclude X-Ray's progress bar noise)
+          grep "VULNERABLE" xray-report.txt | grep -v "Detecting Vulnerabilities" > xray-all-findings.txt || true
 
           # Show raw findings in CI log (collapsed, for audit visibility)
           if [ -s xray-all-findings.txt ]; then
