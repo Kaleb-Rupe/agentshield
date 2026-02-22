@@ -1,9 +1,9 @@
 # CI Pipeline for AgentShield
 #
 # Runs on every push to main and on pull requests.
-# Nine jobs (1 detection + 6 parallel + 1 CodeQL + 1 gate):
+# Eight jobs (1 detection + 6 parallel + 1 gate):
 #   0. changes                — Detect which file groups changed (path filtering)
-#   1. build-lint-test        — TypeScript builds, Prettier (10 packages), 470 TS tests across 8 suites
+#   1. build-lint-test        — TypeScript builds, Prettier (10 packages), 512 TS tests across 8 suites
 #   2. rust-checks            — cargo fmt + cargo clippy
 #   3. on-chain-tests         — Anchor build + LiteSVM in-process + 174 on-chain tests (93 core + 81 security exploits)
 #   4. security-scan          — Sec3 X-Ray static analysis (BLOCKING)
@@ -11,7 +11,7 @@
 #   6. fuzz-test              — Trident fuzz test: 1000 iterations (BLOCKING)
 #   7. security-gate          — All-pass gate for branch protection
 #
-# Total: 644 tests across 13 suites (470 TS + 174 on-chain)
+# Total: 686 tests across 13 suites (512 TS + 174 on-chain)
 # All security checks are BLOCKING — zero tolerance for known issues.
 
 name: CI
@@ -57,7 +57,7 @@ jobs:
               - 'trident-tests/**'
 
   # ──────────────────────────────────────────────────────────────
-  # Job 1: TypeScript build, lint, and tests (8 suites, 470 tests)
+  # Job 1: TypeScript build, lint, and tests (8 suites, 512 tests)
   # ──────────────────────────────────────────────────────────────
   build-lint-test:
     name: Build, Lint & TS Tests
@@ -111,7 +111,7 @@ jobs:
         working-directory: sdk/core
         run: pnpm test
 
-      - name: SDK tests (135 tests)
+      - name: SDK tests (165 tests)
         working-directory: sdk/typescript
         run: pnpm test
 
@@ -123,15 +123,15 @@ jobs:
         working-directory: sdk/custody/crossmint
         run: pnpm test
 
-      - name: SAK plugin tests (25 tests)
+      - name: SAK plugin tests (29 tests)
         working-directory: plugins/solana-agent-kit
         run: pnpm test
 
-      - name: ElizaOS plugin tests (32 tests)
+      - name: ElizaOS plugin tests (35 tests)
         working-directory: plugins/elizaos
         run: pnpm test
 
-      - name: MCP server tests (118 tests)
+      - name: MCP server tests (123 tests)
         working-directory: packages/mcp
         run: pnpm test
 
@@ -157,6 +157,19 @@ jobs:
           path: test-summary.txt
           retention-days: 90
 
+      - name: Generate CI bot token
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+
+      - name: Configure push credentials
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          git remote set-url origin https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}
+
       - name: Update README test counts
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: node scripts/update-test-counts.js
@@ -164,10 +177,10 @@ jobs:
       - name: Commit updated README
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git diff --quiet README.md .github/workflows/ci.yml || \
-            (git add README.md .github/workflows/ci.yml && \
+          git config user.name "agentshield-ci-bot[bot]"
+          git config user.email "${{ vars.CI_APP_ID }}+agentshield-ci-bot[bot]@users.noreply.github.com"
+          git diff --quiet README.md || \
+            (git add README.md && \
              git commit -m "chore: update test counts [skip ci]" && \
              git push)
 
@@ -295,29 +308,53 @@ jobs:
       - name: Run Sec3 X-Ray
         run: |
           docker run --rm --volume "$(pwd):/workspace" \
-            ghcr.io/sec3-product/x-ray:latest \
-            /workspace/programs/agent-shield | tee xray-report.txt
+            ghcr.io/sec3-product/x-ray:v0.0.6 \
+            /workspace/programs/agent-shield 2>&1 | tee xray-report.txt
 
       - name: Check X-Ray findings
         run: |
-          if [ -f .sec3-allowlist.txt ]; then
-            grep "VULNERABLE" xray-report.txt | grep -v -f .sec3-allowlist.txt > xray-filtered.txt || true
+          # Extract all VULNERABLE lines from the report
+          grep "VULNERABLE" xray-report.txt > xray-all-findings.txt || true
+
+          # Show raw findings in CI log (collapsed, for audit visibility)
+          if [ -s xray-all-findings.txt ]; then
+            echo "::group::X-Ray raw findings (before allowlist filtering)"
+            cat xray-all-findings.txt
+            echo "::endgroup::"
           else
-            grep "VULNERABLE" xray-report.txt > xray-filtered.txt || true
+            echo "X-Ray found no VULNERABLE lines."
           fi
+
+          # Filter out allowlisted false positives
+          if [ -f .sec3-allowlist.txt ]; then
+            # Strip comments and blank lines to avoid empty-pattern grep trap
+            sed -e 's/#.*//' -e '/^[[:space:]]*$/d' .sec3-allowlist.txt > xray-patterns.txt || true
+            if [ -s xray-patterns.txt ]; then
+              grep -v -f xray-patterns.txt xray-all-findings.txt > xray-filtered.txt || true
+            else
+              cp xray-all-findings.txt xray-filtered.txt
+            fi
+          else
+            cp xray-all-findings.txt xray-filtered.txt
+          fi
+
+          # Fail if any unfiltered vulnerabilities remain
           if [ -s xray-filtered.txt ]; then
-            echo "::error::Sec3 X-Ray found vulnerabilities:"
+            echo "::error::Sec3 X-Ray found unallowlisted vulnerabilities:"
             cat xray-filtered.txt
             exit 1
           fi
-          echo "No actionable vulnerabilities found."
+          echo "All X-Ray findings are allowlisted or no vulnerabilities found."
 
       - name: Upload X-Ray report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: xray-security-report
-          path: xray-report.txt
+          path: |
+            xray-report.txt
+            xray-all-findings.txt
+            xray-filtered.txt
           retention-days: 90
 
   # ──────────────────────────────────────────────────────────────

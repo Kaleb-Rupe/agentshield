@@ -4,8 +4,9 @@
 //
 // Reads scripts/test-counts.json and updates:
 //   1. README.md badge + test suites table + total
-//   2. .github/workflows/ci.yml header comments
-//   3. CLAUDE.md test count references
+//   2. .github/workflows/ci.yml header comments + step names
+//   3. .github/workflows/release.yml step names
+//   4. CLAUDE.md test count references
 //
 // Usage: node scripts/update-test-counts.js
 
@@ -19,12 +20,35 @@ const data = JSON.parse(
 
 const total = data.suites.reduce((sum, s) => sum + s.count, 0);
 
-// On-chain suites are the first 5 (vault, jupiter, flash, oracle, security-exploits)
-const onChainCount = data.suites
-  .slice(0, 5)
-  .reduce((sum, s) => sum + s.count, 0);
-const tsCount = total - onChainCount;
-const tsSuiteCount = data.suites.length - 5;
+// Use onChain flag instead of hardcoded .slice(0, 5)
+const onChainSuites = data.suites.filter((s) => s.onChain);
+const tsSuites = data.suites.filter((s) => !s.onChain);
+const onChainCount = onChainSuites.reduce((sum, s) => sum + s.count, 0);
+const tsCount = tsSuites.reduce((sum, s) => sum + s.count, 0);
+const tsSuiteCount = tsSuites.length;
+
+// Derive security exploit count from data (not hardcoded)
+const securityExploitCount =
+  data.suites.find((s) => s.name.includes("Security exploit"))?.count || 0;
+const coreOnChainCount = onChainCount - securityExploitCount;
+
+// Escape regex special characters
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// ── Validate required files ────────────────────────────────────
+const requiredFiles = [
+  path.join(ROOT, "README.md"),
+  path.join(ROOT, ".github/workflows/ci.yml"),
+  path.join(ROOT, ".github/workflows/release.yml"),
+];
+for (const f of requiredFiles) {
+  if (!fs.existsSync(f)) {
+    console.error(`ERROR: Required file not found: ${f}`);
+    process.exit(1);
+  }
+}
 
 // ── README.md ──────────────────────────────────────────────────
 const readmePath = path.join(ROOT, "README.md");
@@ -60,19 +84,25 @@ fs.writeFileSync(readmePath, readme);
 const ciPath = path.join(ROOT, ".github/workflows/ci.yml");
 let ci = fs.readFileSync(ciPath, "utf8");
 
-// Line 5: TS test count + suite count
+// Header: job count description
+ci = ci.replace(
+  /# (?:Nine|Eight|Seven|Six|\w+) jobs \([^)]*\):/,
+  `# Eight jobs (1 detection + 6 parallel + 1 gate):`,
+);
+
+// Header: TS test count + suite count
 ci = ci.replace(
   /\d+ TS tests across \d+ suites/,
   `${tsCount} TS tests across ${tsSuiteCount} suites`,
 );
 
-// Line 7: on-chain test count
+// Header: on-chain test count
 ci = ci.replace(
-  /\d+ on-chain tests \(\d+ \+ \d+ security exploits\)/,
-  `${onChainCount} on-chain tests (${onChainCount - 28} + 28 security exploits)`,
+  /\d+ on-chain tests \(\d+ (?:core )?\+ \d+ security exploits\)/,
+  `${onChainCount} on-chain tests (${coreOnChainCount} core + ${securityExploitCount} security exploits)`,
 );
 
-// Line 9: total
+// Header: total
 ci = ci.replace(
   /Total: \d+ tests across \d+ suites/,
   `Total: ${total} tests across ${data.suites.length} suites`,
@@ -84,7 +114,34 @@ ci = ci.replace(
   `TypeScript build, lint, and tests (${tsSuiteCount} suites, ${tsCount} tests)`,
 );
 
+// Step names: update test counts in step name lines
+for (const suite of tsSuites) {
+  if (!suite.ciStepName) continue;
+  // Case-insensitive match preserves original casing via $1 backreference
+  const re = new RegExp(
+    "(" + escapeRegex(suite.ciStepName) + ") \\(\\d+ tests\\)",
+    "gi",
+  );
+  ci = ci.replace(re, `$1 (${suite.count} tests)`);
+}
+
 fs.writeFileSync(ciPath, ci);
+
+// ── .github/workflows/release.yml ──────────────────────────────
+const releasePath = path.join(ROOT, ".github/workflows/release.yml");
+let release = fs.readFileSync(releasePath, "utf8");
+
+for (const suite of tsSuites) {
+  if (!suite.ciStepName) continue;
+  // Case-insensitive match preserves original casing via $1 backreference
+  const re = new RegExp(
+    "(" + escapeRegex(suite.ciStepName) + ") \\(\\d+ tests\\)",
+    "gi",
+  );
+  release = release.replace(re, `$1 (${suite.count} tests)`);
+}
+
+fs.writeFileSync(releasePath, release);
 
 // ── CLAUDE.md ──────────────────────────────────────────────────
 const claudePath = path.join(ROOT, "CLAUDE.md");
@@ -97,4 +154,6 @@ if (fs.existsSync(claudePath)) {
   fs.writeFileSync(claudePath, claude);
 }
 
-console.log(`Updated test counts: ${total} total (${onChainCount} on-chain + ${tsCount} TS)`);
+console.log(
+  `Updated test counts: ${total} total (${onChainCount} on-chain + ${tsCount} TS across ${tsSuiteCount} suites)`,
+);

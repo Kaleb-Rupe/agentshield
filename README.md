@@ -1,7 +1,7 @@
 # AgentShield
 
 [![CI](https://github.com/Kaleb-Rupe/agentshield/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Kaleb-Rupe/agentshield/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-644-brightgreen)
+![Tests](https://img.shields.io/badge/tests-686-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 On-chain guardrails for AI agents on Solana. Your policies are enforced by Solana validators, not software promises.
@@ -194,14 +194,14 @@ cargo fmt --check --manifest-path programs/agent-shield/Cargo.toml
 | Oracle + delegation + timelock + transfers           |      25 |
 | Security exploit scenarios                           |      81 |
 | Core policy engine (`@agent-shield/core`)            |      66 |
-| SDK tests (`@agent-shield/sdk`)                      |     135 |
+| SDK tests (`@agent-shield/sdk`)                      |     165 |
 | Platform client tests (`@agent-shield/platform`)     |      17 |
 | Crossmint custody adapter                            |      29 |
-| SAK plugin (`@agent-shield/plugin-solana-agent-kit`) |      25 |
-| ElizaOS plugin (`@agent-shield/plugin-elizaos`)      |      32 |
-| MCP server (`@agent-shield/mcp`)                     |     118 |
+| SAK plugin (`@agent-shield/plugin-solana-agent-kit`) |      29 |
+| ElizaOS plugin (`@agent-shield/plugin-elizaos`)      |      35 |
+| MCP server (`@agent-shield/mcp`)                     |     123 |
 | Actions server (`@agent-shield/actions-server`)      |      48 |
-| **Total**                                            | **644** |
+| **Total**                                            | **686** |
 
 ## Security
 
