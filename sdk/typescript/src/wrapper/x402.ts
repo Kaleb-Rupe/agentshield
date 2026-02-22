@@ -83,6 +83,8 @@ export interface ShieldedFetchOptions extends RequestInit {
   connection?: Connection;
   /** If true, evaluate policies but don't pay. */
   dryRun?: boolean;
+  /** Max payment in token base units — reject if server asks more. */
+  maxPayment?: string;
 }
 
 /** Extended response with x402 payment metadata. */
@@ -321,6 +323,7 @@ export async function shieldedFetch(
   // Strip our custom options from the fetch init
   delete (init as any).connection;
   delete (init as any).dryRun;
+  delete (init as any).maxPayment;
 
   // Step 1: Initial request
   const response = await globalThis.fetch(url.toString(), init);
@@ -371,6 +374,24 @@ export async function shieldedFetch(
     ? new Set(wallet.resolvedPolicies.allowedTokens)
     : undefined;
   const selected = selectPaymentOption(paymentRequired, allowedTokens);
+
+  // Enforce maxPayment ceiling if set
+  if (options?.maxPayment) {
+    try {
+      const maxAmount = BigInt(options.maxPayment);
+      const requestedAmount = BigInt(selected.amount);
+      if (requestedAmount > maxAmount) {
+        throw new X402PaymentError(
+          `Server requires ${selected.amount} but maxPayment is ${options.maxPayment}`,
+        );
+      }
+    } catch (e) {
+      if (e instanceof X402PaymentError) throw e;
+      throw new X402PaymentError(
+        `Invalid maxPayment value: "${options.maxPayment}" (must be a non-negative integer string)`,
+      );
+    }
+  }
 
   // Step 5: Policy pre-check (does NOT record spend)
   const violations = evaluateX402Payment(

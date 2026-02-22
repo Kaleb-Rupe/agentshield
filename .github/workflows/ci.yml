@@ -155,7 +155,7 @@ jobs:
 
       - name: Upload test summary
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-summary
           path: test-summary.txt
@@ -164,7 +164,7 @@ jobs:
       - name: Generate CI bot token
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
         with:
           app-id: ${{ vars.CI_APP_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
@@ -352,7 +352,7 @@ jobs:
 
       - name: Upload X-Ray report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: xray-security-report
           path: |
@@ -398,7 +398,7 @@ jobs:
           restore-keys: certora-${{ runner.os }}-
 
       - name: Install Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
 
@@ -420,7 +420,7 @@ jobs:
 
       - name: Upload Certora report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: certora-report
           path: .certora_internal/
@@ -473,7 +473,7 @@ jobs:
 
       - name: Upload crash artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: fuzz-crashes
           path: |
@@ -490,6 +490,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs:
+      - changes
       - build-lint-test
       - rust-checks
       - on-chain-tests
@@ -500,6 +501,7 @@ jobs:
       - name: Check all jobs passed
         run: |
           echo "Job results:"
+          echo "  changes:               ${{ needs.changes.result }}"
           echo "  build-lint-test:       ${{ needs.build-lint-test.result }}"
           echo "  rust-checks:           ${{ needs.rust-checks.result }}"
           echo "  on-chain-tests:        ${{ needs.on-chain-tests.result }}"
@@ -508,21 +510,39 @@ jobs:
           echo "  fuzz-test:             ${{ needs.fuzz-test.result }}"
           echo ""
 
+          # Tier 1: Must-succeed jobs (never allowed to be skipped or cancelled)
           FAILED=0
           for result in \
+            "${{ needs.changes.result }}" \
             "${{ needs.build-lint-test.result }}" \
             "${{ needs.rust-checks.result }}" \
             "${{ needs.on-chain-tests.result }}" \
             "${{ needs.security-scan.result }}" \
-            "${{ needs.formal-verification.result }}" \
             "${{ needs.fuzz-test.result }}"; do
-            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+            if [ "$result" != "success" ]; then
               FAILED=1
             fi
           done
 
+          # Tier 2: formal-verification — conditional on certora output
+          CERTORA_CHANGED="${{ needs.changes.outputs.certora }}"
+          FV="${{ needs.formal-verification.result }}"
+          if [ "$CERTORA_CHANGED" = "true" ]; then
+            # Certora code changed — FV MUST succeed (rejects skipped from env denial)
+            if [ "$FV" != "success" ]; then
+              echo "::error::Certora changes detected but formal-verification did not succeed (got: $FV)"
+              FAILED=1
+            fi
+          else
+            # No Certora changes — skipping is OK, but failure/cancellation is not
+            if [ "$FV" != "success" ] && [ "$FV" != "skipped" ]; then
+              echo "::error::formal-verification failed or was cancelled (got: $FV)"
+              FAILED=1
+            fi
+          fi
+
           if [ "$FAILED" -eq 1 ]; then
-            echo "::error::Security gate failed. One or more required jobs did not pass. Merge blocked."
+            echo "::error::Security gate failed. One or more required jobs did not pass."
             exit 1
           fi
           echo "All required checks passed."

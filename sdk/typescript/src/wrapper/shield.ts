@@ -237,27 +237,37 @@ export function shield(
         );
       }
 
-      for (const analysis of analyses) {
-        const violations = evaluatePolicy(analysis, resolved, state);
-        if (violations.length > 0) {
-          const error = new ShieldDeniedError(violations);
-          onDenied?.(error);
-          throw error;
+      const cp = state.checkpoint();
+      try {
+        for (const analysis of analyses) {
+          const violations = evaluatePolicy(analysis, resolved, state);
+          if (violations.length > 0) {
+            throw new ShieldDeniedError(violations);
+          }
+          // Record into state so next tx sees cumulative spend
+          recordTransaction(analysis, state);
         }
-        // Record into state so the next tx sees cumulative spend
-        recordTransaction(analysis, state);
-      }
 
-      // All passed — sign with underlying wallet
-      let signed: T[];
-      if (wallet.signAllTransactions) {
-        signed = await wallet.signAllTransactions(txs);
-      } else {
-        signed = await Promise.all(txs.map((tx) => wallet.signTransaction(tx)));
+        // All passed — sign with underlying wallet
+        let signed: T[];
+        if (wallet.signAllTransactions) {
+          signed = await wallet.signAllTransactions(txs);
+        } else {
+          signed = await Promise.all(
+            txs.map((tx) => wallet.signTransaction(tx)),
+          );
+        }
+        onApproved?.(null);
+        return signed;
+      } catch (err) {
+        // Rollback phantom spends on ANY error (policy denial or signing failure)
+        state.rollback(cp);
+        // Fire callbacks AFTER rollback so state is consistent when handler reads it
+        if (err instanceof ShieldDeniedError) {
+          onDenied?.(err);
+        }
+        throw err;
       }
-      onApproved?.(null);
-
-      return signed;
     },
 
     updatePolicies(newPolicies: ShieldPolicies): void {

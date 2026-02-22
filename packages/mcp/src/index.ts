@@ -602,6 +602,7 @@ async function main() {
       body: z.string().optional().describe("Request body (for POST/PUT)"),
       maxPayment: z
         .string()
+        .regex(/^\d+$/, "Must be a non-negative integer in token base units")
         .optional()
         .describe("Maximum payment in token base units"),
     },
