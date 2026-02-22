@@ -30,6 +30,7 @@ import { applyPendingPolicy } from "./tools/apply-pending-policy";
 import { cancelPendingPolicy } from "./tools/cancel-pending-policy";
 import { checkPendingPolicy } from "./tools/check-pending-policy";
 import { agentTransfer } from "./tools/agent-transfer";
+import { x402Fetch } from "./tools/x402-fetch";
 
 // Setup & onboarding tools (work without SDK client)
 import { setupStatus } from "./tools/setup-status";
@@ -581,6 +582,30 @@ async function main() {
     async (input) => ({
       content: [{ type: "text", text: await provision(client as any, input) }],
     }),
+  );
+
+  registerTool(
+    server,
+    "shield_x402_fetch",
+    "Fetch a URL with automatic x402 (HTTP 402) payment support",
+    {
+      url: z.string().describe("URL of the x402-protected API endpoint"),
+      method: z
+        .string()
+        .optional()
+        .default("GET")
+        .describe("HTTP method (default: GET)"),
+      headers: z
+        .record(z.string(), z.string())
+        .optional()
+        .describe("Additional HTTP headers"),
+      body: z.string().optional().describe("Request body (for POST/PUT)"),
+      maxPayment: z
+        .string()
+        .optional()
+        .describe("Maximum payment in token base units"),
+    },
+    requireClient((input) => x402Fetch(client!, config!, input)),
   );
 
   // ── MCP Resources ───────────────────────────────────────────

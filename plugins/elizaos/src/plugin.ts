@@ -4,6 +4,7 @@ import {
   pauseResumeAction,
   transactionHistoryAction,
   provisionAction,
+  x402FetchAction,
 } from "./actions";
 import { shieldStatusProvider, spendTrackingProvider } from "./providers";
 import { policyCheckEvaluator } from "./evaluators";
@@ -36,6 +37,7 @@ export const agentShieldPlugin = {
     pauseResumeAction,
     transactionHistoryAction,
     provisionAction,
+    x402FetchAction,
   ],
 
   providers: [shieldStatusProvider, spendTrackingProvider],

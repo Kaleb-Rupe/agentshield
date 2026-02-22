@@ -84,3 +84,4 @@ export {
   configureFromFile,
   configureFromFileSchema,
 } from "./configure-from-file";
+export { x402FetchTool, x402Fetch, x402FetchSchema } from "./x402-fetch";

@@ -3,3 +3,4 @@ export { updatePolicyAction } from "./updatePolicy";
 export { pauseResumeAction } from "./pauseResume";
 export { transactionHistoryAction } from "./transactionHistory";
 export { provisionAction } from "./provision";
+export { x402FetchAction } from "./x402Fetch";

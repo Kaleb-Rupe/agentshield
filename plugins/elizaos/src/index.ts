@@ -7,6 +7,7 @@ export {
   pauseResumeAction,
   transactionHistoryAction,
   provisionAction,
+  x402FetchAction,
 } from "./actions";
 export { shieldStatusProvider, spendTrackingProvider } from "./providers";
 export { policyCheckEvaluator } from "./evaluators";

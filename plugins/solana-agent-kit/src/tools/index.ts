@@ -15,3 +15,4 @@ export {
   type TransactionHistoryInput,
 } from "./transactionHistory";
 export { provision, provisionSchema, type ProvisionInput } from "./provision";
+export { x402Fetch, x402FetchSchema, type X402FetchInput } from "./x402Fetch";

@@ -3,10 +3,15 @@ import {
   Connection,
   Keypair,
   Transaction,
+  TransactionInstruction,
   VersionedTransaction,
   AddressLookupTableAccount,
+  ComputeBudgetProgram,
 } from "@solana/web3.js";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import {
+  getAssociatedTokenAddressSync,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 import { BN, AnchorProvider, Program } from "@coral-xyz/anchor";
 import { ShieldedWallet, WalletLike, isTeeWallet } from "./shield";
 import { ResolvedPolicies, TransactionAnalysis } from "./policies";
@@ -19,6 +24,7 @@ import {
 import { evaluatePolicy, recordTransaction } from "./engine";
 import { ShieldState } from "./state";
 import { shield } from "./shield";
+import { isSystemProgram } from "./registry";
 import type { ShieldPolicies, SpendingSummary } from "./policies";
 import { AgentShieldClient } from "../client";
 import { getVaultPDA, getPolicyPDA } from "../accounts";
@@ -199,6 +205,33 @@ function inferTargetProtocol(analysis: TransactionAnalysis): PublicKey {
 }
 
 /**
+ * Infer the ActionType from a transaction analysis.
+ *
+ * Pure SPL token transfer transactions → Transfer.
+ * Everything else (Jupiter, Flash Trade, etc.) → Swap.
+ */
+function inferActionType(
+  instructions: TransactionInstruction[],
+): { swap: Record<string, never> } | { transfer: Record<string, never> } {
+  const TOKEN_2022_PROGRAM = new PublicKey(
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+  );
+  const nonSystemIxs = instructions.filter(
+    (ix) =>
+      !isSystemProgram(ix.programId) &&
+      !ix.programId.equals(ComputeBudgetProgram.programId),
+  );
+  const allAreTokenTransfers =
+    nonSystemIxs.length > 0 &&
+    nonSystemIxs.every(
+      (ix) =>
+        ix.programId.equals(TOKEN_PROGRAM_ID) ||
+        ix.programId.equals(TOKEN_2022_PROGRAM),
+    );
+  return allAreTokenTransfers ? { transfer: {} } : { swap: {} };
+}
+
+/**
  * Create a hardened wallet that enforces policies both client-side and on-chain.
  *
  * Dual enforcement flow:
@@ -292,7 +325,7 @@ function createHardenedWallet(
           owner: ownerPubkey,
           vaultId: new BN(vaultId),
           agent: innerWallet.publicKey,
-          actionType: { swap: {} },
+          actionType: inferActionType(originalIxs),
           tokenMint,
           amount: new BN(amount.toString()),
           targetProtocol,
@@ -340,6 +373,13 @@ function createHardenedWallet(
       return original.getSpendingSummary();
     },
   };
+
+  // Expose vault metadata for x402 hardened path
+  (hardened as any)._vaultAddress = vaultAddress;
+  (hardened as any)._vaultId = vaultId;
+  (hardened as any)._programId = programId;
+  (hardened as any)._ownerPubkey = ownerPubkey;
+  (hardened as any)._connection = connection;
 
   return hardened;
 }

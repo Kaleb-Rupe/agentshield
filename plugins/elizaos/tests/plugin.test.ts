@@ -11,6 +11,7 @@ import {
   shieldStatusProvider,
   spendTrackingProvider,
   policyCheckEvaluator,
+  x402FetchAction,
 } from "../src";
 
 // --- Test Helpers ---
@@ -58,8 +59,8 @@ describe("ElizaOS Plugin", () => {
       expect(agentShieldPlugin.description).to.include("guardrails");
     });
 
-    it("has 5 actions", () => {
-      expect(agentShieldPlugin.actions).to.have.length(5);
+    it("has 6 actions", () => {
+      expect(agentShieldPlugin.actions).to.have.length(6);
     });
 
     it("has 2 providers", () => {
@@ -76,6 +77,7 @@ describe("ElizaOS Plugin", () => {
       expect(names).to.include("SHIELD_UPDATE_POLICY");
       expect(names).to.include("SHIELD_PAUSE_RESUME");
       expect(names).to.include("SHIELD_TRANSACTION_HISTORY");
+      expect(names).to.include("SHIELD_X402_FETCH");
     });
   });
 
@@ -274,6 +276,41 @@ describe("ElizaOS Plugin", () => {
       expect(responses[0].text).to.include("Transaction History");
       expect(responses[0].text).to.include("Per-Token Usage");
       expect(responses[0].text).to.include("Rate Limit");
+    });
+  });
+
+  describe("SHIELD_X402_FETCH action", () => {
+    const originalFetch = globalThis.fetch;
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    it("validates with x402 keywords", async () => {
+      const { runtime } = createMockRuntime();
+      const message = { content: { text: "x402 fetch https://api.example.com/data" } };
+      const valid = await x402FetchAction.validate(runtime, message);
+      expect(valid).to.be.true;
+    });
+
+    it("rejects messages without x402 keywords", async () => {
+      const { runtime } = createMockRuntime();
+      const message = { content: { text: "check the weather today" } };
+      const valid = await x402FetchAction.validate(runtime, message);
+      expect(valid).to.be.false;
+    });
+
+    it("returns error when no URL provided", async () => {
+      globalThis.fetch = (async () =>
+        new Response('{"ok":true}', { status: 200 })) as any;
+
+      const { runtime } = createMockRuntime();
+      const { responses, callback } = captureCallback();
+      const message = { content: { text: "x402 fetch some api" } };
+      await x402FetchAction.handler(runtime, message, null, null, callback);
+
+      expect(responses).to.have.length(1);
+      expect(responses[0].text).to.include("URL");
     });
   });
 

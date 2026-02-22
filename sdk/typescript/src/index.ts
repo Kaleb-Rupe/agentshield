@@ -182,4 +182,28 @@ export {
   evaluatePolicy,
   enforcePolicy,
   recordTransaction,
+  // x402 — HTTP 402 payment support
+  shieldedFetch,
+  createShieldedFetchForWallet,
+  selectPaymentOption,
+  evaluateX402Payment,
+  buildX402TransferInstruction,
+  encodeX402Payload,
+  decodePaymentRequiredHeader,
+  encodePaymentSignatureHeader,
+  decodePaymentResponseHeader,
+  X402ParseError,
+  X402PaymentError,
+  X402UnsupportedError,
+} from "./wrapper";
+
+export type {
+  ShieldedFetchOptions,
+  ShieldedFetchResponse,
+  X402PaymentResult,
+  PaymentRequired,
+  PaymentRequirements,
+  PaymentPayload,
+  ResourceInfo,
+  SettleResponse,
 } from "./wrapper";

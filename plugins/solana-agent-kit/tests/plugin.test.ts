@@ -14,6 +14,8 @@ import {
   pauseResumeSchema,
   transactionHistory,
   transactionHistorySchema,
+  x402Fetch,
+  x402FetchSchema,
 } from "../src";
 
 // --- Test Helpers ---
@@ -60,10 +62,16 @@ describe("SAK Plugin", () => {
       );
     });
 
-    it("has 5 methods", () => {
+    it("has 6 methods", () => {
       const wallet = shieldWallet(createMockWallet());
       const plugin = createAgentShieldPlugin({ wallet });
-      expect(Object.keys(plugin.methods)).to.have.length(5);
+      expect(Object.keys(plugin.methods)).to.have.length(6);
+    });
+
+    it("includes shield_x402_fetch method", () => {
+      const wallet = shieldWallet(createMockWallet());
+      const plugin = createAgentShieldPlugin({ wallet });
+      expect(plugin.methods).to.have.property("shield_x402_fetch");
     });
   });
 
@@ -243,6 +251,44 @@ describe("SAK Plugin", () => {
 
     it("validates schema", () => {
       const parsed = transactionHistorySchema.safeParse({});
+      expect(parsed.success).to.be.true;
+    });
+  });
+
+  describe("shield_x402_fetch tool", () => {
+    const originalFetch = globalThis.fetch;
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    it("returns non-402 responses directly", async () => {
+      globalThis.fetch = (async () =>
+        new Response('{"ok":true}', { status: 200 })) as any;
+
+      const wallet = shieldWallet(createMockWallet());
+      const result = await x402Fetch(null, { wallet }, {
+        url: "https://example.com/free",
+      });
+      expect(result).to.include("Status: 200");
+      expect(result).to.include("x402 Fetch Result");
+    });
+
+    it("returns 402 without payment header as-is", async () => {
+      globalThis.fetch = (async () =>
+        new Response("Payment Required", { status: 402 })) as any;
+
+      const wallet = shieldWallet(createMockWallet());
+      const result = await x402Fetch(null, { wallet }, {
+        url: "https://example.com/plain-402",
+      });
+      expect(result).to.include("Status: 402");
+    });
+
+    it("validates schema", () => {
+      const parsed = x402FetchSchema.safeParse({
+        url: "https://example.com/api",
+      });
       expect(parsed.success).to.be.true;
     });
   });

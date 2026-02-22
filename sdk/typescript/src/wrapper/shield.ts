@@ -73,6 +73,8 @@ export interface ShieldedWallet extends WalletLike {
   resume(): void;
   /** Get a summary of current spending relative to policy limits */
   getSpendingSummary(): SpendingSummary;
+  /** Make an HTTP request with automatic x402 payment support */
+  fetch?: (url: string | URL, init?: RequestInit) => Promise<Response>;
 }
 
 export interface ShieldOptions {
@@ -308,6 +310,12 @@ export function shield(
 
       return { tokens, rateLimit, isPaused: paused };
     },
+  };
+
+  // Wire up x402 fetch support (lazy-loaded)
+  shielded.fetch = async (url, init) => {
+    const { shieldedFetch } = await import("./x402");
+    return shieldedFetch(shielded, url, { ...init, connection });
   };
 
   return shielded;
