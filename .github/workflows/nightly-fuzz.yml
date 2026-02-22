@@ -1,0 +1,75 @@
+# Nightly Extended Fuzz — 50K iterations (vs 1K on every PR)
+#
+# Catches subtle invariant violations that short fuzz runs miss.
+# Same harness as ci.yml fuzz-test job, just more iterations + longer timeout.
+#
+# Schedule: 3 AM UTC nightly (1 hour after devnet tests)
+
+name: Nightly Fuzz (Extended)
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # 3 AM UTC nightly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-fuzz
+  cancel-in-progress: true
+
+jobs:
+  extended-fuzz:
+    name: Extended Fuzz (Trident, 50K iterations)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@efa25f7f19611383d5b0ccf2d1c8914531636bf9 # stable
+        with:
+          toolchain: stable
+
+      - name: Cache Cargo registry + build
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            trident-tests/target
+          key: trident-${{ runner.os }}-${{ hashFiles('trident-tests/Cargo.lock') }}
+          restore-keys: trident-${{ runner.os }}-
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libudev-dev
+
+      - name: Compile fuzz harness
+        working-directory: trident-tests
+        run: cargo build --release --bin fuzz_0
+
+      - name: Run extended fuzz (50K iterations)
+        working-directory: trident-tests
+        run: |
+          timeout 2400 ./target/release/fuzz_0 || EXIT=$?
+          if [ "${EXIT:-0}" -eq 124 ]; then
+            echo "::error::Extended fuzz timed out after 40 minutes"
+            exit 1
+          elif [ "${EXIT:-0}" -ne 0 ]; then
+            echo "::error::Extended fuzz found invariant violations!"
+            exit 1
+          fi
+          echo "Extended fuzz completed successfully (50K iterations)"
+
+      - name: Upload crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: nightly-fuzz-crashes
+          path: |
+            trident-tests/trident-crashes/
+            trident-tests/crash-*
+          retention-days: 90
+          if-no-files-found: ignore

@@ -1,3 +1,12 @@
+# Devnet Tests — Real Solana devnet integration tests
+#
+# Triggers:
+#   - Push to main (path-filtered: programs, tests, workflow, Anchor.toml)
+#   - Nightly at 2 AM UTC (catches network/RPC drift, oracle staleness)
+#   - Manual dispatch (optional: specific test file or verbose mode)
+#
+# 61 tests across 8 files. Costs SOL — never runs on PRs.
+
 name: Devnet Tests
 
 on:
@@ -9,22 +18,34 @@ on:
       - "tests/helpers/devnet-setup.ts"
       - ".github/workflows/devnet-test.yml"
       - "Anchor.toml"
+  schedule:
+    - cron: "0 2 * * *" # 2 AM UTC nightly
   workflow_dispatch:
+    inputs:
+      test-filter:
+        description: 'Specific test file (e.g., devnet-smoke.ts) or "all"'
+        required: false
+        default: "all"
+
+# Prevent concurrent devnet runs (shared wallet)
+concurrency:
+  group: devnet-tests
+  cancel-in-progress: false
 
 jobs:
   devnet-test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
@@ -79,15 +100,22 @@ jobs:
 
       - name: Run devnet tests
         run: |
-          npx ts-mocha -p ./tsconfig.json -t 600000 \
-            tests/devnet-smoke.ts \
-            tests/devnet-sessions.ts \
-            tests/devnet-fees.ts \
-            tests/devnet-security.ts \
-            tests/devnet-spending.ts \
-            tests/devnet-transfers.ts \
-            tests/devnet-positions.ts \
-            tests/devnet-timelock.ts
+          FILTER="${{ github.event.inputs.test-filter || 'all' }}"
+          if [ "$FILTER" != "all" ] && [ -f "tests/$FILTER" ]; then
+            echo "Running single test file: tests/$FILTER"
+            npx ts-mocha -p ./tsconfig.json -t 600000 "tests/$FILTER"
+          else
+            echo "Running all devnet tests (61 tests, 8 files)"
+            npx ts-mocha -p ./tsconfig.json -t 600000 \
+              tests/devnet-smoke.ts \
+              tests/devnet-sessions.ts \
+              tests/devnet-fees.ts \
+              tests/devnet-security.ts \
+              tests/devnet-spending.ts \
+              tests/devnet-transfers.ts \
+              tests/devnet-positions.ts \
+              tests/devnet-timelock.ts
+          fi
 
       - name: Cleanup wallet
         if: always()

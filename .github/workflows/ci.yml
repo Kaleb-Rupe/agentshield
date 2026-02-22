@@ -2,14 +2,25 @@
 #
 # Runs on every push to main and on pull requests.
 # Eight jobs (1 detection + 6 parallel + 1 gate):
-#   0. changes                — Detect which file groups changed (path filtering)
-#   1. build-lint-test        — TypeScript builds, Prettier (10 packages), 512 TS tests across 8 suites
-#   2. rust-checks            — cargo fmt + cargo clippy
-#   3. on-chain-tests         — Anchor build + LiteSVM in-process + 174 on-chain tests
-#   4. security-scan          — Sec3 X-Ray static analysis (BLOCKING)
-#   5. formal-verification    — Certora Solana Prover (programs/ or certora/ changes only, BLOCKING)
-#   6. fuzz-test              — Trident fuzz test: 1000 iterations (BLOCKING)
-#   7. security-gate          — All-pass gate for branch protection
+#   0. changes                — Detect which file groups changed (package-level path filtering)
+#   1. build-lint-test        — TypeScript builds, Prettier, 512 TS tests (conditional: any-ts or push)
+#   2. rust-checks            — cargo fmt + cargo clippy (conditional: rust changes or push)
+#   3. on-chain-tests         — Anchor build + LiteSVM 174 tests (conditional: rust changes or push)
+#   4. security-scan          — Sec3 X-Ray static analysis (always, BLOCKING)
+#   5. formal-verification    — Certora Solana Prover (conditional: certora changes, BLOCKING)
+#   6. fuzz-test              — Trident fuzz 1K iterations (conditional: rust changes or push, BLOCKING)
+#   7. security-gate          — All-pass gate with skip-awareness for branch protection
+#
+# Path filtering strategy:
+#   PRs  — Only run suites for changed packages (saves CI minutes)
+#   Push — Always run everything (safety net on main)
+#
+# Individual TS test steps also filter by package:
+#   sdk/core → core tests + SDK tests that depend on it
+#   plugins/ → SAK + ElizaOS tests
+#   packages/ → MCP tests
+#   apps/ → Actions server tests
+#   sdk/typescript → all downstream suites (everything depends on SDK)
 #
 # Total: 686 tests across 13 suites (512 TS + 174 on-chain)
 # All security checks are BLOCKING — zero tolerance for known issues.
@@ -46,6 +57,14 @@ jobs:
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
       certora: ${{ steps.filter.outputs.certora }}
+      sdk-core: ${{ steps.filter.outputs.sdk-core }}
+      sdk-typescript: ${{ steps.filter.outputs.sdk-typescript }}
+      sdk-platform: ${{ steps.filter.outputs.sdk-platform }}
+      sdk-crossmint: ${{ steps.filter.outputs.sdk-crossmint }}
+      plugins: ${{ steps.filter.outputs.plugins }}
+      packages: ${{ steps.filter.outputs.packages }}
+      apps: ${{ steps.filter.outputs.apps }}
+      any-ts: ${{ steps.filter.outputs.any-ts }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
@@ -59,12 +78,36 @@ jobs:
             certora:
               - 'programs/**'
               - 'certora/**'
+            sdk-core:
+              - 'sdk/core/**'
+            sdk-typescript:
+              - 'sdk/typescript/**'
+            sdk-platform:
+              - 'sdk/platform/**'
+            sdk-crossmint:
+              - 'sdk/custody/crossmint/**'
+            plugins:
+              - 'plugins/**'
+            packages:
+              - 'packages/**'
+            apps:
+              - 'apps/**'
+            any-ts:
+              - 'sdk/**'
+              - 'plugins/**'
+              - 'packages/**'
+              - 'apps/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'tsconfig*.json'
 
   # ──────────────────────────────────────────────────────────────
   # Job 1: TypeScript build, lint, and tests (8 suites, 512 tests)
   # ──────────────────────────────────────────────────────────────
   build-lint-test:
     name: Build, Lint & TS Tests
+    needs: changes
+    if: needs.changes.outputs.any-ts == 'true' || github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -112,34 +155,65 @@ jobs:
             "apps/actions-server/tests/**/*.ts"
 
       - name: Core policy engine tests (66 tests)
+        if: >-
+          needs.changes.outputs.sdk-core == 'true' ||
+          needs.changes.outputs.sdk-typescript == 'true' ||
+          github.event_name == 'push'
         working-directory: sdk/core
         run: pnpm test
 
       - name: SDK tests (165 tests)
+        if: >-
+          needs.changes.outputs.sdk-typescript == 'true' ||
+          github.event_name == 'push'
         working-directory: sdk/typescript
         run: pnpm test
 
       - name: Platform client tests (17 tests)
+        if: >-
+          needs.changes.outputs.sdk-platform == 'true' ||
+          needs.changes.outputs.sdk-typescript == 'true' ||
+          github.event_name == 'push'
         working-directory: sdk/platform
         run: pnpm test
 
       - name: Crossmint custody adapter tests (29 tests)
+        if: >-
+          needs.changes.outputs.sdk-crossmint == 'true' ||
+          needs.changes.outputs.sdk-typescript == 'true' ||
+          github.event_name == 'push'
         working-directory: sdk/custody/crossmint
         run: pnpm test
 
       - name: SAK plugin tests (29 tests)
+        if: >-
+          needs.changes.outputs.plugins == 'true' ||
+          needs.changes.outputs.sdk-typescript == 'true' ||
+          github.event_name == 'push'
         working-directory: plugins/solana-agent-kit
         run: pnpm test
 
       - name: ElizaOS plugin tests (35 tests)
+        if: >-
+          needs.changes.outputs.plugins == 'true' ||
+          needs.changes.outputs.sdk-typescript == 'true' ||
+          github.event_name == 'push'
         working-directory: plugins/elizaos
         run: pnpm test
 
       - name: MCP server tests (123 tests)
+        if: >-
+          needs.changes.outputs.packages == 'true' ||
+          needs.changes.outputs.sdk-typescript == 'true' ||
+          github.event_name == 'push'
         working-directory: packages/mcp
         run: pnpm test
 
       - name: Actions server tests (48 tests)
+        if: >-
+          needs.changes.outputs.apps == 'true' ||
+          needs.changes.outputs.sdk-typescript == 'true' ||
+          github.event_name == 'push'
         working-directory: apps/actions-server
         run: pnpm test
 
@@ -193,6 +267,8 @@ jobs:
   # ──────────────────────────────────────────────────────────────
   rust-checks:
     name: Rust Format & Clippy
+    needs: changes
+    if: needs.changes.outputs.rust == 'true' || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -233,6 +309,8 @@ jobs:
   # ──────────────────────────────────────────────────────────────
   on-chain-tests:
     name: On-Chain Tests (LiteSVM)
+    needs: changes
+    if: needs.changes.outputs.rust == 'true' || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -431,6 +509,8 @@ jobs:
   # ──────────────────────────────────────────────────────────────
   fuzz-test:
     name: Fuzz Test (Trident, 1000 iterations)
+    needs: changes
+    if: needs.changes.outputs.rust == 'true' || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -509,32 +589,72 @@ jobs:
           echo "  formal-verification:   ${{ needs.formal-verification.result }}"
           echo "  fuzz-test:             ${{ needs.fuzz-test.result }}"
           echo ""
+          echo "Path filter outputs:"
+          echo "  any-ts:  ${{ needs.changes.outputs.any-ts }}"
+          echo "  rust:    ${{ needs.changes.outputs.rust }}"
+          echo "  certora: ${{ needs.changes.outputs.certora }}"
+          echo ""
 
-          # Tier 1: Must-succeed jobs (never allowed to be skipped or cancelled)
           FAILED=0
-          for result in \
-            "${{ needs.changes.result }}" \
-            "${{ needs.build-lint-test.result }}" \
-            "${{ needs.rust-checks.result }}" \
-            "${{ needs.on-chain-tests.result }}" \
-            "${{ needs.security-scan.result }}" \
-            "${{ needs.fuzz-test.result }}"; do
-            if [ "$result" != "success" ]; then
+
+          # changes job must always succeed
+          if [ "${{ needs.changes.result }}" != "success" ]; then
+            echo "::error::changes job did not succeed"
+            FAILED=1
+          fi
+
+          # security-scan must always succeed (runs unconditionally)
+          if [ "${{ needs.security-scan.result }}" != "success" ]; then
+            echo "::error::security-scan did not succeed"
+            FAILED=1
+          fi
+
+          # build-lint-test: required when TS files changed, skipped is OK otherwise
+          BLT="${{ needs.build-lint-test.result }}"
+          ANY_TS="${{ needs.changes.outputs.any-ts }}"
+          if [ "$ANY_TS" = "true" ] || [ "${{ github.event_name }}" = "push" ]; then
+            if [ "$BLT" != "success" ]; then
+              echo "::error::build-lint-test required (TS changes or push) but got: $BLT"
               FAILED=1
+            fi
+          else
+            if [ "$BLT" != "skipped" ] && [ "$BLT" != "success" ]; then
+              echo "::error::build-lint-test failed or was cancelled (got: $BLT)"
+              FAILED=1
+            fi
+          fi
+
+          # rust-checks, on-chain-tests, fuzz-test: required when Rust files changed
+          RUST_CHANGED="${{ needs.changes.outputs.rust }}"
+          for job_name in rust-checks on-chain-tests fuzz-test; do
+            case "$job_name" in
+              rust-checks)    result="${{ needs.rust-checks.result }}" ;;
+              on-chain-tests) result="${{ needs.on-chain-tests.result }}" ;;
+              fuzz-test)      result="${{ needs.fuzz-test.result }}" ;;
+            esac
+
+            if [ "$RUST_CHANGED" = "true" ] || [ "${{ github.event_name }}" = "push" ]; then
+              if [ "$result" != "success" ]; then
+                echo "::error::$job_name required (Rust changes or push) but got: $result"
+                FAILED=1
+              fi
+            else
+              if [ "$result" != "skipped" ] && [ "$result" != "success" ]; then
+                echo "::error::$job_name failed or was cancelled (got: $result)"
+                FAILED=1
+              fi
             fi
           done
 
-          # Tier 2: formal-verification — conditional on certora output
+          # formal-verification: conditional on certora output
           CERTORA_CHANGED="${{ needs.changes.outputs.certora }}"
           FV="${{ needs.formal-verification.result }}"
           if [ "$CERTORA_CHANGED" = "true" ]; then
-            # Certora code changed — FV MUST succeed (rejects skipped from env denial)
             if [ "$FV" != "success" ]; then
               echo "::error::Certora changes detected but formal-verification did not succeed (got: $FV)"
               FAILED=1
             fi
           else
-            # No Certora changes — skipping is OK, but failure/cancellation is not
             if [ "$FV" != "success" ] && [ "$FV" != "skipped" ]; then
               echo "::error::formal-verification failed or was cancelled (got: $FV)"
               FAILED=1
