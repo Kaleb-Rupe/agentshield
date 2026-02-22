@@ -26,3 +26,10 @@ MaliciousSimulation
 # runtime validation. Oracle remaining_accounts are validated in
 # oracle.rs by owner program ID and expected feed pubkey.
 UnvalidatedAccount
+
+# --- anchorVersionTooOld ---
+# X-Ray flags anchor_lang < latest as "anchorVersionTooOld". AgentShield
+# uses Anchor 0.32.1, which is the latest stable release compatible with
+# our Solana SDK version (solana-program 2.x). Upgrading is tracked but
+# not a security vulnerability — it is an informational finding.
+anchorVersionTooOld
