@@ -3,6 +3,20 @@ name: Devnet Tests
 on:
   push:
     branches: [main]
+    paths:
+      - "programs/agent-shield/src/**"
+      - "tests/devnet-*.ts"
+      - "tests/helpers/devnet-setup.ts"
+      - ".github/workflows/devnet-test.yml"
+      - "Anchor.toml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "programs/agent-shield/src/**"
+      - "tests/devnet-*.ts"
+      - "tests/helpers/devnet-setup.ts"
+      - ".github/workflows/devnet-test.yml"
+      - "Anchor.toml"
   workflow_dispatch:
 
 jobs:
@@ -13,6 +27,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
       - uses: actions/setup-node@v4
         with:
@@ -28,28 +44,28 @@ jobs:
 
       - name: Configure devnet wallet
         run: |
-          mkdir -p ~/.config/solana
-          echo '${{ secrets.DEVNET_WALLET_KEYPAIR }}' > ~/.config/solana/id.json
-          solana config set --url https://api.devnet.solana.com --keypair ~/.config/solana/id.json
+          mkdir -p "$HOME/.config/solana"
+          echo '${{ secrets.DEVNET_WALLET_KEYPAIR }}' > "$HOME/.config/solana/id.json"
+          solana config set --url https://api.devnet.solana.com --keypair "$HOME/.config/solana/id.json"
 
-      - name: Fund wallet if needed
+      - name: Fund wallet
         run: |
-          BALANCE=$(solana balance | awk '{print int($1)}')
-          echo "Current balance: ${BALANCE} SOL"
-          if [ "$BALANCE" -lt 5 ]; then
-            echo "Balance below 5 SOL, requesting airdrops..."
-            solana airdrop 2 && sleep 6
-            solana airdrop 2 && sleep 6
-            solana airdrop 2
-            echo "New balance: $(solana balance)"
-          else
-            echo "Balance sufficient, skipping airdrop"
-          fi
+          echo "Current balance: $(solana balance)"
+          echo "Requesting airdrops..."
+          solana airdrop 2 || true
+          sleep 6
+          solana airdrop 2 || true
+          sleep 6
+          solana airdrop 2 || true
+          sleep 6
+          echo "Final balance: $(solana balance)"
+
+      - name: Export wallet path
+        run: |
+          echo "ANCHOR_WALLET=$HOME/.config/solana/id.json" >> "$GITHUB_ENV"
+          echo "ANCHOR_PROVIDER_URL=https://api.devnet.solana.com" >> "$GITHUB_ENV"
 
       - name: Run devnet tests
-        env:
-          ANCHOR_PROVIDER_URL: https://api.devnet.solana.com
-          ANCHOR_WALLET: ~/.config/solana/id.json
         run: |
           npx ts-mocha -p ./tsconfig.json -t 600000 \
             tests/devnet-smoke.ts \
@@ -63,4 +79,4 @@ jobs:
 
       - name: Cleanup wallet
         if: always()
-        run: rm -f ~/.config/solana/id.json
+        run: rm -f "$HOME/.config/solana/id.json"
