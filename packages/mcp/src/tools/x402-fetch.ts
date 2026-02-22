@@ -17,6 +17,7 @@ export const x402FetchSchema = z.object({
   body: z.string().optional().describe("Request body (for POST/PUT)"),
   maxPayment: z
     .string()
+    .regex(/^\d+$/, "Must be a non-negative integer in token base units")
     .optional()
     .describe(
       "Maximum payment amount in token base units (rejects if server asks for more)",
@@ -25,45 +26,64 @@ export const x402FetchSchema = z.object({
 
 export type X402FetchInput = z.input<typeof x402FetchSchema>;
 
+// Module-level cache: persistent wallet + config fingerprint
+type ShieldedWallet = Awaited<
+  ReturnType<typeof import("@agent-shield/sdk").shieldWallet>
+>;
+let _cachedWallet: ShieldedWallet | null = null;
+let _cachedConfigKey: string | null = null;
+
+function getConfigKey(config: McpConfig): string {
+  const cfgAny = config as unknown as Record<string, unknown>;
+  return `${config.rpcUrl}|${config.walletPath ?? ""}|${config.agentKeypairPath ?? ""}|${typeof cfgAny.keypair === "string" ? cfgAny.keypair : ""}`;
+}
+
 export async function x402Fetch(
   _client: AgentShieldClient,
   config: McpConfig,
   input: X402FetchInput,
 ): Promise<string> {
   try {
-    // Dynamic import to avoid loading x402 code unless needed
     const { shieldWallet, shieldedFetch } = await import("@agent-shield/sdk");
     const { Connection, Keypair } = await import("@solana/web3.js");
 
-    // Load wallet keypair — direct bytes, walletPath file, or agentKeypairPath
-    let keypair: InstanceType<typeof Keypair>;
-    const cfgAny = config as unknown as Record<string, unknown>;
-    if (typeof cfgAny.keypair === "string") {
-      // Direct keypair bytes (JSON array string) — programmatic/test usage
-      keypair = Keypair.fromSecretKey(
-        new Uint8Array(JSON.parse(cfgAny.keypair as string)),
-      );
-    } else if (config.walletPath) {
-      const { loadKeypair } = await import("../config");
-      keypair = loadKeypair(config.walletPath);
-    } else if (config.agentKeypairPath) {
-      const { loadKeypair } = await import("../config");
-      keypair = loadKeypair(config.agentKeypairPath);
-    } else {
-      return "## Error\n\nNo agent keypair configured. Run `shield_configure` first.";
+    const configKey = getConfigKey(config);
+
+    // Create or refresh cached wallet when config changes
+    if (!_cachedWallet || configKey !== _cachedConfigKey) {
+      // Load keypair (preserve ALL existing paths including cfgAny.keypair for tests)
+      let keypair: InstanceType<typeof Keypair>;
+      const cfgAny = config as unknown as Record<string, unknown>;
+      if (typeof cfgAny.keypair === "string") {
+        // Direct keypair bytes (JSON array string) — programmatic/test usage
+        keypair = Keypair.fromSecretKey(
+          new Uint8Array(JSON.parse(cfgAny.keypair as string)),
+        );
+      } else if (config.walletPath) {
+        const { loadKeypair } = await import("../config");
+        keypair = loadKeypair(config.walletPath);
+      } else if (config.agentKeypairPath) {
+        const { loadKeypair } = await import("../config");
+        keypair = loadKeypair(config.agentKeypairPath);
+      } else {
+        return "## Error\n\nNo agent keypair configured. Run `shield_configure` first.";
+      }
+
+      const wallet = {
+        publicKey: keypair.publicKey,
+        signTransaction: async <T>(tx: T): Promise<T> => {
+          (tx as any).partialSign?.(keypair);
+          return tx;
+        },
+      };
+      const connection = new Connection(config.rpcUrl, "confirmed");
+      // undefined policies → secure defaults (1000 USDC/day, 1000 USDT/day, 10 SOL/day)
+      _cachedWallet = shieldWallet(wallet as any, undefined, { connection });
+      _cachedConfigKey = configKey;
     }
 
-    const wallet = {
-      publicKey: keypair.publicKey,
-      signTransaction: async <T>(tx: T): Promise<T> => {
-        (tx as any).partialSign?.(keypair);
-        return tx;
-      },
-    };
-
+    // Use cached wallet (persistent ShieldState across calls)
     const connection = new Connection(config.rpcUrl, "confirmed");
-    const shielded = shieldWallet(wallet as any, undefined, { connection });
-
     const fetchInit: RequestInit = {
       method: input.method ?? "GET",
     };
@@ -74,9 +94,10 @@ export async function x402Fetch(
       fetchInit.body = input.body;
     }
 
-    const res = await shieldedFetch(shielded, input.url, {
+    const res = await shieldedFetch(_cachedWallet, input.url, {
       ...fetchInit,
       connection,
+      maxPayment: input.maxPayment,
     });
 
     const body = await res.text();

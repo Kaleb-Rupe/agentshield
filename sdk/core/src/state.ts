@@ -111,6 +111,25 @@ export class ShieldState {
   }
 
   /**
+   * Save current state for potential rollback (used by signAllTransactions).
+   */
+  checkpoint(): { spends: SpendEntry[]; txs: TxEntry[] } {
+    return {
+      spends: [...this.spendEntries],
+      txs: [...this.txEntries],
+    };
+  }
+
+  /**
+   * Restore state to a previous checkpoint (undo phantom spends).
+   */
+  rollback(cp: { spends: SpendEntry[]; txs: TxEntry[] }): void {
+    this.spendEntries = cp.spends;
+    this.txEntries = cp.txs;
+    this.persist();
+  }
+
+  /**
    * Reset all state.
    */
   reset(): void {
