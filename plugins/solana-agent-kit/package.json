@@ -34,7 +34,7 @@
     "@solana/web3.js": "^1.95.0",
     "@types/chai": "^4.3.11",
     "@types/mocha": "^10.0.6",
-    "chai": "^4.4.1",
+    "chai": "^6.2.2",
     "mocha": "^11.7.5",
     "solana-agent-kit": "^2.0.0",
     "ts-node": "^10.9.2",

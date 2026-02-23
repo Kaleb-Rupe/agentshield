@@ -38,11 +38,11 @@
   "devDependencies": {
     "@agent-shield/custody-crossmint": "workspace:*",
     "@agent-shield/sdk": "workspace:*",
-    "@elizaos/core": "^0.1.0",
+    "@elizaos/core": "^1.7.2",
     "@solana/web3.js": "^1.95.0",
     "@types/chai": "^4.3.11",
     "@types/mocha": "^10.0.6",
-    "chai": "^4.4.1",
+    "chai": "^6.2.2",
     "mocha": "^11.7.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
