@@ -1,7 +1,7 @@
 # AgentShield
 
 [![CI](https://github.com/Kaleb-Rupe/agentshield/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Kaleb-Rupe/agentshield/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-747-brightgreen)
+![Tests](https://img.shields.io/badge/tests-855-brightgreen)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 
 On-chain guardrails for AI agents on Solana. Your policies are enforced by Solana validators, not software promises.
@@ -174,7 +174,7 @@ npx ts-mocha -p ./tsconfig.json -t 300000 \
   tests/agent-shield.ts tests/jupiter-integration.ts \
   tests/flash-trade-integration.ts tests/security-exploits.ts
 
-# Run all TypeScript tests (512 tests across 8 suites)
+# Run all TypeScript tests (550 tests across 8 suites)
 pnpm -r run test
 
 # Lint
@@ -186,21 +186,20 @@ cargo fmt --check --manifest-path programs/agent-shield/Cargo.toml
 
 | Suite                                                | Tests   |
 | ---------------------------------------------------- | ------- |
-| Core vault management & permission engine            |      51 |
+| Core vault management & permission engine            |      93 |
 | Jupiter integration (composed swaps)                 |       8 |
 | Flash Trade integration (leveraged perps)            |       9 |
-| Oracle + delegation + timelock + transfers           |      25 |
-| Security exploit scenarios                           |      81 |
-| Devnet integration tests (real network)              |      61 |
+| Security exploit scenarios                           |     118 |
+| Devnet integration tests (real network)              |      77 |
 | Core policy engine (`@agent-shield/core`)            |      66 |
 | SDK tests (`@agent-shield/sdk`)                      |     165 |
 | Platform client tests (`@agent-shield/platform`)     |      17 |
 | Crossmint custody adapter                            |      29 |
 | SAK plugin (`@agent-shield/plugin-solana-agent-kit`) |      29 |
 | ElizaOS plugin (`@agent-shield/plugin-elizaos`)      |      35 |
-| MCP server (`@agent-shield/mcp`)                     |     123 |
+| MCP server (`@agent-shield/mcp`)                     |     161 |
 | Actions server (`@agent-shield/actions-server`)      |      48 |
-| **Total**                                            | **747** |
+| **Total**                                            | **855** |
 
 ## Security
 

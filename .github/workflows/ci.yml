@@ -22,7 +22,7 @@
 #   apps/ → Actions server tests
 #   sdk/typescript → all downstream suites (everything depends on SDK)
 #
-# Total: 795 tests across 14 suites (512 TS + 213 on-chain + 70 devnet)
+# Total: 855 tests across 13 suites (550 TS + 228 on-chain + 77 devnet)
 # All security checks are BLOCKING — zero tolerance for known issues.
 
 name: CI
@@ -104,7 +104,7 @@ jobs:
               - 'tsconfig*.json'
 
   # ──────────────────────────────────────────────────────────────
-  # Job 1: TypeScript build, lint, and tests (8 suites, 512 tests)
+  # Job 1: TypeScript build, lint, and tests (8 suites, 550 tests)
   # ──────────────────────────────────────────────────────────────
   build-lint-test:
     name: Build, Lint & TS Tests
@@ -213,7 +213,7 @@ jobs:
         working-directory: plugins/elizaos
         run: pnpm test
 
-      - name: MCP server tests (123 tests)
+      - name: MCP server tests (161 tests)
         if: >-
           needs.changes.outputs.packages == 'true' ||
           needs.changes.outputs.sdk-typescript == 'true' ||
