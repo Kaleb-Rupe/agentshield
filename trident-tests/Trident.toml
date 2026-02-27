@@ -1,0 +1,6 @@
+[fuzz]
+# Fuzzing iterations
+fuzzing_with_stats = true
+
+[test]
+# Trident v0.12 config

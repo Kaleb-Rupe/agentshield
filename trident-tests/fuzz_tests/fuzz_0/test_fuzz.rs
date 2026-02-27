@@ -1,28 +1,21 @@
 // Trident fuzz test for AgentShield
 //
+// V3: Stablecoin-only architecture — oracles removed.
 // Uses the trident 0.12.0 API (#[FuzzTestMethods] + #[flow_executor]).
-// Each #[flow] method corresponds to one of the 14 instruction handlers
-// (plus 4 new security flows) and is selected randomly by the fuzzer.
-// The #[init] method bootstraps a vault with 3 tokens so subsequent
-// flows have state to operate on.
+// Each #[flow] method corresponds to one of the instruction handlers
+// and is selected randomly by the fuzzer.
 //
-// 10 invariants are checked after each instruction:
+// 8 invariants are checked after each instruction:
 //   INV-1:  Rolling spend never exceeds daily cap (aggregate USD)
 //   INV-2:  Only owner can modify policy/pause/withdraw
 //   INV-3:  Session PDA expires within 20 slots
 //   INV-4:  Fee destination is immutable after creation
 //   INV-5:  Frozen→Active only by owner
 //   INV-6:  Cross-token aggregate USD ≤ daily cap (same as INV-1 in V2)
-//   INV-8:  Stale oracle rejection (dedicated flow)
-//   INV-9:  Invalid oracle verification rejection (dedicated flow)
 //   INV-10: Post-finalize session closure
 //   INV-11: Double-finalize detection (dedicated flow)
 //
-// V2: INV-7 (per-token base cap) removed — V2 uses aggregate USD only.
-//     Tokens use global OracleRegistry, not per-vault AllowedToken arrays.
-//     SpendTracker is zero-copy with epoch buckets.
-//
-// Coverage: 16/16 instructions, 10/10 invariants active, 17 fuzzed flows.
+// Coverage: 15 fuzzed flows, 8 invariants active.
 //
 // Run: `trident fuzz run fuzz_0` or `pnpm security:fuzz` from repo root.
 
@@ -32,34 +25,24 @@ use trident_fuzz::fuzzing::*;
 mod fuzz_accounts;
 
 use agent_shield::state::{
-    ActionType, AgentVault, OracleEntry, PolicyConfig, SessionAuthority, SpendTracker, VaultStatus,
+    ActionType, AgentVault, PolicyConfig, SessionAuthority, SpendTracker, VaultStatus,
 };
 use anchor_lang::prelude::Pubkey;
 use anchor_lang::{AccountDeserialize, InstructionData, ToAccountMetas};
-use solana_sdk::account::AccountSharedData;
 
 const MAX_DEVELOPER_FEE_RATE: u16 = 500;
 const SESSION_EXPIRY_SLOTS: u64 = 20;
-const MAX_ORACLE_STALE_SLOTS: u64 = 100;
 const TOKEN_DECIMALS_A: u8 = 6;
 const TOKEN_DECIMALS_B: u8 = 9;
 const TOKEN_DECIMALS_C: u8 = 9;
 const MINT_AMOUNT: u64 = 10_000_000_000; // 10B base units (10k USDC)
 const MINT_AMOUNT_9DEC: u64 = 10_000_000_000_000; // 10T base units for 9-decimal tokens
 
-/// Pyth Receiver program ID (matches state/mod.rs)
-const PYTH_RECEIVER_PROGRAM: Pubkey = Pubkey::new_from_array([
-    12, 183, 250, 187, 82, 247, 166, 72, 187, 91, 49, 125, 154, 1, 139, 144, 87, 203, 2, 71, 116,
-    250, 254, 1, 230, 196, 223, 152, 204, 56, 88, 129,
+/// Instructions sysvar address
+const INSTRUCTIONS_SYSVAR: Pubkey = Pubkey::new_from_array([
+    6, 167, 213, 23, 24, 199, 116, 201, 40, 86, 99, 152, 105, 29, 94, 182,
+    139, 94, 184, 163, 155, 75, 109, 92, 115, 85, 91, 42, 0, 0, 0, 0,
 ]);
-
-/// Pyth PriceUpdateV2 account minimum size
-const PYTH_MIN_SIZE: usize = 133;
-
-/// Token C oracle price: $150 with exponent -8
-const ORACLE_C_PRICE: i64 = 15_000_000_000;
-const ORACLE_C_CONF: u64 = 5_000_000;
-const ORACLE_C_EXPONENT: i32 = -8;
 
 fn program_id() -> Pubkey {
     "4ZeVCqnjUgUtFrHHPG7jELUxvJeoVGHhGNgPrhBPwrHL"
@@ -67,56 +50,11 @@ fn program_id() -> Pubkey {
         .unwrap()
 }
 
-// ──────────────────────────────────────────────────────────────
-// Mock Pyth PriceUpdateV2 account builder
-// ──────────────────────────────────────────────────────────────
-
-/// Build a mock Pyth PriceUpdateV2 account with the correct byte layout.
-///
-/// Layout (from oracle.rs):
-///   Offset  0: discriminator     [8 bytes]
-///   Offset  8: write_authority   [32 bytes]
-///   Offset 40: verification_level [1 byte] (0=Partial, 1=Full)
-///   Offset 73: price             [8 bytes] (i64 LE)
-///   Offset 81: conf              [8 bytes] (u64 LE)
-///   Offset 89: exponent          [4 bytes] (i32 LE)
-///   Offset125: posted_slot       [8 bytes] (u64 LE)
-fn create_mock_pyth_account(
-    trident: &mut Trident,
-    address: &Pubkey,
-    price: i64,
-    conf: u64,
-    exponent: i32,
-    posted_slot: u64,
-    verification: u8,
-) {
-    let mut data = vec![0u8; PYTH_MIN_SIZE];
-    // Offset 40: verification_level
-    data[40] = verification;
-    // Offsets 41-72: feed_id — not checked by our parser (it checks account key)
-    // Offset 73: price (i64 LE)
-    data[73..81].copy_from_slice(&price.to_le_bytes());
-    // Offset 81: conf (u64 LE)
-    data[81..89].copy_from_slice(&conf.to_le_bytes());
-    // Offset 89: exponent (i32 LE)
-    data[89..93].copy_from_slice(&exponent.to_le_bytes());
-    // Offset 125: posted_slot (u64 LE)
-    data[125..133].copy_from_slice(&posted_slot.to_le_bytes());
-
-    let mut account = AccountSharedData::new(
-        10_000_000, // enough lamports for rent
-        data.len(),
-        &PYTH_RECEIVER_PROGRAM,
-    );
-    account.set_data_from_slice(&data);
-    trident.set_account_custom(address, &account);
-}
-
 #[derive(FuzzTestMethods)]
 struct FuzzTest {
     trident: Trident,
     fuzz_accounts: AccountAddresses,
-    /// Tracked slot for clock manipulation (INV-3, INV-8 session expiry)
+    /// Tracked slot for clock manipulation (INV-3 session expiry)
     current_slot: u64,
 }
 
@@ -177,7 +115,7 @@ impl FuzzTest {
             .trident
             .random_from_range(0..MAX_DEVELOPER_FEE_RATE as u64) as u16;
 
-        // ── Step 1: InitializeVault (V2: 10 args, no allowedTokens/trackerTier) ──
+        // ── Step 1: InitializeVault (V3: 11 args, includes maxSlippageBps) ──
 
         let data = agent_shield::instruction::InitializeVault {
             vault_id,
@@ -190,6 +128,7 @@ impl FuzzTest {
             developer_fee_rate: fee_rate,
             timelock_duration: 0,
             allowed_destinations: vec![],
+            max_slippage_bps: 2500, // 25%
         };
 
         let accounts = agent_shield::accounts::InitializeVault {
@@ -227,30 +166,14 @@ impl FuzzTest {
             .insert(&mut self.trident, None);
         self.create_mint(&owner, &mint_b, TOKEN_DECIMALS_B);
 
-        // Token C: oracle-priced, 9 decimals
+        // Token C: non-stablecoin, 9 decimals
         let mint_c = self
             .fuzz_accounts
             .token_mint_c
             .insert(&mut self.trident, None);
         self.create_mint(&owner, &mint_c, TOKEN_DECIMALS_C);
 
-        // ── Step 3: Create oracle for token C ──
-
-        let oracle_c = self
-            .fuzz_accounts
-            .oracle_c
-            .insert(&mut self.trident, None);
-        create_mock_pyth_account(
-            &mut self.trident,
-            &oracle_c,
-            ORACLE_C_PRICE,
-            ORACLE_C_CONF,
-            ORACLE_C_EXPONENT,
-            self.current_slot,
-            1, // Full verification
-        );
-
-        // ── Step 4: Create ATAs for all tokens ──
+        // ── Step 3: Create ATAs for all tokens ──
 
         let destination = self
             .fuzz_accounts
@@ -297,7 +220,7 @@ impl FuzzTest {
             |fa| &mut fa.destination_token_account_c,
         );
 
-        // ── Step 5: Mint tokens to owner ATAs ──
+        // ── Step 4: Mint tokens to owner ATAs ──
 
         let owner_ata_a =
             spl_associated_token_account::get_associated_token_address(&owner, &mint_a);
@@ -310,7 +233,7 @@ impl FuzzTest {
         self.mint_tokens(&owner, &mint_b, &owner_ata_b, MINT_AMOUNT_9DEC);
         self.mint_tokens(&owner, &mint_c, &owner_ata_c, MINT_AMOUNT_9DEC);
 
-        // ── Step 6: Register agent ──
+        // ── Step 5: Register agent ──
 
         let agent = self.fuzz_accounts.agent.insert(&mut self.trident, None);
         self.trident.airdrop(&agent, 5 * LAMPORTS_PER_SOL);
@@ -327,59 +250,7 @@ impl FuzzTest {
             .trident
             .process_transaction(&[reg_ix], Some("RegisterAgent"));
 
-        // ── Step 7: Initialize oracle registry with 3 tokens ──
-
-        let (oracle_registry, _) = Pubkey::find_program_address(
-            &[b"oracle_registry"],
-            &program_id(),
-        );
-        self.fuzz_accounts.oracle_registry.insert(
-            &mut self.trident,
-            Some(PdaSeeds {
-                seeds: &[b"oracle_registry"],
-                program_id: program_id(),
-            }),
-        );
-
-        let oracle_entries = vec![
-            OracleEntry {
-                mint: mint_a,
-                oracle_feed: Pubkey::default(),
-                is_stablecoin: true,
-                fallback_feed: Pubkey::default(),
-            },
-            OracleEntry {
-                mint: mint_b,
-                oracle_feed: Pubkey::default(),
-                is_stablecoin: true,
-                fallback_feed: Pubkey::default(),
-            },
-            OracleEntry {
-                mint: mint_c,
-                oracle_feed: oracle_c,
-                is_stablecoin: false,
-                fallback_feed: Pubkey::default(),
-            },
-        ];
-
-        let registry_data = agent_shield::instruction::InitializeOracleRegistry {
-            entries: oracle_entries,
-        };
-        let registry_accounts = agent_shield::accounts::InitializeOracleRegistry {
-            authority: owner,
-            oracle_registry,
-            system_program: solana_sdk::system_program::ID,
-        };
-        let registry_ix = Instruction::new_with_bytes(
-            program_id(),
-            &registry_data.data(),
-            registry_accounts.to_account_metas(None),
-        );
-        let _ = self
-            .trident
-            .process_transaction(&[registry_ix], Some("InitializeOracleRegistry"));
-
-        // ── Step 7b: UpdatePolicy with allowed_destinations ──
+        // ── Step 6: UpdatePolicy with allowed_destinations ──
 
         let policy_data = agent_shield::instruction::UpdatePolicy {
             daily_spending_cap_usd: None,
@@ -392,6 +263,7 @@ impl FuzzTest {
             developer_fee_rate: None,
             timelock_duration: None,
             allowed_destinations: Some(vec![destination]),
+            max_slippage_bps: None,
         };
 
         let policy_accounts = agent_shield::accounts::UpdatePolicy {
@@ -410,7 +282,7 @@ impl FuzzTest {
             .trident
             .process_transaction(&[policy_ix], Some("UpdatePolicy+destinations"));
 
-        // ── Step 8: Deposit funds for all 3 tokens ──
+        // ── Step 7: Deposit funds for all 3 tokens ──
 
         let vault_ata_a =
             spl_associated_token_account::get_associated_token_address(&vault, &mint_a);
@@ -610,10 +482,10 @@ impl FuzzTest {
     // Token selection helper
     // ──────────────────────────────────────────────────────────────
 
-    /// Randomly select one of the 3 tokens. Returns (mint, vault_ata, fee_dest_ata, dest_ata, is_oracle_priced).
+    /// Randomly select one of the 3 tokens. Returns (mint, vault_ata, fee_dest_ata, dest_ata).
     fn select_random_token(
         &mut self,
-    ) -> Option<(Pubkey, Pubkey, Pubkey, Pubkey, bool)> {
+    ) -> Option<(Pubkey, Pubkey, Pubkey, Pubkey)> {
         let choice = self.trident.random_from_range(0..3);
         match choice {
             0 => {
@@ -624,7 +496,7 @@ impl FuzzTest {
                     .fuzz_accounts
                     .destination_token_account
                     .get(&mut self.trident)?;
-                Some((mint, vault_ata, fee_ata, dest_ata, false))
+                Some((mint, vault_ata, fee_ata, dest_ata))
             }
             1 => {
                 let mint = self.fuzz_accounts.token_mint_b.get(&mut self.trident)?;
@@ -640,7 +512,7 @@ impl FuzzTest {
                     .fuzz_accounts
                     .destination_token_account_b
                     .get(&mut self.trident)?;
-                Some((mint, vault_ata, fee_ata, dest_ata, false))
+                Some((mint, vault_ata, fee_ata, dest_ata))
             }
             _ => {
                 let mint = self.fuzz_accounts.token_mint_c.get(&mut self.trident)?;
@@ -656,7 +528,7 @@ impl FuzzTest {
                     .fuzz_accounts
                     .destination_token_account_c
                     .get(&mut self.trident)?;
-                Some((mint, vault_ata, fee_ata, dest_ata, true))
+                Some((mint, vault_ata, fee_ata, dest_ata))
             }
         }
     }
@@ -666,21 +538,6 @@ impl FuzzTest {
         let advance = self.trident.random_from_range(1..5);
         self.current_slot += advance;
         self.trident.warp_to_slot(self.current_slot);
-    }
-
-    /// Refresh the oracle for token C to the current slot (prevents staleness).
-    fn refresh_oracle_c(&mut self) {
-        if let Some(oracle_c) = self.fuzz_accounts.oracle_c.get(&mut self.trident) {
-            create_mock_pyth_account(
-                &mut self.trident,
-                &oracle_c,
-                ORACLE_C_PRICE,
-                ORACLE_C_CONF,
-                ORACLE_C_EXPONENT,
-                self.current_slot,
-                1, // Full verification
-            );
-        }
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -740,6 +597,7 @@ impl FuzzTest {
             developer_fee_rate: None,
             timelock_duration: None,
             allowed_destinations: None,
+            max_slippage_bps: None,
         };
 
         let accounts = agent_shield::accounts::UpdatePolicy {
@@ -774,7 +632,7 @@ impl FuzzTest {
         let owner = unwrap_or_ret!(self.fuzz_accounts.owner.get(&mut self.trident));
         let vault = unwrap_or_ret!(self.fuzz_accounts.vault.get(&mut self.trident));
 
-        let (mint, vault_ata, _, _, _) = unwrap_or_ret!(self.select_random_token());
+        let (mint, vault_ata, _, _) = unwrap_or_ret!(self.select_random_token());
         let owner_ata =
             spl_associated_token_account::get_associated_token_address(&owner, &mint);
 
@@ -819,16 +677,10 @@ impl FuzzTest {
         let policy_addr = unwrap_or_ret!(self.fuzz_accounts.policy.get(&mut self.trident));
         let tracker_addr = unwrap_or_ret!(self.fuzz_accounts.tracker.get(&mut self.trident));
 
-        let (mint, vault_ata, _, _, is_oracle_priced) =
-            unwrap_or_ret!(self.select_random_token());
+        let (mint, vault_ata, _, _) = unwrap_or_ret!(self.select_random_token());
 
         // Advance slot to simulate block production
         self.advance_slot();
-
-        // Refresh oracle if using oracle-priced token
-        if is_oracle_priced {
-            self.refresh_oracle_c();
-        }
 
         // Compute session PDA
         let (session_pda, _) = Pubkey::find_program_address(
@@ -868,38 +720,26 @@ impl FuzzTest {
             leverage_bps: None,
         };
 
-        let oracle_registry = unwrap_or_ret!(
-            self.fuzz_accounts.oracle_registry.get(&mut self.trident)
-        );
-
-        let base_accounts = agent_shield::accounts::ValidateAndAuthorize {
+        let accounts = agent_shield::accounts::ValidateAndAuthorize {
             agent,
             vault,
             policy: policy_addr,
             tracker: tracker_addr,
-            oracle_registry,
             session: session_pda,
             vault_token_account: vault_ata,
             token_mint_account: mint,
             protocol_treasury_token_account: None,
             fee_destination_token_account: None,
+            output_stablecoin_account: None,
             token_program: spl_token::ID,
             system_program: solana_sdk::system_program::ID,
+            instructions_sysvar: INSTRUCTIONS_SYSVAR,
         };
-
-        let mut account_metas = base_accounts.to_account_metas(None);
-
-        // For oracle-priced tokens, append oracle as remaining_account
-        if is_oracle_priced {
-            if let Some(oracle_c) = self.fuzz_accounts.oracle_c.get(&mut self.trident) {
-                account_metas.push(AccountMeta::new_readonly(oracle_c, false));
-            }
-        }
 
         let ix = Instruction::new_with_bytes(
             program_id(),
             &data.data(),
-            account_metas,
+            accounts.to_account_metas(None),
         );
 
         let result = self
@@ -968,6 +808,7 @@ impl FuzzTest {
             session,
             session_rent_recipient: agent,
             vault_token_account: Some(vault_ata),
+            output_stablecoin_account: None,
             token_program: spl_token::ID,
             system_program: solana_sdk::system_program::ID,
         };
@@ -1007,7 +848,7 @@ impl FuzzTest {
         let owner = unwrap_or_ret!(self.fuzz_accounts.owner.get(&mut self.trident));
         let vault = unwrap_or_ret!(self.fuzz_accounts.vault.get(&mut self.trident));
 
-        let (mint, vault_ata, _, _, _) = unwrap_or_ret!(self.select_random_token());
+        let (mint, vault_ata, _, _) = unwrap_or_ret!(self.select_random_token());
         let owner_ata =
             spl_associated_token_account::get_associated_token_address(&owner, &mint);
 
@@ -1056,11 +897,8 @@ impl FuzzTest {
         let vault = unwrap_or_ret!(self.fuzz_accounts.vault.get(&mut self.trident));
         let policy_addr = unwrap_or_ret!(self.fuzz_accounts.policy.get(&mut self.trident));
         let tracker_addr = unwrap_or_ret!(self.fuzz_accounts.tracker.get(&mut self.trident));
-        let oracle_registry = unwrap_or_ret!(
-            self.fuzz_accounts.oracle_registry.get(&mut self.trident)
-        );
 
-        let (mint, vault_ata, _, dest_ata, _) = unwrap_or_ret!(self.select_random_token());
+        let (mint, vault_ata, _, dest_ata) = unwrap_or_ret!(self.select_random_token());
         let fee_dest_ata = unwrap_or_ret!(
             self.fuzz_accounts.fee_dest_token_account.get(&mut self.trident)
         );
@@ -1076,7 +914,6 @@ impl FuzzTest {
             vault,
             policy: policy_addr,
             tracker: tracker_addr,
-            oracle_registry,
             vault_token_account: vault_ata,
             token_mint_account: mint,
             destination_token_account: dest_ata,
@@ -1196,6 +1033,7 @@ impl FuzzTest {
             developer_fee_rate: None,
             timelock_duration: None,
             allowed_destinations: None,
+            max_slippage_bps: None,
         };
 
         let accounts = agent_shield::accounts::QueuePolicyUpdate {
@@ -1329,187 +1167,6 @@ impl FuzzTest {
     }
 
     // ──────────────────────────────────────────────────────────────
-    // Flow: StaleOracleRejection (INV-8)
-    // ──────────────────────────────────────────────────────────────
-
-    #[flow]
-    fn stale_oracle_rejection(&mut self) {
-        let agent = unwrap_or_ret!(self.fuzz_accounts.agent.get(&mut self.trident));
-        let vault = unwrap_or_ret!(self.fuzz_accounts.vault.get(&mut self.trident));
-        let policy_addr = unwrap_or_ret!(self.fuzz_accounts.policy.get(&mut self.trident));
-        let tracker_addr = unwrap_or_ret!(self.fuzz_accounts.tracker.get(&mut self.trident));
-        let oracle_registry = unwrap_or_ret!(
-            self.fuzz_accounts.oracle_registry.get(&mut self.trident)
-        );
-        let mint_c = unwrap_or_ret!(self.fuzz_accounts.token_mint_c.get(&mut self.trident));
-        let vault_ata_c = unwrap_or_ret!(
-            self.fuzz_accounts.vault_token_account_c.get(&mut self.trident)
-        );
-        let oracle_c = unwrap_or_ret!(self.fuzz_accounts.oracle_c.get(&mut self.trident));
-
-        // Warp forward so oracle becomes stale
-        let stale_target = self.current_slot + MAX_ORACLE_STALE_SLOTS + 50;
-        self.current_slot = stale_target;
-        self.trident.warp_to_slot(self.current_slot);
-
-        // Set oracle with OLD posted_slot (far behind current)
-        create_mock_pyth_account(
-            &mut self.trident,
-            &oracle_c,
-            ORACLE_C_PRICE,
-            ORACLE_C_CONF,
-            ORACLE_C_EXPONENT,
-            1, // posted_slot = 1, current_slot >> MAX_ORACLE_STALE_SLOTS
-            1, // Full verification
-        );
-
-        // Compute session PDA
-        let (session_pda, _) = Pubkey::find_program_address(
-            &[
-                b"session",
-                vault.as_ref(),
-                agent.as_ref(),
-                mint_c.as_ref(),
-            ],
-            &program_id(),
-        );
-
-        let data = agent_shield::instruction::ValidateAndAuthorize {
-            action_type: ActionType::Swap,
-            token_mint: mint_c,
-            amount: 100,
-            target_protocol: Pubkey::default(),
-            leverage_bps: None,
-        };
-
-        let base_accounts = agent_shield::accounts::ValidateAndAuthorize {
-            agent,
-            vault,
-            policy: policy_addr,
-            tracker: tracker_addr,
-            oracle_registry,
-            session: session_pda,
-            vault_token_account: vault_ata_c,
-            token_mint_account: mint_c,
-            protocol_treasury_token_account: None,
-            fee_destination_token_account: None,
-            token_program: spl_token::ID,
-            system_program: solana_sdk::system_program::ID,
-        };
-
-        let mut account_metas = base_accounts.to_account_metas(None);
-        account_metas.push(AccountMeta::new_readonly(oracle_c, false));
-
-        let ix = Instruction::new_with_bytes(
-            program_id(),
-            &data.data(),
-            account_metas,
-        );
-
-        let result = self
-            .trident
-            .process_transaction(&[ix], Some("StaleOracleRejection"));
-
-        // INV-8: Transaction MUST fail with stale oracle
-        assert!(
-            result.is_error(),
-            "INV-8 violated: stale oracle (delta > MAX_ORACLE_STALE_SLOTS) was accepted",
-        );
-
-        // Restore oracle to current slot for subsequent flows
-        self.refresh_oracle_c();
-    }
-
-    // ──────────────────────────────────────────────────────────────
-    // Flow: InvalidOracleVerification (INV-9)
-    // ──────────────────────────────────────────────────────────────
-
-    #[flow]
-    fn invalid_oracle_verification(&mut self) {
-        let agent = unwrap_or_ret!(self.fuzz_accounts.agent.get(&mut self.trident));
-        let vault = unwrap_or_ret!(self.fuzz_accounts.vault.get(&mut self.trident));
-        let policy_addr = unwrap_or_ret!(self.fuzz_accounts.policy.get(&mut self.trident));
-        let tracker_addr = unwrap_or_ret!(self.fuzz_accounts.tracker.get(&mut self.trident));
-        let oracle_registry = unwrap_or_ret!(
-            self.fuzz_accounts.oracle_registry.get(&mut self.trident)
-        );
-        let mint_c = unwrap_or_ret!(self.fuzz_accounts.token_mint_c.get(&mut self.trident));
-        let vault_ata_c = unwrap_or_ret!(
-            self.fuzz_accounts.vault_token_account_c.get(&mut self.trident)
-        );
-        let oracle_c = unwrap_or_ret!(self.fuzz_accounts.oracle_c.get(&mut self.trident));
-
-        self.advance_slot();
-
-        // Set oracle with verification_level = 0 (Partial — should be rejected)
-        create_mock_pyth_account(
-            &mut self.trident,
-            &oracle_c,
-            ORACLE_C_PRICE,
-            ORACLE_C_CONF,
-            ORACLE_C_EXPONENT,
-            self.current_slot,
-            0, // Partial verification — invalid
-        );
-
-        // Compute session PDA
-        let (session_pda, _) = Pubkey::find_program_address(
-            &[
-                b"session",
-                vault.as_ref(),
-                agent.as_ref(),
-                mint_c.as_ref(),
-            ],
-            &program_id(),
-        );
-
-        let data = agent_shield::instruction::ValidateAndAuthorize {
-            action_type: ActionType::Swap,
-            token_mint: mint_c,
-            amount: 100,
-            target_protocol: Pubkey::default(),
-            leverage_bps: None,
-        };
-
-        let base_accounts = agent_shield::accounts::ValidateAndAuthorize {
-            agent,
-            vault,
-            policy: policy_addr,
-            tracker: tracker_addr,
-            oracle_registry,
-            session: session_pda,
-            vault_token_account: vault_ata_c,
-            token_mint_account: mint_c,
-            protocol_treasury_token_account: None,
-            fee_destination_token_account: None,
-            token_program: spl_token::ID,
-            system_program: solana_sdk::system_program::ID,
-        };
-
-        let mut account_metas = base_accounts.to_account_metas(None);
-        account_metas.push(AccountMeta::new_readonly(oracle_c, false));
-
-        let ix = Instruction::new_with_bytes(
-            program_id(),
-            &data.data(),
-            account_metas,
-        );
-
-        let result = self
-            .trident
-            .process_transaction(&[ix], Some("InvalidOracleVerification"));
-
-        // INV-9: Transaction MUST fail with Partial verification
-        assert!(
-            result.is_error(),
-            "INV-9 violated: oracle with verification_level=Partial was accepted",
-        );
-
-        // Restore oracle to valid state for subsequent flows
-        self.refresh_oracle_c();
-    }
-
-    // ──────────────────────────────────────────────────────────────
     // Flow: FinalizeExpiredSession
     // ──────────────────────────────────────────────────────────────
 
@@ -1551,6 +1208,7 @@ impl FuzzTest {
             session: session_addr,
             session_rent_recipient: agent,
             vault_token_account: Some(vault_ata),
+            output_stablecoin_account: None,
             token_program: spl_token::ID,
             system_program: solana_sdk::system_program::ID,
         };
@@ -1600,6 +1258,7 @@ impl FuzzTest {
             session: session_addr,
             session_rent_recipient: agent,
             vault_token_account: Some(vault_ata),
+            output_stablecoin_account: None,
             token_program: spl_token::ID,
             system_program: solana_sdk::system_program::ID,
         };
@@ -1706,8 +1365,6 @@ impl FuzzTest {
 }
 
 /// INV-1: Aggregate rolling 24h USD spend never exceeds daily cap.
-/// V2: Uses epoch buckets instead of rolling_spends. Sums all non-zero buckets
-/// as an upper bound (correct within a single fuzz iteration).
 fn check_inv1_spending_cap(policy: &Option<PolicyConfig>, tracker: &Option<SpendTracker>) {
     if let (Some(p), Some(t)) = (policy, tracker) {
         let total: u64 = t
@@ -1806,7 +1463,7 @@ fn check_inv4_fee_immutability(pre: &Option<AgentVault>, post: &Option<AgentVaul
     }
 }
 
-/// INV-5: Frozen→Active transition requires owner signature.
+/// INV-5: Frozen->Active transition requires owner signature.
 fn check_inv5_revoke_permanence(
     pre: &Option<AgentVault>,
     post: &Option<AgentVault>,
@@ -1816,14 +1473,13 @@ fn check_inv5_revoke_permanence(
         if pre.status == VaultStatus::Frozen && post.status == VaultStatus::Active {
             assert!(
                 signer_is_owner,
-                "INV-5 violated: Frozen→Active without owner signature",
+                "INV-5 violated: Frozen->Active without owner signature",
             );
         }
     }
 }
 
 /// INV-6: Aggregate rolling USD spend across ALL tokens never exceeds daily cap.
-/// V2: Same as INV-1 — epoch buckets are already aggregate USD.
 fn check_inv6_cross_token_aggregate(
     policy: &Option<PolicyConfig>,
     tracker: &Option<SpendTracker>,
@@ -1843,9 +1499,6 @@ fn check_inv6_cross_token_aggregate(
         );
     }
 }
-
-// INV-7: Removed in V2 — per-token base cap no longer exists.
-// V2 uses aggregate USD only via epoch buckets.
 
 /// INV-10: FinalizeSession closes the session PDA account.
 fn check_inv10_session_closed(trident: &mut Trident, session_addr: &Pubkey) {
