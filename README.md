@@ -1,7 +1,7 @@
 # AgentShield
 
 [![CI](https://github.com/Kaleb-Rupe/agentshield/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Kaleb-Rupe/agentshield/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-888-brightgreen)
+![Tests](https://img.shields.io/badge/tests-994-brightgreen)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 
 On-chain guardrails for AI agents on Solana. Your policies are enforced by Solana validators, not software promises.
@@ -33,15 +33,17 @@ AgentShield provides three layers of protection in a single integration:
 
 ### Key Features
 
-- **Dual-oracle pricing** — Pyth-first with Switchboard fallback, auto-detected at runtime
-- **USD-denominated spending caps** — $500/day across all tokens, converted via oracle prices
-- **Per-token controls** — individual daily caps and max transaction sizes in base units
+- **Stablecoin-only USD tracking** — no oracle dependency, no feed staleness, no price manipulation risk. USDC/USDT amount = USD value
+- **Rolling 24h spending caps** — 144-epoch circular buffer tracks stablecoin outflows. No exploitable midnight reset
+- **Risk-reducing actions exempt** — closing positions, decreasing exposure, and removing collateral never count as spending
+- **On-chain slippage verification** — Jupiter and Flash Trade slippage enforced by Solana validators via `max_slippage_bps` policy
 - **Token delegation** — SPL `approve`/`revoke` CPI instead of escrow transfers
 - **Timelocked policy changes** — queue updates with configurable delay to prevent rug-pulls
-- **Agent transfers** — destination-allowlisted token transfers initiated by agents
+- **Agent transfers** — destination-allowlisted stablecoin transfers initiated by agents
 - **Kill switch** — owner can freeze any vault instantly, revoking all agent permissions
-- **On-chain audit trail** — every action emits Anchor events; last 50 txs stored on-chain
-- **MCP server** — 22 tools + 3 resources for Claude Desktop, Cursor, and any MCP client
+- **On-chain audit trail** — every action emits Anchor events for full transaction history
+- **x402 payments** — `shieldedFetch()` for automatic HTTP 402 payment negotiation, policy-enforced
+- **MCP server** — 49 tools + 3 resources for Claude Desktop, Cursor, and any MCP client
 - **OpenClaw skill** — AI agent skill for autonomous vault management
 - **Solana Actions/Blinks** — provision vaults via shareable action URLs
 
@@ -53,7 +55,7 @@ AgentShield uses **instruction composition** to avoid Solana's 4-level CPI depth
 Transaction = [
   ValidateAndAuthorize,   // AgentShield checks policy, creates session, delegates tokens
   DeFi instruction(s),    // Jupiter swap, Flash Trade open, etc.
-  FinalizeSession         // AgentShield records audit, collects fees, revokes delegation
+  FinalizeSession         // AgentShield records audit, revokes delegation
 ]
 ```
 
@@ -64,29 +66,29 @@ All instructions succeed or all revert atomically. The agent's signing key is va
 | Account                 | Seeds                                    | Purpose                                                                                            |
 | ----------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | **AgentVault**          | `[b"vault", owner, vault_id]`            | Holds owner/agent pubkeys, status, fee destination                                                 |
-| **PolicyConfig**        | `[b"policy", vault]`                     | Spending caps, token/protocol whitelists, leverage limits, timelock duration, allowed destinations |
-| **SpendTracker**        | `[b"tracker", vault]`                    | Configurable-capacity rolling 24h spend entries (Standard/Pro/Max: 200/500/1000), bounded audit log (max 50 txs)  |
+| **PolicyConfig**        | `[b"policy", vault]`                     | Spending caps, protocol allowlist/denylist, leverage limits, slippage limits, timelock duration, allowed destinations |
+| **SpendTracker**        | `[b"tracker", vault]`                    | Zero-copy 144-epoch circular buffer for rolling 24h USD spend tracking (2,352 bytes)               |
 | **SessionAuthority**    | `[b"session", vault, agent, token_mint]` | Ephemeral PDA created per action, expires after 20 slots                                           |
 | **PendingPolicyUpdate** | `[b"pending_policy", vault]`             | Queued policy change with timelock, applied after delay                                            |
 
 ### On-Chain Instructions (14)
 
-| Instruction              | Signer | Description                                   |
-| ------------------------ | ------ | --------------------------------------------- |
-| `initialize_vault`       | Owner  | Create vault, policy, and tracker PDAs        |
-| `deposit_funds`          | Owner  | Transfer SPL tokens into vault                |
-| `register_agent`         | Owner  | Register agent signing key                    |
-| `update_policy`          | Owner  | Modify policy (direct if no timelock)         |
-| `validate_and_authorize` | Agent  | Check policy, create session, delegate tokens |
-| `finalize_session`       | Agent  | Record audit, collect fees, revoke delegation |
-| `revoke_agent`           | Owner  | Kill switch — freeze vault                    |
-| `reactivate_vault`       | Owner  | Unfreeze vault, optionally rotate agent key   |
-| `withdraw_funds`         | Owner  | Withdraw tokens to owner                      |
-| `close_vault`            | Owner  | Close all PDAs, reclaim rent                  |
-| `queue_policy_update`    | Owner  | Queue timelocked policy change                |
-| `apply_pending_policy`   | Owner  | Apply queued change after timelock expires    |
-| `cancel_pending_policy`  | Owner  | Cancel queued policy change                   |
-| `agent_transfer`         | Agent  | Transfer tokens to allowlisted destination    |
+| Instruction              | Signer | Description                                                    |
+| ------------------------ | ------ | -------------------------------------------------------------- |
+| `initialize_vault`       | Owner  | Create vault, policy, and tracker PDAs                         |
+| `deposit_funds`          | Owner  | Transfer SPL tokens into vault                                 |
+| `register_agent`         | Owner  | Register agent signing key                                     |
+| `update_policy`          | Owner  | Modify policy (direct if no timelock)                          |
+| `validate_and_authorize` | Agent  | Check policy, collect fees, create session, delegate tokens    |
+| `finalize_session`       | Agent  | Revoke delegation, close session PDA                           |
+| `revoke_agent`           | Owner  | Kill switch — freeze vault                                     |
+| `reactivate_vault`       | Owner  | Unfreeze vault, optionally rotate agent key                    |
+| `withdraw_funds`         | Owner  | Withdraw tokens to owner                                       |
+| `close_vault`            | Owner  | Close all PDAs, reclaim rent                                   |
+| `queue_policy_update`    | Owner  | Queue timelocked policy change                                 |
+| `apply_pending_policy`   | Owner  | Apply queued change after timelock expires                     |
+| `cancel_pending_policy`  | Owner  | Cancel queued policy change                                    |
+| `agent_transfer`         | Agent  | Transfer stablecoins to allowlisted destination                |
 
 ## Packages
 
@@ -96,9 +98,9 @@ All instructions succeed or all revert atomically. The agent's signing key is va
 | [`@agent-shield/sdk`](./sdk/typescript)                               | On-chain guardrails — `withVault()` primary API                      | [![npm](https://img.shields.io/npm/v/@agent-shield/sdk)](https://www.npmjs.com/package/@agent-shield/sdk)                                         |
 | [`@agent-shield/platform`](./sdk/platform)                            | Platform client — request TEE wallet provisioning via Solana Actions | [![npm](https://img.shields.io/npm/v/@agent-shield/platform)](https://www.npmjs.com/package/@agent-shield/platform)                               |
 | [`@agent-shield/custody-crossmint`](./sdk/custody/crossmint)          | Crossmint TEE custody adapter — hardware-enclave signing             | [![npm](https://img.shields.io/npm/v/@agent-shield/custody-crossmint)](https://www.npmjs.com/package/@agent-shield/custody-crossmint)             |
-| [`@agent-shield/mcp`](./packages/mcp)                                 | MCP server — 22 tools, 3 resources for AI tool management            | [![npm](https://img.shields.io/npm/v/@agent-shield/mcp)](https://www.npmjs.com/package/@agent-shield/mcp)                                         |
-| [`@agent-shield/plugin-solana-agent-kit`](./plugins/solana-agent-kit) | Solana Agent Kit plugin — 5 monitoring/management tools              | [![npm](https://img.shields.io/npm/v/@agent-shield/plugin-solana-agent-kit)](https://www.npmjs.com/package/@agent-shield/plugin-solana-agent-kit) |
-| [`@agent-shield/plugin-elizaos`](./plugins/elizaos)                   | ElizaOS plugin — 5 actions, 2 providers, 1 evaluator                 | [![npm](https://img.shields.io/npm/v/@agent-shield/plugin-elizaos)](https://www.npmjs.com/package/@agent-shield/plugin-elizaos)                   |
+| [`@agent-shield/mcp`](./packages/mcp)                                 | MCP server — 49 tools, 3 resources for AI tool management            | [![npm](https://img.shields.io/npm/v/@agent-shield/mcp)](https://www.npmjs.com/package/@agent-shield/mcp)                                         |
+| [`@agent-shield/plugin-solana-agent-kit`](./plugins/solana-agent-kit) | Solana Agent Kit plugin — 6 tools with factory                       | [![npm](https://img.shields.io/npm/v/@agent-shield/plugin-solana-agent-kit)](https://www.npmjs.com/package/@agent-shield/plugin-solana-agent-kit) |
+| [`@agent-shield/plugin-elizaos`](./plugins/elizaos)                   | ElizaOS plugin — 6 actions, 2 providers, 1 evaluator                 | [![npm](https://img.shields.io/npm/v/@agent-shield/plugin-elizaos)](https://www.npmjs.com/package/@agent-shield/plugin-elizaos)                   |
 
 ## Quick Start
 
@@ -168,12 +170,12 @@ anchor build --no-idl
 # Generate IDL separately (requires nightly Rust — anchor-syn 0.32.1 bug)
 RUSTUP_TOOLCHAIN=nightly anchor idl build -o target/idl/agent_shield.json
 
-# Run on-chain tests (174 tests, LiteSVM — no validator needed)
+# Run on-chain tests (225 LiteSVM tests — no validator needed)
 npx ts-mocha -p ./tsconfig.json -t 300000 \
   tests/agent-shield.ts tests/jupiter-integration.ts \
   tests/flash-trade-integration.ts tests/security-exploits.ts
 
-# Run all TypeScript tests (580 tests across 8 suites)
+# Run all TypeScript tests (713 tests across 8 suites)
 pnpm -r run test
 
 # Lint
@@ -185,20 +187,21 @@ cargo fmt --check --manifest-path programs/agent-shield/Cargo.toml
 
 | Suite                                                | Tests   |
 | ---------------------------------------------------- | ------- |
-| Core vault management & permission engine            |      93 |
+| Core vault management & permission engine            |      67 |
 | Jupiter integration (composed swaps)                 |       8 |
-| Flash Trade integration (leveraged perps)            |       9 |
-| Security exploit scenarios                           |     128 |
-| Devnet integration tests (real network)              |      70 |
+| Jupiter Lend integration (deposit/withdraw)          |       6 |
+| Flash Trade integration (leveraged perps)            |      30 |
+| Security exploit scenarios                           |     114 |
+| Devnet integration tests (real network)              |      56 |
 | Core policy engine (`@agent-shield/core`)            |      66 |
-| SDK tests (`@agent-shield/sdk`)                      |     176 |
+| SDK tests (`@agent-shield/sdk`)                      |     192 |
 | Platform client tests (`@agent-shield/platform`)     |      17 |
 | Crossmint custody adapter                            |      29 |
 | SAK plugin (`@agent-shield/plugin-solana-agent-kit`) |      29 |
 | ElizaOS plugin (`@agent-shield/plugin-elizaos`)      |      35 |
-| MCP server (`@agent-shield/mcp`)                     |     175 |
-| Actions server (`@agent-shield/actions-server`)      |      53 |
-| **Total**                                            | **888** |
+| MCP server (`@agent-shield/mcp`)                     |     280 |
+| Actions server (`@agent-shield/actions-server`)      |      65 |
+| **Total**                                            | **994** |
 
 ## Security
 
