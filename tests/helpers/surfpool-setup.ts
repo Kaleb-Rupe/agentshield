@@ -276,9 +276,40 @@ export async function createWallet(
 }
 
 /**
+ * Ensure an SPL Token mint account exists at the given address.
+ * Needed for mints that don't exist on devnet (e.g., USDT).
+ * Writes a valid 82-byte SPL Token mint directly via surfnet_setAccount.
+ */
+export async function ensureMintExists(
+  connection: Connection,
+  mint: PublicKey,
+  decimals: number = 6,
+): Promise<void> {
+  const info = await connection.getAccountInfo(mint);
+  if (info) return; // already exists (lazily forked from devnet)
+
+  // SPL Token Mint layout: 82 bytes
+  const data = Buffer.alloc(82);
+  data.writeUInt32LE(0, 0); // mint_authority: None
+  // supply (u64 LE) at offset 36 = 0
+  data.writeUInt8(decimals, 44); // decimals
+  data.writeUInt8(1, 45); // is_initialized = true
+  data.writeUInt32LE(0, 46); // freeze_authority: None
+
+  await surfnetRpc(connection, "surfnet_setAccount", [
+    mint.toString(),
+    {
+      data: data.toString("hex"),
+      owner: TOKEN_PROGRAM_ID.toString(),
+      lamports: 1_000_000_000,
+    },
+  ]);
+}
+
+/**
  * Fund a wallet with SPL tokens via surfnet_setTokenAccount.
  * Creates/overrides the associated token account for the given mint.
- * Official API: surfnet_setTokenAccount(owner, mint, tokenProgram?, update)
+ * Official API: surfnet_setTokenAccount(owner, mint, update)
  */
 export async function fundWithTokens(
   connection: Connection,
@@ -299,8 +330,8 @@ export async function fundWithTokens(
 
 export interface TimeTravelOpts {
   absoluteSlot?: number;
-  timestamp?: number;
-  epoch?: number;
+  absoluteTimestamp?: number;
+  absoluteEpoch?: number;
 }
 
 /**

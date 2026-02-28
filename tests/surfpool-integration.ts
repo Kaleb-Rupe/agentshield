@@ -50,6 +50,7 @@ import {
   deriveSessionPda,
   nextVaultId,
   surfnetRpc,
+  ensureMintExists,
   VersionedTxResult,
 } from "./helpers/surfpool-setup";
 
@@ -836,6 +837,9 @@ describe("surfpool-integration", function () {
     });
 
     it("funds vault with USDT via surfnet_setTokenAccount", async () => {
+      // USDT mint may not exist on devnet — create it if needed
+      await ensureMintExists(env.connection, DEVNET_USDT_MINT, 6);
+
       vaultUsdtAta = await fundWithTokens(
         env.connection,
         vaultPda,
@@ -1373,9 +1377,9 @@ describe("surfpool-integration", function () {
       expect(pending.dailySpendingCapUsd!.toNumber()).to.equal(200_000_000);
 
       // Time travel past the timelock (60 seconds + buffer)
-      const currentClock = await getClock(env.connection);
+      // Surfnet absoluteTimestamp is in milliseconds
       await timeTravel(env.connection, {
-        timestamp: currentClock.timestamp + 120,
+        absoluteTimestamp: Date.now() + 120_000,
       });
 
       // Apply should now succeed
@@ -1396,8 +1400,9 @@ describe("surfpool-integration", function () {
     });
 
     it("apply fails before timelock expires", async () => {
-      // Queue another update
-      await program.methods
+      // Queue another update (use sendVersionedTx since Anchor .rpc()
+      // can have issues after time travel)
+      const queueIx = await program.methods
         .queuePolicyUpdate(
           new BN(300_000_000),
           null,
@@ -1418,20 +1423,24 @@ describe("surfpool-integration", function () {
           pendingPolicy: pendingPolicyPda,
           systemProgram: SystemProgram.programId,
         } as any)
-        .rpc();
+        .instruction();
+
+      await sendVersionedTx(env.connection, [queueIx], env.payer);
 
       // Try to apply immediately (without time travel)
+      const applyIx = await program.methods
+        .applyPendingPolicy()
+        .accounts({
+          owner: env.payer.publicKey,
+          vault: vaultPda,
+          policy: policyPda,
+          tracker: trackerPda,
+          pendingPolicy: pendingPolicyPda,
+        } as any)
+        .instruction();
+
       try {
-        await program.methods
-          .applyPendingPolicy()
-          .accounts({
-            owner: env.payer.publicKey,
-            vault: vaultPda,
-            policy: policyPda,
-            tracker: trackerPda,
-            pendingPolicy: pendingPolicyPda,
-          } as any)
-          .rpc();
+        await sendVersionedTx(env.connection, [applyIx], env.payer);
         expect.fail("Should have thrown TimelockNotExpired");
       } catch (err: any) {
         expect(err.toString()).to.include("TimelockNotExpired");

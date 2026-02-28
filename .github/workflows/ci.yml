@@ -7,7 +7,7 @@
 #   2. rust-checks            — cargo fmt + cargo clippy (conditional: rust changes or push)
 #   3. on-chain-tests         — Anchor build + LiteSVM 219 tests (conditional: rust changes or push)
 #  3b. build-verification     — Feature flag safety net (conditional: rust changes or push)
-#  3c. surfpool-integration   — Surfpool integration tests, ~22 tests (conditional: rust changes or push)
+#  3c. surfpool-integration   — Surfpool integration tests, 20 tests (conditional: rust changes or push)
 #   4. security-scan          — Sec3 X-Ray static analysis (always, BLOCKING)
 #   5. formal-verification    — Certora Solana Prover (conditional: certora changes, BLOCKING)
 #   6. fuzz-test              — Trident fuzz 1K iterations (conditional: rust changes or push, BLOCKING)
@@ -504,8 +504,8 @@ jobs:
             ~/.cargo/git
             ~/.cargo/bin
             target
-          key: surfpool-${{ runner.os }}-${{ hashFiles('programs/agent-shield/Cargo.lock') }}
-          restore-keys: surfpool-${{ runner.os }}-
+          key: surfpool-anchor-${{ runner.os }}-${{ hashFiles('programs/agent-shield/Cargo.lock') }}
+          restore-keys: surfpool-anchor-${{ runner.os }}-
 
       - name: Install Solana CLI
         run: |
@@ -524,7 +524,8 @@ jobs:
       - name: Install Surfpool CLI
         run: |
           if ! command -v surfpool &> /dev/null; then
-            cargo install surfpool-cli --locked
+            curl -sL https://run.surfpool.run/ | bash
+            echo "$HOME/.local/bin" >> $GITHUB_PATH
           fi
 
       - name: Install pnpm
