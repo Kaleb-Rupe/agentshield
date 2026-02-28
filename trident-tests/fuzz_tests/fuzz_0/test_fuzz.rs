@@ -807,6 +807,8 @@ impl FuzzTest {
             vault,
             session,
             session_rent_recipient: agent,
+            policy: policy_addr,
+            tracker: unwrap_or_ret!(self.fuzz_accounts.tracker.get(&mut self.trident)),
             vault_token_account: Some(vault_ata),
             output_stablecoin_account: None,
             token_program: spl_token::ID,
@@ -1201,12 +1203,17 @@ impl FuzzTest {
             });
 
         // Finalize with success=true — program should override to success=false
+        let policy_addr = unwrap_or_ret!(self.fuzz_accounts.policy.get(&mut self.trident));
+        let tracker_addr = unwrap_or_ret!(self.fuzz_accounts.tracker.get(&mut self.trident));
+
         let data = agent_shield::instruction::FinalizeSession { success: true };
         let accounts = agent_shield::accounts::FinalizeSession {
             payer: agent,
             vault,
             session: session_addr,
             session_rent_recipient: agent,
+            policy: policy_addr,
+            tracker: tracker_addr,
             vault_token_account: Some(vault_ata),
             output_stablecoin_account: None,
             token_program: spl_token::ID,
@@ -1250,6 +1257,8 @@ impl FuzzTest {
         let vault_ata = unwrap_or_ret!(
             self.fuzz_accounts.vault_token_account.get(&mut self.trident)
         );
+        let policy_addr = unwrap_or_ret!(self.fuzz_accounts.policy.get(&mut self.trident));
+        let tracker_addr = unwrap_or_ret!(self.fuzz_accounts.tracker.get(&mut self.trident));
 
         let data = agent_shield::instruction::FinalizeSession { success: true };
         let accounts = agent_shield::accounts::FinalizeSession {
@@ -1257,6 +1266,8 @@ impl FuzzTest {
             vault,
             session: session_addr,
             session_rent_recipient: agent,
+            policy: policy_addr,
+            tracker: tracker_addr,
             vault_token_account: Some(vault_ata),
             output_stablecoin_account: None,
             token_program: spl_token::ID,
