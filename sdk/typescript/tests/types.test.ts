@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { PublicKey } from "@solana/web3.js";
-import { AGENT_SHIELD_PROGRAM_ID } from "../src/index";
+import { PHALNX_PROGRAM_ID } from "../src/index";
 import {
   FEE_RATE_DENOMINATOR,
   PROTOCOL_FEE_RATE,
@@ -9,9 +9,9 @@ import {
 } from "../src/types";
 
 describe("Types — Constants", () => {
-  it("AGENT_SHIELD_PROGRAM_ID is a valid PublicKey", () => {
-    expect(AGENT_SHIELD_PROGRAM_ID).to.be.instanceOf(PublicKey);
-    expect(AGENT_SHIELD_PROGRAM_ID.toBase58()).to.equal(
+  it("PHALNX_PROGRAM_ID is a valid PublicKey", () => {
+    expect(PHALNX_PROGRAM_ID).to.be.instanceOf(PublicKey);
+    expect(PHALNX_PROGRAM_ID.toBase58()).to.equal(
       "4ZeVCqnjUgUtFrHHPG7jELUxvJeoVGHhGNgPrhBPwrHL",
     );
   });

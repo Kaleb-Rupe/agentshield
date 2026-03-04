@@ -10,8 +10,8 @@ export const setupStatusSchema = z.object({});
 export type SetupStatusInput = z.infer<typeof setupStatusSchema>;
 
 /**
- * Check the current AgentShield setup status.
- * Reads ~/.agentshield/config.json and reports layer status, wallet, policy, network.
+ * Check the current Phalnx setup status.
+ * Reads ~/.phalnx/config.json and reports layer status, wallet, policy, network.
  *
  * This tool works without an SDK client — it only reads local config.
  */
@@ -23,25 +23,25 @@ export async function setupStatus(
 
   if (!config) {
     return [
-      "## AgentShield Setup Status",
+      "## Phalnx Setup Status",
       "",
       "**Status:** Not configured",
       "",
-      "AgentShield is not configured on this machine.",
+      "Phalnx is not configured on this machine.",
       "",
-      "AgentShield provides on-chain guardrails for AI agents on Solana:",
+      "Phalnx provides on-chain guardrails for AI agents on Solana:",
       "- Client-side policy checks (fast deny)",
       "- TEE key custody (hardware enclave protection)",
       "- On-chain vault enforcement (blockchain-enforced policies)",
       "",
-      'Say "Set up AgentShield" to get started.',
+      'Say "Set up Phalnx" to get started.',
     ].join("\n");
   }
 
   const fullyConfigured = isFullyConfigured(config);
 
   const lines: string[] = [
-    "## AgentShield Setup Status",
+    "## Phalnx Setup Status",
     "",
     `**Status:** ${fullyConfigured ? "Fully configured" : "Partially configured"}`,
     `**Network:** ${config.network}`,
@@ -116,8 +116,8 @@ export async function setupStatus(
 export const setupStatusTool = {
   name: "shield_setup_status",
   description:
-    "Check the current AgentShield setup status. Shows wallet configuration, guardrails, and network. " +
-    "Works even when AgentShield is not configured — " +
+    "Check the current Phalnx setup status. Shows wallet configuration, guardrails, and network. " +
+    "Works even when Phalnx is not configured — " +
     "reports setup instructions in that case.",
   schema: setupStatusSchema,
   handler: setupStatus,

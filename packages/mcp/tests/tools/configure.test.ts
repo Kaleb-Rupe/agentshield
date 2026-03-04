@@ -7,7 +7,7 @@ import { configure } from "../../src/tools/configure";
 
 const MOCK_TEE_RESPONSE = {
   publicKey: "TESTpubkey111111111111111111111111111111111",
-  locator: "userId:agent-shield-test-1234",
+  locator: "userId:phalnx-test-1234",
 };
 
 describe("shield_configure", () => {
@@ -20,13 +20,13 @@ describe("shield_configure", () => {
   });
 
   beforeEach(() => {
-    const shieldDir = path.join(tmpHome, ".agentshield");
+    const shieldDir = path.join(tmpHome, ".phalnx");
     if (!fs.existsSync(shieldDir)) {
       fs.mkdirSync(shieldDir, { recursive: true });
     }
     process.env.HOME = tmpHome;
-    delete process.env.AGENTSHIELD_WALLET_PATH;
-    delete process.env.AGENTSHIELD_RPC_URL;
+    delete process.env.PHALNX_WALLET_PATH;
+    delete process.env.PHALNX_RPC_URL;
 
     // Stub global.fetch to prevent live network calls
     fetchStub = sinon.stub(global, "fetch").resolves(
@@ -41,14 +41,14 @@ describe("shield_configure", () => {
     process.env.HOME = origHome;
     fetchStub.restore();
     // Clean up config
-    const configPath = path.join(tmpHome, ".agentshield", "config.json");
+    const configPath = path.join(tmpHome, ".phalnx", "config.json");
     if (fs.existsSync(configPath)) {
       fs.unlinkSync(configPath);
     }
     // Clean up generated wallet
     const walletPath = path.join(
       tmpHome,
-      ".agentshield",
+      ".phalnx",
       "wallets",
       "agent.json",
     );
@@ -67,12 +67,12 @@ describe("shield_configure", () => {
       network: "devnet",
     });
 
-    expect(result).to.include("AgentShield Configured");
+    expect(result).to.include("Phalnx Configured");
     expect(result).to.include("$500");
     expect(result).to.include("devnet");
 
     // Verify config file created
-    const configPath = path.join(tmpHome, ".agentshield", "config.json");
+    const configPath = path.join(tmpHome, ".phalnx", "config.json");
     expect(fs.existsSync(configPath)).to.be.true;
 
     const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
@@ -93,7 +93,7 @@ describe("shield_configure", () => {
 
     const walletPath = path.join(
       tmpHome,
-      ".agentshield",
+      ".phalnx",
       "wallets",
       "agent.json",
     );
@@ -109,7 +109,7 @@ describe("shield_configure", () => {
     // Create a test keypair file
     const { Keypair } = await import("@solana/web3.js");
     const kp = Keypair.generate();
-    const walletDir = path.join(tmpHome, ".agentshield", "wallets");
+    const walletDir = path.join(tmpHome, ".phalnx", "wallets");
     fs.mkdirSync(walletDir, { recursive: true });
     const existingPath = path.join(walletDir, "existing.json");
     fs.writeFileSync(existingPath, JSON.stringify(Array.from(kp.secretKey)));
@@ -130,7 +130,7 @@ describe("shield_configure", () => {
       network: "devnet",
     });
 
-    const configPath = path.join(tmpHome, ".agentshield", "config.json");
+    const configPath = path.join(tmpHome, ".phalnx", "config.json");
     const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
     expect(config.layers.shield.dailySpendingCapUsd).to.equal(1000);
   });
@@ -141,7 +141,7 @@ describe("shield_configure", () => {
       network: "devnet",
     });
 
-    const configPath = path.join(tmpHome, ".agentshield", "config.json");
+    const configPath = path.join(tmpHome, ".phalnx", "config.json");
     const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
     expect(config.layers.shield.dailySpendingCapUsd).to.equal(2000);
     expect(config.layers.shield.maxLeverageBps).to.equal(20000);
@@ -154,7 +154,7 @@ describe("shield_configure", () => {
       network: "devnet",
     });
 
-    const configPath = path.join(tmpHome, ".agentshield", "config.json");
+    const configPath = path.join(tmpHome, ".phalnx", "config.json");
     const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
     expect(config.layers.shield.dailySpendingCapUsd).to.equal(10000);
     expect(config.layers.shield.maxLeverageBps).to.equal(50000);
@@ -167,7 +167,7 @@ describe("shield_configure", () => {
       network: "mainnet-beta",
     });
 
-    const configPath = path.join(tmpHome, ".agentshield", "config.json");
+    const configPath = path.join(tmpHome, ".phalnx", "config.json");
     const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
     expect(config.network).to.equal("mainnet-beta");
   });
@@ -198,7 +198,7 @@ describe("shield_configure", () => {
     expect(result).to.include("dial.to");
 
     // Config should have TEE + vault enabled
-    const configPath = path.join(tmpHome, ".agentshield", "config.json");
+    const configPath = path.join(tmpHome, ".phalnx", "config.json");
     const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
     expect(config.layers.tee.enabled).to.be.true;
     expect(config.layers.tee.publicKey).to.equal(MOCK_TEE_RESPONSE.publicKey);
@@ -236,7 +236,7 @@ describe("shield_configure", () => {
 
   it("reuses existing TEE wallet on retry (dedup guard)", async () => {
     // Pre-write a config with TEE already provisioned
-    const configPath = path.join(tmpHome, ".agentshield", "config.json");
+    const configPath = path.join(tmpHome, ".phalnx", "config.json");
     const existingConfig = {
       version: 1,
       layers: {
@@ -250,7 +250,7 @@ describe("shield_configure", () => {
         },
         tee: {
           enabled: true,
-          locator: "userId:agent-shield-existing-1234",
+          locator: "userId:phalnx-existing-1234",
           publicKey: "ExistingTEEpubkey111111111111111111111111111",
         },
         vault: { enabled: false, address: null, owner: null, vaultId: null },
@@ -295,19 +295,19 @@ describe("shield_configure", () => {
       }),
     };
     // We need to intercept require() for the custody adapter.
-    // The configure function uses require("@agent-shield/custody-crossmint").
+    // The configure function uses require("@phalnx/custody-crossmint").
     const Module = require("module");
     const origResolve = Module._resolveFilename;
     Module._resolveFilename = function (request: string, ...args: any[]) {
-      if (request === "@agent-shield/custody-crossmint") {
+      if (request === "@phalnx/custody-crossmint") {
         return request; // Return the name itself
       }
       return origResolve.call(this, request, ...args);
     };
-    const origCache = require.cache["@agent-shield/custody-crossmint"];
-    require.cache["@agent-shield/custody-crossmint"] = {
-      id: "@agent-shield/custody-crossmint",
-      filename: "@agent-shield/custody-crossmint",
+    const origCache = require.cache["@phalnx/custody-crossmint"];
+    require.cache["@phalnx/custody-crossmint"] = {
+      id: "@phalnx/custody-crossmint",
+      filename: "@phalnx/custody-crossmint",
       loaded: true,
       exports: mockModule,
     } as any;
@@ -324,13 +324,13 @@ describe("shield_configure", () => {
       expect(mockModule.crossmint.calledOnce).to.be.true;
       const callArgs = mockModule.crossmint.firstCall.args[0];
       expect(callArgs.apiKey).to.equal("test-crossmint-api-key");
-      expect(callArgs.linkedUser).to.include("userId:agent-shield-");
+      expect(callArgs.linkedUser).to.include("userId:phalnx-");
     } finally {
       Module._resolveFilename = origResolve;
       if (origCache) {
-        require.cache["@agent-shield/custody-crossmint"] = origCache;
+        require.cache["@phalnx/custody-crossmint"] = origCache;
       } else {
-        delete require.cache["@agent-shield/custody-crossmint"];
+        delete require.cache["@phalnx/custody-crossmint"];
       }
       if (origCrossmintKey) {
         process.env.CROSSMINT_API_KEY = origCrossmintKey;
@@ -345,14 +345,14 @@ describe("shield_configure", () => {
     process.env.CROSSMINT_API_KEY = "test-crossmint-api-key";
 
     // Ensure no cached module from previous test
-    delete require.cache["@agent-shield/custody-crossmint"];
+    delete require.cache["@phalnx/custody-crossmint"];
 
     // Override resolver to ensure require() fails (no cached resolution)
     const Module = require("module");
     const origResolve = Module._resolveFilename;
     Module._resolveFilename = function (request: string, ...args: any[]) {
-      if (request === "@agent-shield/custody-crossmint") {
-        throw new Error("Cannot find module '@agent-shield/custody-crossmint'");
+      if (request === "@phalnx/custody-crossmint") {
+        throw new Error("Cannot find module '@phalnx/custody-crossmint'");
       }
       return origResolve.call(this, request, ...args);
     };
@@ -363,7 +363,7 @@ describe("shield_configure", () => {
         network: "devnet",
       });
 
-      expect(result).to.include("@agent-shield/custody-crossmint");
+      expect(result).to.include("@phalnx/custody-crossmint");
       expect(result).to.include("not installed");
     } finally {
       Module._resolveFilename = origResolve;

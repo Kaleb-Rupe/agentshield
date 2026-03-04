@@ -4,13 +4,13 @@ import {
   getProtocolName as coreGetProtocolName,
   isSystemProgram as coreIsSystemProgram,
   isKnownProtocol as coreIsKnownProtocol,
-} from "@agent-shield/core";
+} from "@phalnx/core";
 
 export {
   KNOWN_PROTOCOLS,
   KNOWN_TOKENS,
   SYSTEM_PROGRAMS,
-} from "@agent-shield/core";
+} from "@phalnx/core";
 
 /**
  * Look up a token's symbol and decimals by mint address.

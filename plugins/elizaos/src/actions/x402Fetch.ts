@@ -43,7 +43,7 @@ export const x402FetchAction = {
   ) => {
     try {
       const { wallet } = await getOrCreateShieldedWallet(runtime);
-      const { shieldedFetch } = await import("@agent-shield/sdk");
+      const { shieldedFetch } = await import("@phalnx/sdk");
 
       // Extract URL from message
       const text = message.content?.text || "";
@@ -56,7 +56,7 @@ export const x402FetchAction = {
       }
 
       const url = urlMatch[0];
-      runtime.logger?.info(`[AgentShield] x402 fetch: ${url}`);
+      runtime.logger?.info(`[Phalnx] x402 fetch: ${url}`);
 
       const res = await shieldedFetch(wallet, url);
       const body = await res.text();
@@ -81,7 +81,7 @@ export const x402FetchAction = {
       callback({ text: lines.join("\n") });
     } catch (error: any) {
       runtime.logger?.error(
-        `[AgentShield] x402 fetch failed: ${error.message}`,
+        `[Phalnx] x402 fetch failed: ${error.message}`,
       );
       callback({
         text: `x402 fetch failed: ${error.message}`,

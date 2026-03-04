@@ -66,8 +66,8 @@ provisionTee.post("/api/actions/provision-tee", async (c) => {
     // Deterministic linkedUser when publicKey provided (idempotent),
     // otherwise fall back to timestamp (backwards compatible)
     const linkedUser = body.publicKey
-      ? `userId:agent-shield-${body.publicKey}`
-      : `userId:agent-shield-${Date.now()}`;
+      ? `userId:phalnx-${body.publicKey}`
+      : `userId:phalnx-${Date.now()}`;
 
     // Crossmint API: create a Solana wallet
     const crossmintUrl = `https://${network === "mainnet" ? "" : "staging."}crossmint.com/api/v1-alpha2/wallets`;
@@ -121,7 +121,7 @@ provisionTee.post("/api/actions/provision-tee", async (c) => {
 
     return c.json({ publicKey, locator }, 200, CORS_HEADERS);
   } catch (error) {
-    console.error("[AgentShield] provision-tee error:", error);
+    console.error("[Phalnx] provision-tee error:", error);
     return c.json({ error: "Internal server error" }, 500, CORS_HEADERS);
   }
 });

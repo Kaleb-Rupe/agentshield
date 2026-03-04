@@ -1,6 +1,6 @@
 import { Connection, Keypair, clusterApiUrl } from "@solana/web3.js";
 import { Wallet } from "@coral-xyz/anchor";
-import { AgentShieldClient } from "@agent-shield/sdk";
+import { PhalnxClient } from "@phalnx/sdk";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
@@ -48,7 +48,7 @@ export interface ShieldLocalConfig {
 
 /** Canonical config directory. */
 export function getConfigDir(): string {
-  return path.join(os.homedir(), ".agentshield");
+  return path.join(os.homedir(), ".phalnx");
 }
 
 /** Canonical config file path. */
@@ -72,7 +72,7 @@ function isValidConfig(obj: any): obj is ShieldLocalConfig {
 }
 
 /**
- * Load local shield config from ~/.agentshield/config.json.
+ * Load local shield config from ~/.phalnx/config.json.
  * Falls back to env vars for backwards compatibility with existing MCP installs.
  * Returns null if neither config file nor env vars exist.
  */
@@ -91,7 +91,7 @@ export function loadShieldConfig(): ShieldLocalConfig | null {
   }
 
   // Fall back to env vars (backwards compatible with existing installs)
-  const walletPath = process.env.AGENTSHIELD_WALLET_PATH;
+  const walletPath = process.env.PHALNX_WALLET_PATH;
   if (walletPath) {
     try {
       const kp = loadKeypair(walletPath);
@@ -114,7 +114,7 @@ export function loadShieldConfig(): ShieldLocalConfig | null {
           path: walletPath,
           publicKey: kp.publicKey.toBase58(),
         },
-        network: (process.env.AGENTSHIELD_RPC_URL?.includes("mainnet")
+        network: (process.env.PHALNX_RPC_URL?.includes("mainnet")
           ? "mainnet-beta"
           : "devnet") as "devnet" | "mainnet-beta",
         template: "conservative",
@@ -129,7 +129,7 @@ export function loadShieldConfig(): ShieldLocalConfig | null {
 }
 
 /**
- * Save local shield config to ~/.agentshield/config.json.
+ * Save local shield config to ~/.phalnx/config.json.
  * Creates the directory if needed. Sets file permissions to 0600.
  */
 export function saveShieldConfig(config: ShieldLocalConfig): void {
@@ -144,14 +144,14 @@ export function saveShieldConfig(config: ShieldLocalConfig): void {
 }
 
 /**
- * Returns true if AgentShield is configured (config file exists or env vars set).
+ * Returns true if Phalnx is configured (config file exists or env vars set).
  */
 export function isConfigured(): boolean {
   return loadShieldConfig() !== null;
 }
 
 /**
- * Returns true if AgentShield is fully configured (all three layers enabled).
+ * Returns true if Phalnx is fully configured (all three layers enabled).
  */
 export function isFullyConfigured(config: ShieldLocalConfig): boolean {
   return (
@@ -175,12 +175,12 @@ export interface McpConfig {
 }
 
 export function loadConfig(): McpConfig {
-  const rpcUrl = process.env.AGENTSHIELD_RPC_URL || clusterApiUrl("devnet");
+  const rpcUrl = process.env.PHALNX_RPC_URL || clusterApiUrl("devnet");
 
   const agentKeypairPath =
-    process.env.AGENTSHIELD_AGENT_KEYPAIR_PATH || undefined;
+    process.env.PHALNX_AGENT_KEYPAIR_PATH || undefined;
 
-  const custodyProvider = process.env.AGENTSHIELD_CUSTODY as
+  const custodyProvider = process.env.PHALNX_CUSTODY as
     | McpCustodyProvider
     | undefined;
 
@@ -196,12 +196,12 @@ export function loadConfig(): McpConfig {
   }
 
   // Legacy path — keypair file required
-  const walletPath = process.env.AGENTSHIELD_WALLET_PATH;
+  const walletPath = process.env.PHALNX_WALLET_PATH;
   if (!walletPath) {
     throw new Error(
-      "AGENTSHIELD_WALLET_PATH is required (or set AGENTSHIELD_CUSTODY " +
+      "PHALNX_WALLET_PATH is required (or set PHALNX_CUSTODY " +
         "to a custody provider: crossmint, turnkey, privy). " +
-        "Set AGENTSHIELD_WALLET_PATH to the path of your Solana keypair JSON file.",
+        "Set PHALNX_WALLET_PATH to the path of your Solana keypair JSON file.",
     );
   }
 
@@ -217,7 +217,7 @@ export function loadKeypair(filePath: string): Keypair {
   return Keypair.fromSecretKey(secretKey);
 }
 
-export function createClient(config: McpConfig): AgentShieldClient {
+export function createClient(config: McpConfig): PhalnxClient {
   if (!config.walletPath) {
     throw new Error(
       "createClient requires walletPath. " +
@@ -227,7 +227,7 @@ export function createClient(config: McpConfig): AgentShieldClient {
   const keypair = loadKeypair(config.walletPath);
   const wallet = new Wallet(keypair);
   const connection = new Connection(config.rpcUrl, "confirmed");
-  return new AgentShieldClient(connection, wallet);
+  return new PhalnxClient(connection, wallet);
 }
 
 /**
@@ -242,17 +242,17 @@ export async function createCustodyWallet(config: McpConfig): Promise<{
     case "crossmint": {
       if (!config.crossmintApiKey) {
         throw new Error(
-          "CROSSMINT_API_KEY is required when AGENTSHIELD_CUSTODY=crossmint.",
+          "CROSSMINT_API_KEY is required when PHALNX_CUSTODY=crossmint.",
         );
       }
       // Dynamic require to avoid hard dependency on custody adapter.
       let mod: any;
       try {
-        mod = require("@agent-shield/custody-crossmint");
+        mod = require("@phalnx/custody-crossmint");
       } catch {
         throw new Error(
-          "@agent-shield/custody-crossmint is not installed. " +
-            "Run: npm install @agent-shield/custody-crossmint",
+          "@phalnx/custody-crossmint is not installed. " +
+            "Run: npm install @phalnx/custody-crossmint",
         );
       }
       return mod.crossmint({
@@ -263,12 +263,12 @@ export async function createCustodyWallet(config: McpConfig): Promise<{
     case "turnkey":
       throw new Error(
         "Turnkey custody adapter is not yet available. " +
-          "Install @agent-shield/custody-turnkey when released.",
+          "Install @phalnx/custody-turnkey when released.",
       );
     case "privy":
       throw new Error(
         "Privy custody adapter is not yet available. " +
-          "Install @agent-shield/custody-privy when released.",
+          "Install @phalnx/custody-privy when released.",
       );
     default:
       throw new Error(
@@ -287,21 +287,21 @@ export interface CustodyWalletLike {
 
 /** RPC URL helper: env override or clusterApiUrl fallback. */
 export function rpcUrlForNetwork(network: "devnet" | "mainnet-beta"): string {
-  return process.env.AGENTSHIELD_RPC_URL || clusterApiUrl(network);
+  return process.env.PHALNX_RPC_URL || clusterApiUrl(network);
 }
 
 /**
- * Create an AgentShieldClient backed by a custody wallet.
+ * Create an PhalnxClient backed by a custody wallet.
  * Duck-typed: CrossmintWallet has publicKey, signTransaction, signAllTransactions.
  */
 export async function createCustodyClient(
   config: McpConfig,
-): Promise<{ client: AgentShieldClient; custodyWallet: CustodyWalletLike }> {
+): Promise<{ client: PhalnxClient; custodyWallet: CustodyWalletLike }> {
   const custodyWallet = (await createCustodyWallet(
     config,
   )) as CustodyWalletLike;
   const connection = new Connection(config.rpcUrl, "confirmed");
-  const client = new AgentShieldClient(
+  const client = new PhalnxClient(
     connection,
     custodyWallet as any as import("@coral-xyz/anchor").Wallet,
   );
@@ -309,7 +309,7 @@ export async function createCustodyClient(
 }
 
 /**
- * Resolve an AgentShieldClient from the best available config source.
+ * Resolve an PhalnxClient from the best available config source.
  *
  * Priority:
  * 1. File-based config (from shield_configure)
@@ -321,7 +321,7 @@ export async function createCustodyClient(
  * 3. null if nothing works
  */
 export async function resolveClient(): Promise<{
-  client: AgentShieldClient;
+  client: PhalnxClient;
   config: McpConfig;
   custodyWallet: CustodyWalletLike | null;
 } | null> {
@@ -379,7 +379,7 @@ export async function resolveClient(): Promise<{
 export function loadAgentKeypair(config: McpConfig): Keypair {
   if (!config.agentKeypairPath) {
     throw new Error(
-      "AGENTSHIELD_AGENT_KEYPAIR_PATH is required for agent-signed operations. " +
+      "PHALNX_AGENT_KEYPAIR_PATH is required for agent-signed operations. " +
         "Set it to the path of the agent's Solana keypair JSON file.",
     );
   }
@@ -390,7 +390,7 @@ export function loadOwnerKeypair(config: McpConfig): Keypair {
   if (!config.walletPath) {
     throw new Error(
       "Wallet path is required for Squads multisig operations. " +
-        "Configure with shield_configure or set AGENTSHIELD_WALLET_PATH.",
+        "Configure with shield_configure or set PHALNX_WALLET_PATH.",
     );
   }
   return loadKeypair(config.walletPath);

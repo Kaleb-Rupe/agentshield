@@ -100,7 +100,7 @@ export const configureSchema = z.object({
 export type ConfigureInput = z.input<typeof configureSchema>;
 
 /**
- * Set up AgentShield with full on-chain guardrails.
+ * Set up Phalnx with full on-chain guardrails.
  * Generates keypair, provisions TEE wallet, and creates vault Blink URL.
  */
 export async function configure(
@@ -177,7 +177,7 @@ export async function configure(
     };
 
     const lines: string[] = [
-      "## AgentShield Configured",
+      "## Phalnx Configured",
       "",
       `**Wallet:** ${walletPublicKey}`,
       `**Network:** ${config.network}`,
@@ -212,11 +212,11 @@ export async function configure(
       try {
         let mod: any;
         try {
-          mod = require("@agent-shield/custody-crossmint");
+          mod = require("@phalnx/custody-crossmint");
         } catch {
           return (
-            "Error: @agent-shield/custody-crossmint is not installed.\n" +
-            "Run: npm install @agent-shield/custody-crossmint"
+            "Error: @phalnx/custody-crossmint is not installed.\n" +
+            "Run: npm install @phalnx/custody-crossmint"
           );
         }
         const baseUrl =
@@ -226,12 +226,12 @@ export async function configure(
         const custodyWallet = await mod.crossmint({
           apiKey: process.env.CROSSMINT_API_KEY,
           baseUrl,
-          linkedUser: `userId:agent-shield-${walletPublicKey}`,
+          linkedUser: `userId:phalnx-${walletPublicKey}`,
         });
 
         config.layers.tee = {
           enabled: true,
-          locator: `userId:agent-shield-${walletPublicKey}`,
+          locator: `userId:phalnx-${walletPublicKey}`,
           publicKey: custodyWallet.publicKey.toBase58(),
         };
         config.wallet.type = "crossmint";
@@ -286,7 +286,7 @@ export async function configure(
         );
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
-        return `Error connecting to AgentShield platform for TEE provisioning: ${msg}`;
+        return `Error connecting to Phalnx platform for TEE provisioning: ${msg}`;
       }
     }
 
@@ -327,14 +327,14 @@ export async function configure(
     return lines.join("\n");
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    return `Error configuring AgentShield: ${msg}`;
+    return `Error configuring Phalnx: ${msg}`;
   }
 }
 
 export const configureTool = {
   name: "shield_configure",
   description:
-    "Set up AgentShield with full on-chain guardrails. " +
+    "Set up Phalnx with full on-chain guardrails. " +
     "Generates keypair, provisions TEE wallet, and creates vault Blink URL.",
   schema: configureSchema,
   handler: configure,

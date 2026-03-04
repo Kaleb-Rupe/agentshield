@@ -10,7 +10,7 @@
  */
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { AgentShield } from "../target/types/agent_shield";
+import { Phalnx } from "../target/types/phalnx";
 import {
   Keypair,
   PublicKey,
@@ -54,10 +54,12 @@ import {
   VersionedTxResult,
 } from "./helpers/surfpool-setup";
 
+const FULL_PERMISSIONS = new BN((1n << 21n) - 1n);
+
 // ─── Shared state ───────────────────────────────────────────────────────────
 
 let env: SurfpoolTestEnv;
-let program: Program<AgentShield>;
+let program: Program<Phalnx>;
 
 describe("surfpool-integration", function () {
   this.timeout(300_000); // 5 min global timeout
@@ -147,7 +149,7 @@ describe("surfpool-integration", function () {
     it("registers agent and deposits USDC", async () => {
       // Register agent
       await program.methods
-        .registerAgent(agent.publicKey)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
         .accounts({
           owner: env.payer.publicKey,
           vault: vaultPda,
@@ -155,7 +157,7 @@ describe("surfpool-integration", function () {
         .rpc();
 
       const vault = await program.account.agentVault.fetch(vaultPda);
-      expect(vault.agent.toString()).to.equal(agent.publicKey.toString());
+      expect(vault.agents[0].pubkey.toString()).to.equal(agent.publicKey.toString());
 
       // Create vault ATA and fund it
       vaultUsdcAta = getAssociatedTokenAddressSync(
@@ -306,7 +308,7 @@ describe("surfpool-integration", function () {
         .rpc();
 
       await program.methods
-        .registerAgent(agent.publicKey)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
         .accounts({
           owner: env.payer.publicKey,
           vault: vaultPda,
@@ -556,7 +558,7 @@ describe("surfpool-integration", function () {
         .rpc();
 
       await program.methods
-        .registerAgent(agent.publicKey)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
         .accounts({
           owner: env.payer.publicKey,
           vault: vaultPda,
@@ -826,7 +828,7 @@ describe("surfpool-integration", function () {
         .rpc();
 
       await program.methods
-        .registerAgent(agent.publicKey)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
         .accounts({
           owner: env.payer.publicKey,
           vault: vaultPda,
@@ -997,7 +999,7 @@ describe("surfpool-integration", function () {
         .rpc();
 
       await program.methods
-        .registerAgent(agent.publicKey)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
         .accounts({
           owner: env.payer.publicKey,
           vault: vaultPda,

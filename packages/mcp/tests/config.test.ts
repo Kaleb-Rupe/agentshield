@@ -33,50 +33,50 @@ describe("config", () => {
     let originalAgentPath: string | undefined;
 
     beforeEach(() => {
-      originalWalletPath = process.env.AGENTSHIELD_WALLET_PATH;
-      originalRpcUrl = process.env.AGENTSHIELD_RPC_URL;
-      originalAgentPath = process.env.AGENTSHIELD_AGENT_KEYPAIR_PATH;
+      originalWalletPath = process.env.PHALNX_WALLET_PATH;
+      originalRpcUrl = process.env.PHALNX_RPC_URL;
+      originalAgentPath = process.env.PHALNX_AGENT_KEYPAIR_PATH;
     });
 
     afterEach(() => {
       if (originalWalletPath !== undefined)
-        process.env.AGENTSHIELD_WALLET_PATH = originalWalletPath;
-      else delete process.env.AGENTSHIELD_WALLET_PATH;
+        process.env.PHALNX_WALLET_PATH = originalWalletPath;
+      else delete process.env.PHALNX_WALLET_PATH;
 
       if (originalRpcUrl !== undefined)
-        process.env.AGENTSHIELD_RPC_URL = originalRpcUrl;
-      else delete process.env.AGENTSHIELD_RPC_URL;
+        process.env.PHALNX_RPC_URL = originalRpcUrl;
+      else delete process.env.PHALNX_RPC_URL;
 
       if (originalAgentPath !== undefined)
-        process.env.AGENTSHIELD_AGENT_KEYPAIR_PATH = originalAgentPath;
-      else delete process.env.AGENTSHIELD_AGENT_KEYPAIR_PATH;
+        process.env.PHALNX_AGENT_KEYPAIR_PATH = originalAgentPath;
+      else delete process.env.PHALNX_AGENT_KEYPAIR_PATH;
     });
 
-    it("throws when AGENTSHIELD_WALLET_PATH is not set", () => {
-      delete process.env.AGENTSHIELD_WALLET_PATH;
+    it("throws when PHALNX_WALLET_PATH is not set", () => {
+      delete process.env.PHALNX_WALLET_PATH;
       expect(() => loadConfig()).to.throw(
-        "AGENTSHIELD_WALLET_PATH is required",
+        "PHALNX_WALLET_PATH is required",
       );
     });
 
     it("loads config with required env vars", () => {
-      process.env.AGENTSHIELD_WALLET_PATH = keypairPath;
-      delete process.env.AGENTSHIELD_RPC_URL;
+      process.env.PHALNX_WALLET_PATH = keypairPath;
+      delete process.env.PHALNX_RPC_URL;
       const config = loadConfig();
       expect(config.walletPath).to.equal(keypairPath);
       expect(config.rpcUrl).to.include("devnet");
     });
 
     it("uses custom RPC URL when provided", () => {
-      process.env.AGENTSHIELD_WALLET_PATH = keypairPath;
-      process.env.AGENTSHIELD_RPC_URL = "http://localhost:8899";
+      process.env.PHALNX_WALLET_PATH = keypairPath;
+      process.env.PHALNX_RPC_URL = "http://localhost:8899";
       const config = loadConfig();
       expect(config.rpcUrl).to.equal("http://localhost:8899");
     });
 
     it("loads agent keypair path when provided", () => {
-      process.env.AGENTSHIELD_WALLET_PATH = keypairPath;
-      process.env.AGENTSHIELD_AGENT_KEYPAIR_PATH = keypairPath;
+      process.env.PHALNX_WALLET_PATH = keypairPath;
+      process.env.PHALNX_AGENT_KEYPAIR_PATH = keypairPath;
       const config = loadConfig();
       expect(config.agentKeypairPath).to.equal(keypairPath);
     });
@@ -118,7 +118,7 @@ describe("config", () => {
     it("throws when agentKeypairPath is not set", () => {
       expect(() =>
         loadAgentKeypair({ walletPath: keypairPath, rpcUrl: "" }),
-      ).to.throw("AGENTSHIELD_AGENT_KEYPAIR_PATH is required");
+      ).to.throw("PHALNX_AGENT_KEYPAIR_PATH is required");
     });
   });
 
@@ -128,10 +128,10 @@ describe("config", () => {
 
     beforeEach(() => {
       tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "schema-test-"));
-      const shieldDir = path.join(tmpHome, ".agentshield");
+      const shieldDir = path.join(tmpHome, ".phalnx");
       fs.mkdirSync(shieldDir, { recursive: true });
       process.env.HOME = tmpHome;
-      delete process.env.AGENTSHIELD_WALLET_PATH;
+      delete process.env.PHALNX_WALLET_PATH;
     });
 
     afterEach(() => {
@@ -140,20 +140,20 @@ describe("config", () => {
     });
 
     it("returns null for malformed JSON", () => {
-      const configPath = path.join(tmpHome, ".agentshield", "config.json");
+      const configPath = path.join(tmpHome, ".phalnx", "config.json");
       fs.writeFileSync(configPath, "{ not valid json !!!");
       expect(loadShieldConfig()).to.be.null;
     });
 
     it("returns null when required fields are missing", () => {
-      const configPath = path.join(tmpHome, ".agentshield", "config.json");
+      const configPath = path.join(tmpHome, ".phalnx", "config.json");
       // Valid JSON but missing required structure
       fs.writeFileSync(configPath, JSON.stringify({ version: 1 }));
       expect(loadShieldConfig()).to.be.null;
     });
 
     it("returns null for wrong version", () => {
-      const configPath = path.join(tmpHome, ".agentshield", "config.json");
+      const configPath = path.join(tmpHome, ".phalnx", "config.json");
       fs.writeFileSync(
         configPath,
         JSON.stringify({
@@ -189,7 +189,7 @@ describe("config", () => {
     });
 
     it("returns config for valid file", () => {
-      const configPath = path.join(tmpHome, ".agentshield", "config.json");
+      const configPath = path.join(tmpHome, ".phalnx", "config.json");
       fs.writeFileSync(
         configPath,
         JSON.stringify({
@@ -238,32 +238,32 @@ describe("config", () => {
 
     beforeEach(() => {
       tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "resolve-client-"));
-      const shieldDir = path.join(tmpHome, ".agentshield");
+      const shieldDir = path.join(tmpHome, ".phalnx");
       fs.mkdirSync(shieldDir, { recursive: true });
       process.env.HOME = tmpHome;
 
-      origWalletPath = process.env.AGENTSHIELD_WALLET_PATH;
-      origRpcUrl = process.env.AGENTSHIELD_RPC_URL;
-      origCustody = process.env.AGENTSHIELD_CUSTODY;
+      origWalletPath = process.env.PHALNX_WALLET_PATH;
+      origRpcUrl = process.env.PHALNX_RPC_URL;
+      origCustody = process.env.PHALNX_CUSTODY;
       origCrossmintKey = process.env.CROSSMINT_API_KEY;
 
-      delete process.env.AGENTSHIELD_WALLET_PATH;
-      delete process.env.AGENTSHIELD_RPC_URL;
-      delete process.env.AGENTSHIELD_CUSTODY;
+      delete process.env.PHALNX_WALLET_PATH;
+      delete process.env.PHALNX_RPC_URL;
+      delete process.env.PHALNX_CUSTODY;
       delete process.env.CROSSMINT_API_KEY;
     });
 
     afterEach(() => {
       process.env.HOME = origHome;
       if (origWalletPath !== undefined)
-        process.env.AGENTSHIELD_WALLET_PATH = origWalletPath;
-      else delete process.env.AGENTSHIELD_WALLET_PATH;
+        process.env.PHALNX_WALLET_PATH = origWalletPath;
+      else delete process.env.PHALNX_WALLET_PATH;
       if (origRpcUrl !== undefined)
-        process.env.AGENTSHIELD_RPC_URL = origRpcUrl;
-      else delete process.env.AGENTSHIELD_RPC_URL;
+        process.env.PHALNX_RPC_URL = origRpcUrl;
+      else delete process.env.PHALNX_RPC_URL;
       if (origCustody !== undefined)
-        process.env.AGENTSHIELD_CUSTODY = origCustody;
-      else delete process.env.AGENTSHIELD_CUSTODY;
+        process.env.PHALNX_CUSTODY = origCustody;
+      else delete process.env.PHALNX_CUSTODY;
       if (origCrossmintKey !== undefined)
         process.env.CROSSMINT_API_KEY = origCrossmintKey;
       else delete process.env.CROSSMINT_API_KEY;
@@ -279,13 +279,13 @@ describe("config", () => {
     it("resolves from config.json with keypair type", async () => {
       // Write a keypair file
       const kp = Keypair.generate();
-      const walletDir = path.join(tmpHome, ".agentshield", "wallets");
+      const walletDir = path.join(tmpHome, ".phalnx", "wallets");
       fs.mkdirSync(walletDir, { recursive: true });
       const walletFile = path.join(walletDir, "agent.json");
       fs.writeFileSync(walletFile, JSON.stringify(Array.from(kp.secretKey)));
 
       // Write config.json
-      const configPath = path.join(tmpHome, ".agentshield", "config.json");
+      const configPath = path.join(tmpHome, ".phalnx", "config.json");
       fs.writeFileSync(
         configPath,
         JSON.stringify({
@@ -326,7 +326,7 @@ describe("config", () => {
     });
 
     it("falls back to env vars when no config.json", async () => {
-      process.env.AGENTSHIELD_WALLET_PATH = keypairPath;
+      process.env.PHALNX_WALLET_PATH = keypairPath;
       const result = await resolveClient();
       expect(result).to.not.be.null;
       expect(result!.custodyWallet).to.be.null;
@@ -335,7 +335,7 @@ describe("config", () => {
 
     it("throws clear error when crossmint config but CROSSMINT_API_KEY missing", async () => {
       // Write config.json with crossmint type but no API key
-      const configPath = path.join(tmpHome, ".agentshield", "config.json");
+      const configPath = path.join(tmpHome, ".phalnx", "config.json");
       fs.writeFileSync(
         configPath,
         JSON.stringify({
@@ -351,7 +351,7 @@ describe("config", () => {
             },
             tee: {
               enabled: true,
-              locator: "userId:agent-shield-test",
+              locator: "userId:phalnx-test",
               publicKey: "TestPubkey11111111111111111111111111111111",
             },
             vault: {

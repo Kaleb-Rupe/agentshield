@@ -9,7 +9,7 @@
  */
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { AgentShield } from "../../target/types/agent_shield";
+import { Phalnx } from "../../target/types/phalnx";
 import {
   Connection,
   Keypair,
@@ -97,7 +97,7 @@ export async function waitForReady(
       // Register IDL for account parsing in Studio
       const idlPath = path.resolve(
         __dirname,
-        "../../target/idl/agent_shield.json",
+        "../../target/idl/phalnx.json",
       );
       if (fs.existsSync(idlPath)) {
         const idl = JSON.parse(fs.readFileSync(idlPath, "utf-8"));
@@ -124,7 +124,7 @@ export async function waitForReady(
 // ─── Local program deployment ────────────────────────────────────────────────
 
 /**
- * Deploy the local agent_shield.so to Surfnet via `solana program deploy`.
+ * Deploy the local phalnx.so to Surfnet via `solana program deploy`.
  *
  * surfnet_setAccount alone does NOT update the SVM's compiled program cache.
  * The standard BPF Loader Deploy instruction is required to properly reload
@@ -134,7 +134,7 @@ export async function waitForReady(
  *   3. Run `solana program deploy` which triggers a proper BPF reload
  */
 async function deployLocalProgram(connection: Connection): Promise<void> {
-  const soPath = path.resolve(__dirname, "../../target/deploy/agent_shield.so");
+  const soPath = path.resolve(__dirname, "../../target/deploy/phalnx.so");
   if (!fs.existsSync(soPath)) {
     throw new Error(
       `Program .so not found at ${soPath}. Run 'anchor build --no-idl' first.`,
@@ -210,7 +210,7 @@ async function deployLocalProgram(connection: Connection): Promise<void> {
 export interface SurfpoolTestEnv {
   connection: Connection;
   provider: anchor.AnchorProvider;
-  program: Program<AgentShield>;
+  program: Program<Phalnx>;
   payer: Keypair;
 }
 
@@ -237,10 +237,10 @@ export async function createSurfpoolTestEnv(): Promise<SurfpoolTestEnv> {
   });
   anchor.setProvider(provider);
 
-  const program = new Program<AgentShield>(
+  const program = new Program<Phalnx>(
     JSON.parse(
       fs.readFileSync(
-        path.resolve(__dirname, "../../target/idl/agent_shield.json"),
+        path.resolve(__dirname, "../../target/idl/phalnx.json"),
         "utf-8",
       ),
     ),

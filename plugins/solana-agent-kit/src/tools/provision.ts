@@ -5,7 +5,7 @@ export const provisionSchema = z.object({
     .string()
     .optional()
     .describe(
-      "AgentShield platform URL (default: https://app.agentshield.dev)",
+      "Phalnx platform URL (default: https://app.phalnx.io)",
     ),
   template: z
     .enum(["conservative", "moderate", "aggressive"])
@@ -32,7 +32,7 @@ export async function provision(
   _config: any,
   input: ProvisionInput,
 ): Promise<string> {
-  const baseUrl = (input.platformUrl || "https://app.agentshield.dev").replace(
+  const baseUrl = (input.platformUrl || "https://app.phalnx.io").replace(
     /\/$/,
     "",
   );
