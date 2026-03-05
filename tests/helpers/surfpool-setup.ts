@@ -95,10 +95,7 @@ export async function waitForReady(
     try {
       await connection.getSlot();
       // Register IDL for account parsing in Studio
-      const idlPath = path.resolve(
-        __dirname,
-        "../../target/idl/phalnx.json",
-      );
+      const idlPath = path.resolve(__dirname, "../../target/idl/phalnx.json");
       if (fs.existsSync(idlPath)) {
         const idl = JSON.parse(fs.readFileSync(idlPath, "utf-8"));
         try {

@@ -10,6 +10,8 @@ import {
   loadShieldConfig,
   saveShieldConfig,
   resolveClient,
+  createCustodyWallet,
+  type McpConfig,
 } from "../src/config";
 
 describe("config", () => {
@@ -54,9 +56,7 @@ describe("config", () => {
 
     it("throws when PHALNX_WALLET_PATH is not set", () => {
       delete process.env.PHALNX_WALLET_PATH;
-      expect(() => loadConfig()).to.throw(
-        "PHALNX_WALLET_PATH is required",
-      );
+      expect(() => loadConfig()).to.throw("PHALNX_WALLET_PATH is required");
     });
 
     it("loads config with required env vars", () => {
@@ -258,11 +258,9 @@ describe("config", () => {
       if (origWalletPath !== undefined)
         process.env.PHALNX_WALLET_PATH = origWalletPath;
       else delete process.env.PHALNX_WALLET_PATH;
-      if (origRpcUrl !== undefined)
-        process.env.PHALNX_RPC_URL = origRpcUrl;
+      if (origRpcUrl !== undefined) process.env.PHALNX_RPC_URL = origRpcUrl;
       else delete process.env.PHALNX_RPC_URL;
-      if (origCustody !== undefined)
-        process.env.PHALNX_CUSTODY = origCustody;
+      if (origCustody !== undefined) process.env.PHALNX_CUSTODY = origCustody;
       else delete process.env.PHALNX_CUSTODY;
       if (origCrossmintKey !== undefined)
         process.env.CROSSMINT_API_KEY = origCrossmintKey;
@@ -378,6 +376,231 @@ describe("config", () => {
       } catch (err: any) {
         expect(err.message).to.include("CROSSMINT_API_KEY");
       }
+    });
+
+    it("throws clear error when privy config but env vars missing", async () => {
+      const configPath = path.join(tmpHome, ".phalnx", "config.json");
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify({
+          version: 1,
+          layers: {
+            shield: {
+              enabled: true,
+              dailySpendingCapUsd: 500,
+              protocolMode: 0,
+              protocols: [],
+              maxLeverageBps: 0,
+              rateLimit: 60,
+            },
+            tee: {
+              enabled: true,
+              locator: "wlt_privy_123",
+              publicKey: "TestPubkey11111111111111111111111111111111",
+            },
+            vault: {
+              enabled: false,
+              address: null,
+              owner: null,
+              vaultId: null,
+            },
+          },
+          wallet: {
+            type: "privy",
+            path: null,
+            publicKey: "TestPubkey11111111111111111111111111111111",
+          },
+          network: "devnet",
+          template: "conservative",
+          configuredAt: new Date().toISOString(),
+        }),
+      );
+
+      delete process.env.PRIVY_APP_ID;
+      delete process.env.PRIVY_APP_SECRET;
+
+      try {
+        await resolveClient();
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.message).to.include("PRIVY_APP_ID");
+      }
+    });
+
+    it("throws clear error when turnkey config but env vars missing", async () => {
+      const configPath = path.join(tmpHome, ".phalnx", "config.json");
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify({
+          version: 1,
+          layers: {
+            shield: {
+              enabled: true,
+              dailySpendingCapUsd: 500,
+              protocolMode: 0,
+              protocols: [],
+              maxLeverageBps: 0,
+              rateLimit: 60,
+            },
+            tee: {
+              enabled: true,
+              locator: "wlt_turnkey_123",
+              publicKey: "TestPubkey11111111111111111111111111111111",
+            },
+            vault: {
+              enabled: false,
+              address: null,
+              owner: null,
+              vaultId: null,
+            },
+          },
+          wallet: {
+            type: "turnkey",
+            path: null,
+            publicKey: "TestPubkey11111111111111111111111111111111",
+          },
+          network: "devnet",
+          template: "conservative",
+          configuredAt: new Date().toISOString(),
+        }),
+      );
+
+      delete process.env.TURNKEY_ORGANIZATION_ID;
+      delete process.env.TURNKEY_API_KEY_ID;
+      delete process.env.TURNKEY_API_PRIVATE_KEY;
+
+      try {
+        await resolveClient();
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.message).to.include("TURNKEY_ORGANIZATION_ID");
+      }
+    });
+  });
+
+  describe("createCustodyWallet", () => {
+    it("throws for privy when credentials missing", async () => {
+      const config: McpConfig = {
+        rpcUrl: "https://mock.rpc",
+        custodyProvider: "privy",
+      };
+      try {
+        await createCustodyWallet(config);
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.message).to.include("PRIVY_APP_ID");
+      }
+    });
+
+    it("throws for turnkey when credentials missing", async () => {
+      const config: McpConfig = {
+        rpcUrl: "https://mock.rpc",
+        custodyProvider: "turnkey",
+      };
+      try {
+        await createCustodyWallet(config);
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.message).to.include("TURNKEY_ORGANIZATION_ID");
+      }
+    });
+
+    it("throws for crossmint when API key missing", async () => {
+      const config: McpConfig = {
+        rpcUrl: "https://mock.rpc",
+        custodyProvider: "crossmint",
+      };
+      try {
+        await createCustodyWallet(config);
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.message).to.include("CROSSMINT_API_KEY");
+      }
+    });
+
+    it("throws for unknown provider", async () => {
+      const config: McpConfig = {
+        rpcUrl: "https://mock.rpc",
+        custodyProvider: "unknown" as any,
+      };
+      try {
+        await createCustodyWallet(config);
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.message).to.include("Unknown custody provider");
+      }
+    });
+  });
+
+  describe("loadConfig with custody provider", () => {
+    let origCustody: string | undefined;
+    let origWalletPath: string | undefined;
+    let origPrivyId: string | undefined;
+    let origPrivySecret: string | undefined;
+    let origTurnkeyOrg: string | undefined;
+    let origTurnkeyKey: string | undefined;
+    let origTurnkeyPk: string | undefined;
+
+    beforeEach(() => {
+      origCustody = process.env.PHALNX_CUSTODY;
+      origWalletPath = process.env.PHALNX_WALLET_PATH;
+      origPrivyId = process.env.PRIVY_APP_ID;
+      origPrivySecret = process.env.PRIVY_APP_SECRET;
+      origTurnkeyOrg = process.env.TURNKEY_ORGANIZATION_ID;
+      origTurnkeyKey = process.env.TURNKEY_API_KEY_ID;
+      origTurnkeyPk = process.env.TURNKEY_API_PRIVATE_KEY;
+    });
+
+    afterEach(() => {
+      const envPairs: [string, string | undefined][] = [
+        ["PHALNX_CUSTODY", origCustody],
+        ["PHALNX_WALLET_PATH", origWalletPath],
+        ["PRIVY_APP_ID", origPrivyId],
+        ["PRIVY_APP_SECRET", origPrivySecret],
+        ["TURNKEY_ORGANIZATION_ID", origTurnkeyOrg],
+        ["TURNKEY_API_KEY_ID", origTurnkeyKey],
+        ["TURNKEY_API_PRIVATE_KEY", origTurnkeyPk],
+      ];
+      for (const [key, val] of envPairs) {
+        if (val !== undefined) process.env[key] = val;
+        else delete process.env[key];
+      }
+    });
+
+    it("parses privy env vars when PHALNX_CUSTODY=privy", () => {
+      process.env.PHALNX_CUSTODY = "privy";
+      process.env.PRIVY_APP_ID = "clx_test";
+      process.env.PRIVY_APP_SECRET = "sk_privy_test";
+      delete process.env.PHALNX_WALLET_PATH;
+
+      const config = loadConfig();
+      expect(config.custodyProvider).to.equal("privy");
+      expect(config.privyAppId).to.equal("clx_test");
+      expect(config.privyAppSecret).to.equal("sk_privy_test");
+    });
+
+    it("parses turnkey env vars when PHALNX_CUSTODY=turnkey", () => {
+      process.env.PHALNX_CUSTODY = "turnkey";
+      process.env.TURNKEY_ORGANIZATION_ID = "org123";
+      process.env.TURNKEY_API_KEY_ID = "key123";
+      process.env.TURNKEY_API_PRIVATE_KEY = "pk_test";
+      delete process.env.PHALNX_WALLET_PATH;
+
+      const config = loadConfig();
+      expect(config.custodyProvider).to.equal("turnkey");
+      expect(config.turnkeyOrganizationId).to.equal("org123");
+      expect(config.turnkeyApiKeyId).to.equal("key123");
+      expect(config.turnkeyApiPrivateKey).to.equal("pk_test");
+    });
+
+    it("does not require wallet path when custody provider set", () => {
+      process.env.PHALNX_CUSTODY = "crossmint";
+      process.env.CROSSMINT_API_KEY = "sk_crossmint";
+      delete process.env.PHALNX_WALLET_PATH;
+
+      const config = loadConfig();
+      expect(config.walletPath).to.be.undefined;
+      expect(config.custodyProvider).to.equal("crossmint");
     });
   });
 });

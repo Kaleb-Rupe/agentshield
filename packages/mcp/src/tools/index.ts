@@ -282,3 +282,15 @@ export {
   squadsStatus,
   squadsStatusSchema,
 } from "./squads-status";
+
+// --- Vault Discovery & Confirmation ---
+export {
+  discoverVaultTool,
+  discoverVault,
+  discoverVaultSchema,
+} from "./discover-vault";
+export {
+  confirmVaultTool,
+  confirmVault,
+  confirmVaultSchema,
+} from "./confirm-vault";

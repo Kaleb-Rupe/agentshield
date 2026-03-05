@@ -212,7 +212,11 @@ describe("instruction-constraints", () => {
     amount: BN,
     actionType: any,
     targetProtocol: PublicKey,
-    remainingAccounts?: { pubkey: PublicKey; isSigner: boolean; isWritable: boolean }[],
+    remainingAccounts?: {
+      pubkey: PublicKey;
+      isSigner: boolean;
+      isWritable: boolean;
+    }[],
   ) {
     const [sessionPda] = PublicKey.findProgramAddressSync(
       [
@@ -224,13 +228,7 @@ describe("instruction-constraints", () => {
       program.programId,
     );
     let builder = program.methods
-      .validateAndAuthorize(
-        actionType,
-        usdcMint,
-        amount,
-        targetProtocol,
-        null,
-      )
+      .validateAndAuthorize(actionType, usdcMint, amount, targetProtocol, null)
       .accounts({
         agent: agent.publicKey,
         vault: vaultPda,
@@ -264,7 +262,7 @@ describe("instruction-constraints", () => {
             {
               offset: 0,
               operator: { eq: {} },
-              value: Buffer.from([0xAA, 0xBB]),
+              value: Buffer.from([0xaa, 0xbb]),
             },
           ],
         },
@@ -653,7 +651,7 @@ describe("instruction-constraints", () => {
     });
 
     it("rejects >32 byte constraint value → InvalidConstraintConfig", async () => {
-      const bigValue = Buffer.alloc(33, 0xFF);
+      const bigValue = Buffer.alloc(33, 0xff);
 
       try {
         await program.methods
@@ -784,7 +782,7 @@ describe("instruction-constraints", () => {
               {
                 offset: 0,
                 operator: { eq: {} },
-                value: Buffer.from([0xFF]),
+                value: Buffer.from([0xff]),
               },
             ],
           },
@@ -1039,7 +1037,7 @@ describe("instruction-constraints", () => {
               {
                 offset: 0,
                 operator: { eq: {} },
-                value: Buffer.from([0xFF]),
+                value: Buffer.from([0xff]),
               },
             ],
           },

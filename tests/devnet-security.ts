@@ -442,7 +442,9 @@ describe("devnet-security", () => {
     // Vault stats incremented by 2
     const v = await program.account.agentVault.fetch(freshVault.vaultPda);
     expect(v.totalTransactions.toNumber()).to.equal(2);
-    console.log("    Back-to-back composed TXes: session PDA reused successfully");
+    console.log(
+      "    Back-to-back composed TXes: session PDA reused successfully",
+    );
   });
 
   it("10. frozen vault blocks validate_and_authorize", async () => {

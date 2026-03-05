@@ -249,7 +249,10 @@ export function createMockClient(
     },
 
     async registerAgent(vault: PublicKey, agent: PublicKey, permissions: BN) {
-      calls.push({ method: "registerAgent", args: [vault, agent, permissions] });
+      calls.push({
+        method: "registerAgent",
+        args: [vault, agent, permissions],
+      });
       if (overrides.shouldThrow) throw overrides.shouldThrow;
       return "mock-sig-register";
     },

@@ -16,7 +16,9 @@ export const createEscrowSchema = z.object({
   conditionHash: z
     .array(z.number().int().min(0).max(255))
     .length(32)
-    .describe("SHA-256 condition hash (32 bytes) that must be proven to settle"),
+    .describe(
+      "SHA-256 condition hash (32 bytes) that must be proven to settle",
+    ),
   tokenMint: z.string().describe("Token mint address (base58)"),
   sourceVaultAta: z
     .string()
@@ -47,12 +49,8 @@ export async function createEscrow(
       input.conditionHash,
       toPublicKey(input.tokenMint),
       toPublicKey(input.sourceVaultAta),
-      input.protocolTreasuryAta
-        ? toPublicKey(input.protocolTreasuryAta)
-        : null,
-      input.feeDestinationAta
-        ? toPublicKey(input.feeDestinationAta)
-        : null,
+      input.protocolTreasuryAta ? toPublicKey(input.protocolTreasuryAta) : null,
+      input.feeDestinationAta ? toPublicKey(input.feeDestinationAta) : null,
     );
 
     return [

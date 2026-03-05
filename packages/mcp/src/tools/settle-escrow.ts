@@ -14,7 +14,11 @@ export const settleEscrowSchema = z.object({
     .string()
     .describe("Destination vault token account (base58)"),
   tokenMint: z.string().describe("Token mint address (base58)"),
-  proof: z.string().describe("Base64-encoded proof data whose SHA-256 hash matches the condition_hash"),
+  proof: z
+    .string()
+    .describe(
+      "Base64-encoded proof data whose SHA-256 hash matches the condition_hash",
+    ),
 });
 
 export type SettleEscrowInput = z.infer<typeof settleEscrowSchema>;

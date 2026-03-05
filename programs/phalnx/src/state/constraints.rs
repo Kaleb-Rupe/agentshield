@@ -16,9 +16,9 @@ pub enum ConstraintOperator {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
 pub struct DataConstraint {
-    pub offset: u16,              // 2
+    pub offset: u16,                  // 2
     pub operator: ConstraintOperator, // 1
-    pub value: Vec<u8>,           // 4 + max 32
+    pub value: Vec<u8>,               // 4 + max 32
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]

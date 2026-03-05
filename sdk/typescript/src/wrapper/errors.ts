@@ -46,9 +46,7 @@ export class AttestationPcrMismatchError extends TeeAttestationError {
   readonly actual: string;
 
   constructor(pcrIndex: number, expected: string, actual: string) {
-    super(
-      `PCR${pcrIndex} mismatch: expected ${expected}, got ${actual}`,
-    );
+    super(`PCR${pcrIndex} mismatch: expected ${expected}, got ${actual}`);
     this.name = "AttestationPcrMismatchError";
     this.pcrIndex = pcrIndex;
     this.expected = expected;

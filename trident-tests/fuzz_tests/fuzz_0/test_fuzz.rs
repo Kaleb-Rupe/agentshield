@@ -238,7 +238,10 @@ impl FuzzTest {
         let agent = self.fuzz_accounts.agent.insert(&mut self.trident, None);
         self.trident.airdrop(&agent, 5 * LAMPORTS_PER_SOL);
 
-        let reg_data = phalnx::instruction::RegisterAgent { agent };
+        let reg_data = phalnx::instruction::RegisterAgent {
+            agent,
+            permissions: phalnx::state::FULL_PERMISSIONS,
+        };
         let reg_accounts = phalnx::accounts::RegisterAgent { owner, vault };
         let reg_ix = Instruction::new_with_bytes(
             program_id(),
@@ -554,7 +557,10 @@ impl FuzzTest {
 
         let pre = self.snapshot_vault(&vault);
 
-        let data = phalnx::instruction::RegisterAgent { agent };
+        let data = phalnx::instruction::RegisterAgent {
+            agent,
+            permissions: phalnx::state::FULL_PERMISSIONS,
+        };
         let accounts = phalnx::accounts::RegisterAgent { owner, vault };
 
         let ix = Instruction::new_with_bytes(
@@ -955,7 +961,9 @@ impl FuzzTest {
 
         let pre = self.snapshot_vault(&vault);
 
-        let data = phalnx::instruction::RevokeAgent {};
+        let agent = unwrap_or_ret!(self.fuzz_accounts.agent.get(&mut self.trident));
+
+        let data = phalnx::instruction::RevokeAgent { agent_to_remove: agent };
         let accounts = phalnx::accounts::RevokeAgent { owner, vault };
 
         let ix = Instruction::new_with_bytes(
@@ -984,7 +992,10 @@ impl FuzzTest {
 
         let pre = self.snapshot_vault(&vault);
 
-        let data = phalnx::instruction::ReactivateVault { new_agent: None };
+        let data = phalnx::instruction::ReactivateVault {
+            new_agent: None,
+            new_agent_permissions: None,
+        };
         let accounts = phalnx::accounts::ReactivateVault { owner, vault };
 
         let ix = Instruction::new_with_bytes(

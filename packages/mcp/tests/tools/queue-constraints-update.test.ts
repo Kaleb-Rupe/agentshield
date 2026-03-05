@@ -9,7 +9,11 @@ describe("shield_queue_constraints_update", () => {
   const entry = {
     programId: Keypair.generate().publicKey.toBase58(),
     dataConstraints: [
-      { offset: 0, operator: "eq" as const, value: [0xc3, 0x58, 0x63, 0xa5, 0xb4, 0x8d, 0x2c, 0x81] },
+      {
+        offset: 0,
+        operator: "eq" as const,
+        value: [0xc3, 0x58, 0x63, 0xa5, 0xb4, 0x8d, 0x2c, 0x81],
+      },
     ],
   };
 

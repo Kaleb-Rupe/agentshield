@@ -375,7 +375,9 @@ describe("phalnx", () => {
         .rpc();
 
       const vault = await program.account.agentVault.fetch(vaultPda);
-      expect(vault.agents[0].pubkey.toString()).to.equal(agent.publicKey.toString());
+      expect(vault.agents[0].pubkey.toString()).to.equal(
+        agent.publicKey.toString(),
+      );
     });
 
     it("rejects double registration", async () => {
@@ -774,7 +776,9 @@ describe("phalnx", () => {
         .rpc();
 
       const vault = await program.account.agentVault.fetch(reactVaultPda);
-      expect(vault.agents[0].pubkey.toString()).to.equal(newAgent.publicKey.toString());
+      expect(vault.agents[0].pubkey.toString()).to.equal(
+        newAgent.publicKey.toString(),
+      );
       expect(vault.status).to.have.property("active");
     });
   });
@@ -4166,10 +4170,16 @@ describe("phalnx", () => {
 
       const vault = await program.account.agentVault.fetch(maVault);
       expect(vault.agents.length).to.equal(2);
-      expect(vault.agents[0].pubkey.toString()).to.equal(agent.publicKey.toString());
+      expect(vault.agents[0].pubkey.toString()).to.equal(
+        agent.publicKey.toString(),
+      );
       expect(vault.agents[0].permissions.toNumber()).to.equal(1);
-      expect(vault.agents[1].pubkey.toString()).to.equal(agent2.publicKey.toString());
-      expect(vault.agents[1].permissions.toNumber()).to.equal(FULL_PERMISSIONS.toNumber());
+      expect(vault.agents[1].pubkey.toString()).to.equal(
+        agent2.publicKey.toString(),
+      );
+      expect(vault.agents[1].permissions.toNumber()).to.equal(
+        FULL_PERMISSIONS.toNumber(),
+      );
     });
 
     it("agent with Swap permission swaps successfully", async () => {
@@ -4302,7 +4312,9 @@ describe("phalnx", () => {
 
       const vault = await program.account.agentVault.fetch(maVault);
       expect(vault.agents.length).to.equal(1);
-      expect(vault.agents[0].pubkey.toString()).to.equal(agent2.publicKey.toString());
+      expect(vault.agents[0].pubkey.toString()).to.equal(
+        agent2.publicKey.toString(),
+      );
       expect(vault.status).to.have.property("active");
     });
 
@@ -4370,8 +4382,12 @@ describe("phalnx", () => {
 
       const vault = await program.account.agentVault.fetch(maVault);
       expect(vault.agents.length).to.equal(1);
-      expect(vault.agents[0].pubkey.toString()).to.equal(newAgent.publicKey.toString());
-      expect(vault.agents[0].permissions.toNumber()).to.equal(SWAP_AND_TRANSFER.toNumber());
+      expect(vault.agents[0].pubkey.toString()).to.equal(
+        newAgent.publicKey.toString(),
+      );
+      expect(vault.agents[0].permissions.toNumber()).to.equal(
+        SWAP_AND_TRANSFER.toNumber(),
+      );
       expect(vault.status).to.have.property("active");
     });
 
@@ -4399,7 +4415,9 @@ describe("phalnx", () => {
         (a: any) => a.pubkey.toString() === updAgent.publicKey.toString(),
       );
       expect(entry).to.not.be.undefined;
-      expect(entry!.permissions.toNumber()).to.equal(FULL_PERMISSIONS.toNumber());
+      expect(entry!.permissions.toNumber()).to.equal(
+        FULL_PERMISSIONS.toNumber(),
+      );
     });
 
     it("invalid permission bitmask → InvalidPermissions (6048)", async () => {

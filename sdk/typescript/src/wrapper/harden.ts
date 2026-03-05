@@ -27,7 +27,11 @@ import { evaluatePolicy, recordTransaction } from "./engine";
 import { ShieldState } from "./state";
 import { shield } from "./shield";
 import { isSystemProgram } from "./registry";
-import { JUPITER_PROGRAM_ID, FULL_PERMISSIONS, type ActionType } from "../types";
+import {
+  JUPITER_PROGRAM_ID,
+  FULL_PERMISSIONS,
+  type ActionType,
+} from "../types";
 import { FLASH_TRADE_PROGRAM_ID } from "../integrations/flash-trade";
 import type { ShieldPolicies, SpendingSummary } from "./policies";
 import { PhalnxClient } from "../client";

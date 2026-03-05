@@ -501,15 +501,13 @@ export function buildCreateInstructionConstraints(
   const [policy] = getPolicyPDA(vault, program.programId);
   const [constraints] = getConstraintsPDA(vault, program.programId);
 
-  return program.methods
-    .createInstructionConstraints(entries as any)
-    .accounts({
-      owner,
-      vault,
-      policy,
-      constraints,
-      systemProgram: SystemProgram.programId,
-    } as any);
+  return program.methods.createInstructionConstraints(entries as any).accounts({
+    owner,
+    vault,
+    policy,
+    constraints,
+    systemProgram: SystemProgram.programId,
+  } as any);
 }
 
 export function buildCloseInstructionConstraints(
@@ -537,14 +535,12 @@ export function buildUpdateInstructionConstraints(
   const [policy] = getPolicyPDA(vault, program.programId);
   const [constraints] = getConstraintsPDA(vault, program.programId);
 
-  return program.methods
-    .updateInstructionConstraints(entries as any)
-    .accounts({
-      owner,
-      vault,
-      policy,
-      constraints,
-    } as any);
+  return program.methods.updateInstructionConstraints(entries as any).accounts({
+    owner,
+    vault,
+    policy,
+    constraints,
+  } as any);
 }
 
 export function buildQueueConstraintsUpdate(
@@ -560,16 +556,14 @@ export function buildQueueConstraintsUpdate(
     program.programId,
   );
 
-  return program.methods
-    .queueConstraintsUpdate(entries as any)
-    .accounts({
-      owner,
-      vault,
-      policy,
-      constraints,
-      pendingConstraints,
-      systemProgram: SystemProgram.programId,
-    } as any);
+  return program.methods.queueConstraintsUpdate(entries as any).accounts({
+    owner,
+    vault,
+    policy,
+    constraints,
+    pendingConstraints,
+    systemProgram: SystemProgram.programId,
+  } as any);
 }
 
 export function buildApplyConstraintsUpdate(

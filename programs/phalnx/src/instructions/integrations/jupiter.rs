@@ -181,10 +181,7 @@ const SWAP_VARIANT_SIZES: [i8; SWAP_VARIANT_COUNT] = [
 /// `exact_out_route`, `shared_accounts_exact_out_route`.
 pub fn verify_jupiter_slippage(ix_data: &[u8], max_slippage_bps: u16) -> Result<()> {
     // Minimum sanity: disc(8) + vec_len(4) + suffix(19) = 31
-    require!(
-        ix_data.len() >= 24,
-        PhalnxError::InvalidJupiterInstruction
-    );
+    require!(ix_data.len() >= 24, PhalnxError::InvalidJupiterInstruction);
 
     // 1. Parse discriminator — determine instruction variant
     let disc = &ix_data[..8];
@@ -312,10 +309,7 @@ fn skip_remaining_accounts_info(data: &[u8], cursor: &mut usize) -> Result<()> {
     let end = cursor
         .checked_add(4)
         .ok_or(error!(PhalnxError::InvalidJupiterInstruction))?;
-    require!(
-        data.len() >= end,
-        PhalnxError::InvalidJupiterInstruction
-    );
+    require!(data.len() >= end, PhalnxError::InvalidJupiterInstruction);
     let vec_len = u32::from_le_bytes(
         data[*cursor..end]
             .try_into()
@@ -340,10 +334,7 @@ fn skip_remaining_accounts_info(data: &[u8], cursor: &mut usize) -> Result<()> {
 
 /// Skip `Option<RemainingAccountsInfo>` (1-byte tag + optional payload).
 fn skip_option_remaining_accounts_info(data: &[u8], cursor: &mut usize) -> Result<()> {
-    require!(
-        data.len() > *cursor,
-        PhalnxError::InvalidJupiterInstruction
-    );
+    require!(data.len() > *cursor, PhalnxError::InvalidJupiterInstruction);
     let tag = data[*cursor];
     *cursor = cursor
         .checked_add(1)

@@ -7,16 +7,16 @@ export const applyConstraintsUpdateSchema = z.object({
   vault: z.string().describe("Vault PDA address (base58)"),
 });
 
-export type ApplyConstraintsUpdateInput = z.infer<typeof applyConstraintsUpdateSchema>;
+export type ApplyConstraintsUpdateInput = z.infer<
+  typeof applyConstraintsUpdateSchema
+>;
 
 export async function applyConstraintsUpdate(
   client: PhalnxClient,
   input: ApplyConstraintsUpdateInput,
 ): Promise<string> {
   try {
-    const sig = await client.applyConstraintsUpdate(
-      toPublicKey(input.vault),
-    );
+    const sig = await client.applyConstraintsUpdate(toPublicKey(input.vault));
 
     return [
       "## Constraints Update Applied",

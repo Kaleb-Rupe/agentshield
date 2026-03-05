@@ -36,8 +36,7 @@ export async function withdraw(
 
 export const withdrawTool = {
   name: "shield_withdraw",
-  description:
-    "Withdraw tokens from an Phalnx vault. Owner-only operation.",
+  description: "Withdraw tokens from an Phalnx vault. Owner-only operation.",
   schema: withdrawSchema,
   handler: withdraw,
 };

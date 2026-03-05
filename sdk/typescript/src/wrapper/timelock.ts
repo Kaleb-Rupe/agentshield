@@ -113,11 +113,7 @@ function createOwnerClient(ctx: TimelockContext): PhalnxClient {
       ((txs: any[]) =>
         Promise.all(txs.map((tx: any) => ctx.ownerWallet.signTransaction(tx)))),
   };
-  return new PhalnxClient(
-    ctx.connection,
-    anchorWallet as any,
-    ctx.programId,
-  );
+  return new PhalnxClient(ctx.connection, anchorWallet as any, ctx.programId);
 }
 
 /**

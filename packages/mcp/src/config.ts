@@ -37,7 +37,7 @@ export interface ShieldLocalConfig {
   version: 1;
   layers: ShieldLayerConfig;
   wallet: {
-    type: "keypair" | "crossmint";
+    type: "keypair" | "crossmint" | "privy" | "turnkey";
     path: string | null;
     publicKey: string;
   };
@@ -172,13 +172,26 @@ export interface McpConfig {
   crossmintApiKey?: string;
   /** Crossmint wallet locator (optional — creates new wallet if omitted). */
   crossmintLocator?: string;
+  /** Privy app ID (when custodyProvider = "privy"). */
+  privyAppId?: string;
+  /** Privy app secret (when custodyProvider = "privy"). */
+  privyAppSecret?: string;
+  /** Privy wallet ID (optional — creates new wallet if omitted). */
+  privyWalletId?: string;
+  /** Turnkey organization ID (when custodyProvider = "turnkey"). */
+  turnkeyOrganizationId?: string;
+  /** Turnkey API key ID (when custodyProvider = "turnkey"). */
+  turnkeyApiKeyId?: string;
+  /** Turnkey API private key — PEM-encoded P-256 (when custodyProvider = "turnkey"). */
+  turnkeyApiPrivateKey?: string;
+  /** Turnkey wallet ID (optional — creates new wallet if omitted). */
+  turnkeyWalletId?: string;
 }
 
 export function loadConfig(): McpConfig {
   const rpcUrl = process.env.PHALNX_RPC_URL || clusterApiUrl("devnet");
 
-  const agentKeypairPath =
-    process.env.PHALNX_AGENT_KEYPAIR_PATH || undefined;
+  const agentKeypairPath = process.env.PHALNX_AGENT_KEYPAIR_PATH || undefined;
 
   const custodyProvider = process.env.PHALNX_CUSTODY as
     | McpCustodyProvider
@@ -192,6 +205,13 @@ export function loadConfig(): McpConfig {
       custodyProvider,
       crossmintApiKey: process.env.CROSSMINT_API_KEY || undefined,
       crossmintLocator: process.env.CROSSMINT_WALLET_LOCATOR || undefined,
+      privyAppId: process.env.PRIVY_APP_ID || undefined,
+      privyAppSecret: process.env.PRIVY_APP_SECRET || undefined,
+      privyWalletId: process.env.PRIVY_WALLET_ID || undefined,
+      turnkeyOrganizationId: process.env.TURNKEY_ORGANIZATION_ID || undefined,
+      turnkeyApiKeyId: process.env.TURNKEY_API_KEY_ID || undefined,
+      turnkeyApiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY || undefined,
+      turnkeyWalletId: process.env.TURNKEY_WALLET_ID || undefined,
     };
   }
 
@@ -260,16 +280,54 @@ export async function createCustodyWallet(config: McpConfig): Promise<{
         locator: config.crossmintLocator,
       });
     }
-    case "turnkey":
-      throw new Error(
-        "Turnkey custody adapter is not yet available. " +
-          "Install @phalnx/custody-turnkey when released.",
-      );
-    case "privy":
-      throw new Error(
-        "Privy custody adapter is not yet available. " +
-          "Install @phalnx/custody-privy when released.",
-      );
+    case "privy": {
+      if (!config.privyAppId || !config.privyAppSecret) {
+        throw new Error(
+          "PRIVY_APP_ID and PRIVY_APP_SECRET are required when PHALNX_CUSTODY=privy.",
+        );
+      }
+      let privyMod: any;
+      try {
+        privyMod = require("@phalnx/custody-privy");
+      } catch {
+        throw new Error(
+          "@phalnx/custody-privy is not installed. " +
+            "Run: npm install @phalnx/custody-privy",
+        );
+      }
+      return privyMod.privy({
+        appId: config.privyAppId,
+        appSecret: config.privyAppSecret,
+        walletId: config.privyWalletId,
+      });
+    }
+    case "turnkey": {
+      if (
+        !config.turnkeyOrganizationId ||
+        !config.turnkeyApiKeyId ||
+        !config.turnkeyApiPrivateKey
+      ) {
+        throw new Error(
+          "TURNKEY_ORGANIZATION_ID, TURNKEY_API_KEY_ID, and TURNKEY_API_PRIVATE_KEY " +
+            "are required when PHALNX_CUSTODY=turnkey.",
+        );
+      }
+      let turnkeyMod: any;
+      try {
+        turnkeyMod = require("@phalnx/custody-turnkey");
+      } catch {
+        throw new Error(
+          "@phalnx/custody-turnkey is not installed. " +
+            "Run: npm install @phalnx/custody-turnkey",
+        );
+      }
+      return turnkeyMod.turnkey({
+        organizationId: config.turnkeyOrganizationId,
+        apiKeyId: config.turnkeyApiKeyId,
+        apiPrivateKey: config.turnkeyApiPrivateKey,
+        walletId: config.turnkeyWalletId,
+      });
+    }
     default:
       throw new Error(
         `Unknown custody provider '${config.custodyProvider}'. ` +
@@ -344,6 +402,49 @@ export async function resolveClient(): Promise<{
         custodyProvider: "crossmint",
         crossmintApiKey: apiKey,
         crossmintLocator: fileConfig.layers.tee.locator ?? undefined,
+      };
+      const { client, custodyWallet } = await createCustodyClient(mcpConfig);
+      return { client, config: mcpConfig, custodyWallet };
+    }
+
+    if (fileConfig.wallet.type === "privy" && fileConfig.layers.tee.enabled) {
+      const appId = process.env.PRIVY_APP_ID;
+      const appSecret = process.env.PRIVY_APP_SECRET;
+      if (!appId || !appSecret) {
+        throw new Error(
+          "Privy wallet configured but PRIVY_APP_ID and PRIVY_APP_SECRET are not set. " +
+            "Set both environment variables to use your custody wallet.",
+        );
+      }
+      const mcpConfig: McpConfig = {
+        rpcUrl: rpcUrlForNetwork(fileConfig.network),
+        custodyProvider: "privy",
+        privyAppId: appId,
+        privyAppSecret: appSecret,
+        privyWalletId: fileConfig.layers.tee.locator ?? undefined,
+      };
+      const { client, custodyWallet } = await createCustodyClient(mcpConfig);
+      return { client, config: mcpConfig, custodyWallet };
+    }
+
+    if (fileConfig.wallet.type === "turnkey" && fileConfig.layers.tee.enabled) {
+      const orgId = process.env.TURNKEY_ORGANIZATION_ID;
+      const apiKeyId = process.env.TURNKEY_API_KEY_ID;
+      const apiPrivateKey = process.env.TURNKEY_API_PRIVATE_KEY;
+      if (!orgId || !apiKeyId || !apiPrivateKey) {
+        throw new Error(
+          "Turnkey wallet configured but TURNKEY_ORGANIZATION_ID, TURNKEY_API_KEY_ID, " +
+            "and TURNKEY_API_PRIVATE_KEY are not all set. " +
+            "Set all three environment variables to use your custody wallet.",
+        );
+      }
+      const mcpConfig: McpConfig = {
+        rpcUrl: rpcUrlForNetwork(fileConfig.network),
+        custodyProvider: "turnkey",
+        turnkeyOrganizationId: orgId,
+        turnkeyApiKeyId: apiKeyId,
+        turnkeyApiPrivateKey: apiPrivateKey,
+        turnkeyWalletId: fileConfig.layers.tee.locator ?? undefined,
       };
       const { client, custodyWallet } = await createCustodyClient(mcpConfig);
       return { client, config: mcpConfig, custodyWallet };

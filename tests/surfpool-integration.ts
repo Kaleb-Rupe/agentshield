@@ -157,7 +157,9 @@ describe("surfpool-integration", function () {
         .rpc();
 
       const vault = await program.account.agentVault.fetch(vaultPda);
-      expect(vault.agents[0].pubkey.toString()).to.equal(agent.publicKey.toString());
+      expect(vault.agents[0].pubkey.toString()).to.equal(
+        agent.publicKey.toString(),
+      );
 
       // Create vault ATA and fund it
       vaultUsdcAta = getAssociatedTokenAddressSync(

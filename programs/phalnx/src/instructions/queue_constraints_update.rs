@@ -42,10 +42,7 @@ pub struct QueueConstraintsUpdate<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(
-    ctx: Context<QueueConstraintsUpdate>,
-    entries: Vec<ConstraintEntry>,
-) -> Result<()> {
+pub fn handler(ctx: Context<QueueConstraintsUpdate>, entries: Vec<ConstraintEntry>) -> Result<()> {
     let policy = &ctx.accounts.policy;
 
     // Timelock must be configured to use queue

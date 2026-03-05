@@ -40,8 +40,14 @@ let rootCaPem = AWS_NITRO_ROOT_CA_PEM;
 
 /** Override the root CA PEM for testing. Only available in test environments. */
 export function setTestRootCa(pem: string): void {
-  if (typeof process !== "undefined" && process.env.NODE_ENV !== "test" && process.env.NODE_ENV !== undefined) {
-    throw new Error("setTestRootCa() is only available in test environments (NODE_ENV=test)");
+  if (
+    typeof process !== "undefined" &&
+    process.env.NODE_ENV !== "test" &&
+    process.env.NODE_ENV !== undefined
+  ) {
+    throw new Error(
+      "setTestRootCa() is only available in test environments (NODE_ENV=test)",
+    );
   }
   rootCaPem = pem;
 }
@@ -90,9 +96,10 @@ function rawSigToDer(rawSig: Buffer, curveByteLen: number): Buffer {
   const seqLen = rDer.length + sDer.length;
 
   // SEQUENCE header
-  const header = seqLen < 128
-    ? Buffer.from([0x30, seqLen])
-    : Buffer.from([0x30, 0x81, seqLen]);
+  const header =
+    seqLen < 128
+      ? Buffer.from([0x30, seqLen])
+      : Buffer.from([0x30, 0x81, seqLen]);
 
   return Buffer.concat([header, rDer, sDer]);
 }
@@ -116,7 +123,12 @@ async function decodeCoseSign1(cborBytes: Buffer): Promise<{
   let arr: unknown[];
   if (Array.isArray(decoded)) {
     arr = decoded;
-  } else if (decoded && typeof decoded === "object" && "value" in decoded && Array.isArray(decoded.value)) {
+  } else if (
+    decoded &&
+    typeof decoded === "object" &&
+    "value" in decoded &&
+    Array.isArray(decoded.value)
+  ) {
     // M2: Validate COSE_Sign1 tag (18) when present
     if ("tag" in decoded && (decoded as { tag: number }).tag !== 18) {
       throw new TeeAttestationError(
@@ -125,29 +137,41 @@ async function decodeCoseSign1(cborBytes: Buffer): Promise<{
     }
     arr = decoded.value;
   } else {
-    throw new TeeAttestationError("Invalid COSE_Sign1: expected 4-element array");
+    throw new TeeAttestationError(
+      "Invalid COSE_Sign1: expected 4-element array",
+    );
   }
 
   if (arr.length !== 4) {
-    throw new TeeAttestationError(`Invalid COSE_Sign1: expected 4 elements, got ${arr.length}`);
+    throw new TeeAttestationError(
+      `Invalid COSE_Sign1: expected 4 elements, got ${arr.length}`,
+    );
   }
 
   // M3: Type-guard COSE_Sign1 byte-string elements
   function assertByteString(val: unknown, name: string): Uint8Array {
-    if (val instanceof Uint8Array || Buffer.isBuffer(val)) return val as Uint8Array;
-    throw new TeeAttestationError(`Invalid COSE_Sign1: ${name} must be a byte string`);
+    if (val instanceof Uint8Array || Buffer.isBuffer(val))
+      return val as Uint8Array;
+    throw new TeeAttestationError(
+      `Invalid COSE_Sign1: ${name} must be a byte string`,
+    );
   }
 
-  const protectedHeaders = Buffer.from(assertByteString(arr[0], "protected_headers"));
+  const protectedHeaders = Buffer.from(
+    assertByteString(arr[0], "protected_headers"),
+  );
 
   // Unprotected headers: may be a Map or plain object
   let unprotectedHeaders: Map<number, unknown>;
   if (arr[1] instanceof Map) {
     unprotectedHeaders = arr[1] as Map<number, unknown>;
   } else if (arr[1] && typeof arr[1] === "object") {
-    unprotectedHeaders = new Map(Object.entries(arr[1] as Record<string, unknown>).map(
-      ([k, v]) => [parseInt(k, 10), v],
-    ));
+    unprotectedHeaders = new Map(
+      Object.entries(arr[1] as Record<string, unknown>).map(([k, v]) => [
+        parseInt(k, 10),
+        v,
+      ]),
+    );
   } else {
     unprotectedHeaders = new Map();
   }
@@ -167,12 +191,14 @@ async function buildSigStructure(
   payload: Buffer,
 ): Promise<Buffer> {
   const cbor = await import("cbor-x");
-  return Buffer.from(cbor.encode([
-    "Signature1",
-    protectedHeaders,
-    Buffer.alloc(0), // external_aad = empty
-    payload,
-  ]));
+  return Buffer.from(
+    cbor.encode([
+      "Signature1",
+      protectedHeaders,
+      Buffer.alloc(0), // external_aad = empty
+      payload,
+    ]),
+  );
 }
 
 /**
@@ -189,7 +215,10 @@ function validateCertChain(certs: Buffer[]): crypto.X509Certificate {
   const x509Certs = certs.map((certDer) => {
     const pem =
       "-----BEGIN CERTIFICATE-----\n" +
-      certDer.toString("base64").match(/.{1,64}/g)!.join("\n") +
+      certDer
+        .toString("base64")
+        .match(/.{1,64}/g)!
+        .join("\n") +
       "\n-----END CERTIFICATE-----";
     return new crypto.X509Certificate(pem);
   });
@@ -221,7 +250,7 @@ function validateCertChain(certs: Buffer[]): crypto.X509Certificate {
     if (now < new Date(cert.validFrom) || now > new Date(cert.validTo)) {
       throw new AttestationCertChainError(
         `Certificate at index ${i} is outside its validity period ` +
-        `(${cert.validFrom} to ${cert.validTo})`,
+          `(${cert.validFrom} to ${cert.validTo})`,
       );
     }
   }
@@ -229,7 +258,10 @@ function validateCertChain(certs: Buffer[]): crypto.X509Certificate {
   // Verify the last cert chains to root
   if (x509Certs.length > 0) {
     const lastCert = x509Certs[x509Certs.length - 1]!;
-    if (!lastCert.checkIssued(rootCert) || !lastCert.verify(rootCert.publicKey)) {
+    if (
+      !lastCert.checkIssued(rootCert) ||
+      !lastCert.verify(rootCert.publicKey)
+    ) {
       throw new AttestationCertChainError(
         "Certificate chain does not terminate at the AWS Nitro Root CA",
       );
@@ -243,12 +275,20 @@ function validateCertChain(certs: Buffer[]): crypto.X509Certificate {
 /**
  * Extract PCR values from a decoded Nitro attestation document payload.
  */
-function extractPcrValues(attestationDoc: Record<string, unknown>): NitroPcrValues {
-  const pcrs = attestationDoc.pcrs as Map<number, Buffer> | Record<number, Buffer> | undefined;
+function extractPcrValues(
+  attestationDoc: Record<string, unknown>,
+): NitroPcrValues {
+  const pcrs = attestationDoc.pcrs as
+    | Map<number, Buffer>
+    | Record<number, Buffer>
+    | undefined;
   if (!pcrs) return {};
 
   const getHex = (index: number): string | undefined => {
-    const val = pcrs instanceof Map ? pcrs.get(index) : (pcrs as Record<number, Buffer>)[index];
+    const val =
+      pcrs instanceof Map
+        ? pcrs.get(index)
+        : (pcrs as Record<number, Buffer>)[index];
     return val ? Buffer.from(val).toString("hex") : undefined;
   };
 
@@ -275,9 +315,10 @@ export async function verifyTurnkey(
 
   // Check if wallet provides attestation data
   const walletRecord = wallet as unknown as Record<string, unknown>;
-  const getAttestation = typeof walletRecord.getAttestation === "function"
-    ? (walletRecord.getAttestation as () => Promise<TurnkeyAttestationBundle | null>)
-    : undefined;
+  const getAttestation =
+    typeof walletRecord.getAttestation === "function"
+      ? (walletRecord.getAttestation as () => Promise<TurnkeyAttestationBundle | null>)
+      : undefined;
   // H2: Turnkey wallets without getAttestation() cannot be cryptographically
   // verified. Return Unavailable instead of ProviderTrusted to prevent
   // spoofed wallets from passing requireAttestation.
@@ -306,7 +347,12 @@ export async function verifyTurnkey(
       getAttestation.call(wallet).finally(() => clearTimeout(timer)),
       new Promise<never>((_, reject) => {
         timer = setTimeout(
-          () => reject(new TeeAttestationError("Turnkey getAttestation() timed out after 30s")),
+          () =>
+            reject(
+              new TeeAttestationError(
+                "Turnkey getAttestation() timed out after 30s",
+              ),
+            ),
           ATTESTATION_TIMEOUT_MS,
         );
       }),
@@ -332,7 +378,8 @@ export async function verifyTurnkey(
         enclaveType: "nitro",
         verifiedAt: Date.now(),
       },
-      message: "Turnkey getAttestation() returned null — cannot verify enclave identity.",
+      message:
+        "Turnkey getAttestation() returned null — cannot verify enclave identity.",
     };
   }
 
@@ -418,11 +465,15 @@ export async function verifyTurnkey(
     }
 
     // Extract the boot public key from the attestation document
-    const bootPublicKeyBytes = attestationDoc.public_key as Buffer | Uint8Array | undefined;
+    const bootPublicKeyBytes = attestationDoc.public_key as
+      | Buffer
+      | Uint8Array
+      | undefined;
 
     // === App Proof Verification (P-256 ECDSA) ===
     // F3: Use explicit undefined/null checks — empty strings must not silently skip verification
-    const hasAppProof = bundle.appSignature !== undefined && bundle.appPublicKey !== undefined;
+    const hasAppProof =
+      bundle.appSignature !== undefined && bundle.appPublicKey !== undefined;
     if (hasAppProof) {
       // C2: If app proof is provided, bootPublicKeyBytes MUST be present in the
       // attestation document — otherwise there is no enclave binding.
@@ -439,7 +490,10 @@ export async function verifyTurnkey(
       }
 
       // Validate app proof field types
-      if (typeof bundle.appSignature !== "string" || typeof bundle.appPublicKey !== "string") {
+      if (
+        typeof bundle.appSignature !== "string" ||
+        typeof bundle.appPublicKey !== "string"
+      ) {
         throw new TeeAttestationError(
           "Invalid attestation bundle: appSignature and appPublicKey must be strings",
         );
@@ -464,7 +518,10 @@ export async function verifyTurnkey(
       const keyObj = crypto.createPublicKey({
         key: Buffer.concat([
           // SubjectPublicKeyInfo header for P-256 uncompressed point
-          Buffer.from("3059301306072a8648ce3d020106082a8648ce3d030107034200", "hex"),
+          Buffer.from(
+            "3059301306072a8648ce3d020106082a8648ce3d030107034200",
+            "hex",
+          ),
           appPubKeyBytes,
         ]),
         format: "der",
@@ -479,7 +536,9 @@ export async function verifyTurnkey(
       );
 
       if (!appVerified) {
-        throw new TeeAttestationError("App proof P-256 signature verification failed");
+        throw new TeeAttestationError(
+          "App proof P-256 signature verification failed",
+        );
       }
     }
 
@@ -494,7 +553,8 @@ export async function verifyTurnkey(
         certChainLength: certBuffers.length,
         verifiedAt: Date.now(),
       },
-      message: "Turnkey attestation cryptographically verified: " +
+      message:
+        "Turnkey attestation cryptographically verified: " +
         "COSE_Sign1 P-384 signature valid, cert chain trusted, PCR values checked.",
     };
   } catch (err) {

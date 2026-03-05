@@ -3,8 +3,7 @@ import { getOrCreateShieldedWallet } from "../client-factory";
 
 export const updatePolicyAction = {
   name: "SHIELD_UPDATE_POLICY",
-  description:
-    "Update Phalnx spending limits or program blocking at runtime.",
+  description: "Update Phalnx spending limits or program blocking at runtime.",
   similes: [
     "update policy",
     "change limit",

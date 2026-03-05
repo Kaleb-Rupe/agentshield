@@ -105,7 +105,10 @@ export interface AttestationResult {
 }
 
 /** Minimum attestation level required. Ordered from weakest to strongest. */
-export type AttestationLevel = "provider_trusted" | "provider_verified" | "cryptographic";
+export type AttestationLevel =
+  | "provider_trusted"
+  | "provider_verified"
+  | "cryptographic";
 
 /** Configuration for TEE attestation verification. */
 export interface AttestationConfig {

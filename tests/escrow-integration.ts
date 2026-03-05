@@ -431,8 +431,7 @@ describe("escrow-integration", () => {
     expect(treasuryBalance >= protocolFee).to.be.true;
 
     // Verify escrow PDA state
-    const escrowAccount =
-      await program.account.escrowDeposit.fetch(escrowPda);
+    const escrowAccount = await program.account.escrowDeposit.fetch(escrowPda);
     expect(escrowAccount.sourceVault.toString()).to.equal(
       sourceVaultPda.toString(),
     );
@@ -501,8 +500,7 @@ describe("escrow-integration", () => {
     ).to.equal(netAmount.toString());
 
     // Verify escrow status is Settled
-    const escrowAccount =
-      await program.account.escrowDeposit.fetch(escrowPda);
+    const escrowAccount = await program.account.escrowDeposit.fetch(escrowPda);
     expect(JSON.stringify(escrowAccount.status)).to.include("settled");
 
     // Verify escrow ATA was closed (settle closes it)
@@ -562,8 +560,7 @@ describe("escrow-integration", () => {
     ).to.equal(netAmount.toString());
 
     // Verify escrow status is Refunded
-    const escrowAccount =
-      await program.account.escrowDeposit.fetch(escrowPda);
+    const escrowAccount = await program.account.escrowDeposit.fetch(escrowPda);
     expect(JSON.stringify(escrowAccount.status)).to.include("refunded");
 
     // Verify escrow ATA was closed
@@ -595,8 +592,7 @@ describe("escrow-integration", () => {
     );
 
     // Verify escrow has condition hash set
-    const escrowAccount =
-      await program.account.escrowDeposit.fetch(escrowPda);
+    const escrowAccount = await program.account.escrowDeposit.fetch(escrowPda);
     expect(escrowAccount.conditionHash).to.deep.equal(conditionHash);
 
     const destVaultBalanceBefore = getTokenBalance(svm, destVaultUsdcAta);
@@ -623,8 +619,7 @@ describe("escrow-integration", () => {
     expect(destVaultBalanceAfter > destVaultBalanceBefore).to.be.true;
 
     // Verify escrow status is Settled
-    const escrowAfter =
-      await program.account.escrowDeposit.fetch(escrowPda);
+    const escrowAfter = await program.account.escrowDeposit.fetch(escrowPda);
     expect(JSON.stringify(escrowAfter.status)).to.include("settled");
   });
 
@@ -963,12 +958,7 @@ describe("escrow-integration", () => {
 
     try {
       await program.methods
-        .createEscrow(
-          escrowId,
-          escrowAmount,
-          expiresAt,
-          Array(32).fill(0),
-        )
+        .createEscrow(escrowId, escrowAmount, expiresAt, Array(32).fill(0))
         .accounts({
           agent: sourceAgent.publicKey,
           sourceVault: sourceVaultPda,
@@ -993,9 +983,7 @@ describe("escrow-integration", () => {
       // depending on whether single-tx check or rolling check triggers first.
       // $500 > $100 max_transaction_size_usd, so 6005 triggers first.
       const errStr = e.toString();
-      expect(
-        errStr.includes("6006") || errStr.includes("6005"),
-      ).to.be.true;
+      expect(errStr.includes("6006") || errStr.includes("6005")).to.be.true;
     }
   });
 
@@ -1023,11 +1011,7 @@ describe("escrow-integration", () => {
       true,
     );
 
-    const { escrowPda } = deriveEscrow(
-      sourceVaultPda,
-      destVaultPda,
-      escrowId,
-    );
+    const { escrowPda } = deriveEscrow(sourceVaultPda, destVaultPda, escrowId);
     const escrowFakeAta = getAssociatedTokenAddressSync(
       fakeMint,
       escrowPda,
@@ -1040,12 +1024,7 @@ describe("escrow-integration", () => {
 
     try {
       await program.methods
-        .createEscrow(
-          escrowId,
-          escrowAmount,
-          expiresAt,
-          Array(32).fill(0),
-        )
+        .createEscrow(escrowId, escrowAmount, expiresAt, Array(32).fill(0))
         .accounts({
           agent: sourceAgent.publicKey,
           sourceVault: sourceVaultPda,

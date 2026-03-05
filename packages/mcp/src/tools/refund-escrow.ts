@@ -7,9 +7,7 @@ export const refundEscrowSchema = z.object({
   sourceVault: z.string().describe("Source vault PDA address (base58)"),
   escrow: z.string().describe("Escrow PDA address (base58)"),
   escrowAta: z.string().describe("Escrow token account (base58)"),
-  sourceVaultAta: z
-    .string()
-    .describe("Source vault token account (base58)"),
+  sourceVaultAta: z.string().describe("Source vault token account (base58)"),
   tokenMint: z.string().describe("Token mint address (base58)"),
 });
 

@@ -12,10 +12,7 @@ export {
   type TurnkeyAttestationBundle,
 } from "./types";
 
-export {
-  AttestationCache,
-  DEFAULT_CACHE_TTL_MS,
-} from "./cache";
+export { AttestationCache, DEFAULT_CACHE_TTL_MS } from "./cache";
 
 export {
   verifyTeeAttestation,

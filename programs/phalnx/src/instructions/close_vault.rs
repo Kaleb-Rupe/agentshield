@@ -46,10 +46,7 @@ pub fn handler(ctx: Context<CloseVault>) -> Result<()> {
         vault.status != VaultStatus::Closed,
         PhalnxError::VaultAlreadyClosed
     );
-    require!(
-        vault.open_positions == 0,
-        PhalnxError::OpenPositionsExist
-    );
+    require!(vault.open_positions == 0, PhalnxError::OpenPositionsExist);
 
     let clock = Clock::get()?;
     emit!(VaultClosed {

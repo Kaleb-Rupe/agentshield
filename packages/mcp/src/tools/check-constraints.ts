@@ -22,9 +22,7 @@ export async function checkConstraints(
   input: CheckConstraintsInput,
 ): Promise<string> {
   try {
-    const constraints = await client.fetchConstraints(
-      toPublicKey(input.vault),
-    );
+    const constraints = await client.fetchConstraints(toPublicKey(input.vault));
 
     if (!constraints) {
       return [

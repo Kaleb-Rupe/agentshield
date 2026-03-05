@@ -205,9 +205,7 @@ pub mod phalnx {
 
     /// Close instruction constraints for the vault.
     /// Only the owner can call this. Blocked when timelock > 0 (removing constraints loosens security).
-    pub fn close_instruction_constraints(
-        ctx: Context<CloseInstructionConstraints>,
-    ) -> Result<()> {
+    pub fn close_instruction_constraints(ctx: Context<CloseInstructionConstraints>) -> Result<()> {
         instructions::close_instruction_constraints::handler(ctx)
     }
 
@@ -284,10 +282,7 @@ pub mod phalnx {
     }
 
     /// Close a settled/refunded escrow PDA — owner reclaims rent.
-    pub fn close_settled_escrow(
-        ctx: Context<CloseSettledEscrow>,
-        escrow_id: u64,
-    ) -> Result<()> {
+    pub fn close_settled_escrow(ctx: Context<CloseSettledEscrow>, escrow_id: u64) -> Result<()> {
         instructions::close_settled_escrow::handler(ctx, escrow_id)
     }
 }

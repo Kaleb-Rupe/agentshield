@@ -24,11 +24,9 @@ export const MAX_AGENTS_PER_VAULT = 10;
 /** Permission bitmask with all 21 bits set (18 base + 3 escrow ActionType variants) */
 export const FULL_PERMISSIONS = (1n << 21n) - 1n;
 export const SWAP_ONLY = 1n << 0n;
-export const PERPS_ONLY =
-  (1n << 1n) | (1n << 2n) | (1n << 3n) | (1n << 4n);
+export const PERPS_ONLY = (1n << 1n) | (1n << 2n) | (1n << 3n) | (1n << 4n);
 export const TRANSFER_ONLY = 1n << 7n;
-export const ESCROW_ONLY =
-  (1n << 18n) | (1n << 19n) | (1n << 20n);
+export const ESCROW_ONLY = (1n << 18n) | (1n << 19n) | (1n << 20n);
 
 // Escrow constants
 export const MAX_ESCROW_DURATION = 2_592_000; // 30 days in seconds

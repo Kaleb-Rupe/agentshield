@@ -28,18 +28,12 @@ pub fn handler(ctx: Context<RegisterAgent>, agent: Pubkey, permissions: u64) -> 
         permissions & !FULL_PERMISSIONS == 0,
         PhalnxError::InvalidPermissions
     );
-    require!(
-        !vault.is_agent(&agent),
-        PhalnxError::AgentAlreadyRegistered
-    );
+    require!(!vault.is_agent(&agent), PhalnxError::AgentAlreadyRegistered);
     require!(
         vault.agent_count() < MAX_AGENTS_PER_VAULT,
         PhalnxError::MaxAgentsReached
     );
-    require!(
-        agent != Pubkey::default(),
-        PhalnxError::InvalidAgentKey
-    );
+    require!(agent != Pubkey::default(), PhalnxError::InvalidAgentKey);
     require!(agent != vault.owner, PhalnxError::AgentIsOwner);
 
     vault.agents.push(AgentEntry {

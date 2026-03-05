@@ -80,9 +80,7 @@ export const x402FetchAction = {
       lines.push(`Response: ${body.slice(0, 1000)}`);
       callback({ text: lines.join("\n") });
     } catch (error: any) {
-      runtime.logger?.error(
-        `[Phalnx] x402 fetch failed: ${error.message}`,
-      );
+      runtime.logger?.error(`[Phalnx] x402 fetch failed: ${error.message}`);
       callback({
         text: `x402 fetch failed: ${error.message}`,
         error: true,

@@ -122,39 +122,29 @@ pub fn handler(
     let is_stablecoin_input = is_stablecoin_mint(&token_mint);
 
     // Load constraints PDA deterministically — agent CANNOT omit this
-    let loaded_constraints: Option<InstructionConstraints> =
-        if !ctx.remaining_accounts.is_empty() {
-            let info = &ctx.remaining_accounts[0];
-            let (constraints_pda, _) = Pubkey::find_program_address(
-                &[b"constraints", vault.key().as_ref()],
-                &crate::ID,
-            );
-            require_keys_eq!(
-                info.key(),
-                constraints_pda,
-                PhalnxError::InvalidConstraintsPda
-            );
-            require!(
-                info.owner == &crate::ID,
-                PhalnxError::InvalidConstraintsPda
-            );
-            let data = info.try_borrow_data()?;
-            let constraints =
-                InstructionConstraints::try_deserialize(&mut &data[..])?;
-            require_keys_eq!(
-                constraints.vault,
-                vault.key(),
-                PhalnxError::InvalidConstraintsPda
-            );
-            Some(constraints)
-        } else {
-            // No constraints PDA passed — verify none are configured
-            require!(
-                !policy.has_constraints,
-                PhalnxError::InvalidConstraintsPda
-            );
-            None
-        };
+    let loaded_constraints: Option<InstructionConstraints> = if !ctx.remaining_accounts.is_empty() {
+        let info = &ctx.remaining_accounts[0];
+        let (constraints_pda, _) =
+            Pubkey::find_program_address(&[b"constraints", vault.key().as_ref()], &crate::ID);
+        require_keys_eq!(
+            info.key(),
+            constraints_pda,
+            PhalnxError::InvalidConstraintsPda
+        );
+        require!(info.owner == &crate::ID, PhalnxError::InvalidConstraintsPda);
+        let data = info.try_borrow_data()?;
+        let constraints = InstructionConstraints::try_deserialize(&mut &data[..])?;
+        require_keys_eq!(
+            constraints.vault,
+            vault.key(),
+            PhalnxError::InvalidConstraintsPda
+        );
+        Some(constraints)
+    } else {
+        // No constraints PDA passed — verify none are configured
+        require!(!policy.has_constraints, PhalnxError::InvalidConstraintsPda);
+        None
+    };
 
     // 1. Vault must be active
     require!(vault.is_active(), PhalnxError::VaultNotActive);
@@ -166,10 +156,7 @@ pub fn handler(
     );
 
     // 1b. Escrow actions use standalone instructions, not the composition flow
-    require!(
-        !action_type.is_escrow_action(),
-        PhalnxError::InvalidSession
-    );
+    require!(!action_type.is_escrow_action(), PhalnxError::InvalidSession);
 
     // 1c. Amount validation: spending requires amount > 0,
     //     non-spending requires amount == 0
@@ -368,10 +355,7 @@ pub fn handler(
         // 5. Non-stablecoin input: exactly 1 recognized DeFi instruction required.
         // Prevents split-swap attacks (2+ swaps) and no-swap delegation theft (0 swaps).
         if !is_stablecoin_input {
-            require!(
-                defi_ix_count == 1,
-                PhalnxError::TooManyDeFiInstructions
-            );
+            require!(defi_ix_count == 1, PhalnxError::TooManyDeFiInstructions);
         }
     }
 
@@ -388,8 +372,8 @@ pub fn handler(
         let spl_token_id = ctx.accounts.token_program.key();
         // ComputeBudget111111111111111111111111111111
         let compute_budget_id = Pubkey::new_from_array([
-            3, 6, 70, 111, 229, 33, 23, 50, 255, 236, 173, 186, 114, 195, 155, 231, 188, 140,
-            229, 187, 197, 247, 18, 107, 44, 67, 155, 58, 64, 0, 0, 0,
+            3, 6, 70, 111, 229, 33, 23, 50, 255, 236, 173, 186, 114, 195, 155, 231, 188, 140, 229,
+            187, 197, 247, 18, 107, 44, 67, 155, 58, 64, 0, 0, 0,
         ]);
         let mut idx = current_index
             .checked_add(1)
@@ -415,12 +399,9 @@ pub fn handler(
 
                     // 2. Whitelist infrastructure programs (no policy check needed)
                     if ix.program_id == compute_budget_id
-                        || ix.program_id
-                            == anchor_lang::solana_program::system_program::ID
+                        || ix.program_id == anchor_lang::solana_program::system_program::ID
                     {
-                        idx = idx
-                            .checked_add(1)
-                            .ok_or(error!(PhalnxError::Overflow))?;
+                        idx = idx.checked_add(1).ok_or(error!(PhalnxError::Overflow))?;
                         continue;
                     }
 
@@ -432,12 +413,10 @@ pub fn handler(
 
                     // 4. Generic constraints (if configured)
                     if let Some(ref constraints) = loaded_constraints {
-                        if let Some(entry) =
-                            generic_constraints::find_constraint_entry(
-                                &constraints.entries,
-                                &ix.program_id,
-                            )
-                        {
+                        if let Some(entry) = generic_constraints::find_constraint_entry(
+                            &constraints.entries,
+                            &ix.program_id,
+                        ) {
                             generic_constraints::verify_data_constraints(
                                 &ix.data,
                                 &entry.data_constraints,
@@ -447,9 +426,7 @@ pub fn handler(
                 }
                 Err(_) => break,
             }
-            idx = idx
-                .checked_add(1)
-                .ok_or(error!(PhalnxError::Overflow))?;
+            idx = idx.checked_add(1).ok_or(error!(PhalnxError::Overflow))?;
         }
     }
 
@@ -474,10 +451,7 @@ pub fn handler(
             );
         }
         PositionEffect::Decrement => {
-            require!(
-                vault.open_positions > 0,
-                PhalnxError::NoPositionsToClose
-            );
+            require!(vault.open_positions > 0, PhalnxError::NoPositionsToClose);
         }
         PositionEffect::None => {}
     }

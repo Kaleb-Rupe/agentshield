@@ -437,12 +437,7 @@ export class PhalnxClient {
     agentToRemove: PublicKey,
   ): Promise<string> {
     const owner = this.provider.wallet.publicKey;
-    return buildRevokeAgent(
-      this.program,
-      owner,
-      vault,
-      agentToRemove,
-    ).rpc();
+    return buildRevokeAgent(this.program, owner, vault, agentToRemove).rpc();
   }
 
   async reactivateVault(
@@ -1299,11 +1294,7 @@ export class PhalnxClient {
 
   async closeInstructionConstraints(vault: PublicKey): Promise<string> {
     const owner = this.provider.wallet.publicKey;
-    return buildCloseInstructionConstraints(
-      this.program,
-      owner,
-      vault,
-    ).rpc();
+    return buildCloseInstructionConstraints(this.program, owner, vault).rpc();
   }
 
   async updateInstructionConstraints(

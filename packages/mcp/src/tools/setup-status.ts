@@ -95,6 +95,13 @@ export async function setupStatus(
     lines.push(`- **Vault Address:** ${vault.address}`);
     lines.push(`- **Owner:** ${vault.owner}`);
     lines.push(`- **Vault ID:** ${vault.vaultId}`);
+    if (vault.enabled && !vault.address) {
+      lines.push("");
+      lines.push(
+        "**Warning:** Vault enabled but address not saved. " +
+          "Run `shield_confirm_vault` to populate your vault address after signing the creation transaction.",
+      );
+    }
   }
 
   // Setup recommendation

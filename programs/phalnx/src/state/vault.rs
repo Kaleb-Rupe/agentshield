@@ -3,8 +3,8 @@ use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
 pub struct AgentEntry {
-    pub pubkey: Pubkey,       // 32 bytes
-    pub permissions: u64,     // 8 bytes
+    pub pubkey: Pubkey,   // 32 bytes
+    pub permissions: u64, // 8 bytes
 }
 // Total: 40 bytes per entry
 
@@ -51,7 +51,8 @@ impl AgentVault {
     /// fee_destination (32) + status (1) + bump (1) +
     /// created_at (8) + total_transactions (8) + total_volume (8) +
     /// open_positions (1) + total_fees_collected (8)
-    pub const SIZE: usize = 8 + 32 + 8 + 4 + (40 * MAX_AGENTS_PER_VAULT) + 32 + 1 + 1 + 8 + 8 + 8 + 1 + 8;
+    pub const SIZE: usize =
+        8 + 32 + 8 + 4 + (40 * MAX_AGENTS_PER_VAULT) + 32 + 1 + 1 + 8 + 8 + 8 + 1 + 8;
     // = 519
 
     pub fn is_active(&self) -> bool {

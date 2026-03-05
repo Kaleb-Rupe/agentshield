@@ -1,6 +1,11 @@
 import { expect } from "chai";
 import * as crypto from "node:crypto";
-import { Keypair, PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
+import {
+  Keypair,
+  PublicKey,
+  Transaction,
+  VersionedTransaction,
+} from "@solana/web3.js";
 import {
   AttestationStatus,
   AttestationCache,
@@ -28,7 +33,10 @@ import type {
   WalletLike,
   TeeWallet,
 } from "../src";
-import { setTestRootCa, restoreProductionRootCa } from "../src/wrapper/tee/providers/turnkey";
+import {
+  setTestRootCa,
+  restoreProductionRootCa,
+} from "../src/wrapper/tee/providers/turnkey";
 import { getGlobalCache } from "../src/wrapper/tee/verify";
 
 // --- Test Helpers ---
@@ -37,7 +45,9 @@ function createMockWallet(): WalletLike {
   const kp = Keypair.generate();
   return {
     publicKey: kp.publicKey,
-    async signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T> {
+    async signTransaction<T extends Transaction | VersionedTransaction>(
+      tx: T,
+    ): Promise<T> {
       return tx;
     },
   };
@@ -48,7 +58,9 @@ function createMockTeeWallet(provider: string): TeeWallet {
   return {
     publicKey: kp.publicKey,
     provider,
-    async signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T> {
+    async signTransaction<T extends Transaction | VersionedTransaction>(
+      tx: T,
+    ): Promise<T> {
       return tx;
     },
   };
@@ -62,7 +74,9 @@ function createMockTeeWalletWithCustody(
   return {
     publicKey: kp.publicKey,
     provider,
-    async signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T> {
+    async signTransaction<T extends Transaction | VersionedTransaction>(
+      tx: T,
+    ): Promise<T> {
       return tx;
     },
     async verifyProviderCustody(): Promise<boolean> {
@@ -74,12 +88,16 @@ function createMockTeeWalletWithCustody(
 
 function createMockTurnkeyWalletWithAttestation(
   bundle: TurnkeyAttestationBundle | null,
-): TeeWallet & { getAttestation: () => Promise<TurnkeyAttestationBundle | null> } {
+): TeeWallet & {
+  getAttestation: () => Promise<TurnkeyAttestationBundle | null>;
+} {
   const kp = Keypair.generate();
   return {
     publicKey: kp.publicKey,
     provider: "turnkey",
-    async signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T> {
+    async signTransaction<T extends Transaction | VersionedTransaction>(
+      tx: T,
+    ): Promise<T> {
       return tx;
     },
     async getAttestation() {
@@ -105,7 +123,11 @@ function generateTestCertChain(): {
   });
 
   // Self-signed CA certificate
-  const caCertPem = generateSelfSignedCert(caKeyPair, "Test Nitro Root CA", true);
+  const caCertPem = generateSelfSignedCert(
+    caKeyPair,
+    "Test Nitro Root CA",
+    true,
+  );
   const caCertDer = pemToDer(caCertPem);
 
   // Generate leaf key pair (P-384)
@@ -114,7 +136,12 @@ function generateTestCertChain(): {
   });
 
   // Leaf certificate signed by CA (issuerCn must match CA's subjectCn)
-  const leafCertPem = generateSignedCert(leafKeyPair, caKeyPair, "Test Enclave Cert", "Test Nitro Root CA");
+  const leafCertPem = generateSignedCert(
+    leafKeyPair,
+    caKeyPair,
+    "Test Enclave Cert",
+    "Test Nitro Root CA",
+  );
   const leafCertDer = pemToDer(leafCertPem);
 
   return {
@@ -153,7 +180,13 @@ function generateSignedCert(
   subjectCn: string,
   issuerCn: string,
 ): string {
-  return buildMinimalCert(subjectKeyPair, subjectCn, issuerCn, false, issuerKeyPair);
+  return buildMinimalCert(
+    subjectKeyPair,
+    subjectCn,
+    issuerCn,
+    false,
+    issuerKeyPair,
+  );
 }
 
 /** Build a DN (Distinguished Name) for CN=<cn>. */
@@ -166,17 +199,30 @@ function generateExpiredTestCertChain(): {
   leafKey: crypto.KeyObject;
 } {
   const caKeyPair = crypto.generateKeyPairSync("ec", { namedCurve: "P-384" });
-  const caCertPem = generateSelfSignedCert(caKeyPair, "Test Nitro Root CA", true);
+  const caCertPem = generateSelfSignedCert(
+    caKeyPair,
+    "Test Nitro Root CA",
+    true,
+  );
 
   const leafKeyPair = crypto.generateKeyPairSync("ec", { namedCurve: "P-384" });
   // Expired leaf: notBefore = 2020, notAfter = 2021 (in the past)
   const leafCertPem = buildMinimalCertWithValidity(
-    leafKeyPair, "Test Expired Cert", "Test Nitro Root CA", false, caKeyPair,
-    "200101000000Z", "210101000000Z",
+    leafKeyPair,
+    "Test Expired Cert",
+    "Test Nitro Root CA",
+    false,
+    caKeyPair,
+    "200101000000Z",
+    "210101000000Z",
   );
   const leafCertDer = pemToDer(leafCertPem);
 
-  return { caPem: caCertPem, leafCert: leafCertDer, leafKey: leafKeyPair.privateKey };
+  return {
+    caPem: caCertPem,
+    leafCert: leafCertDer,
+    leafKey: leafKeyPair.privateKey,
+  };
 }
 
 /**
@@ -191,7 +237,10 @@ function buildMinimalCertWithValidity(
   notBeforeUtc: string,
   notAfterUtc: string,
 ): string {
-  const subjectPubKeyDer = subjectKeyPair.publicKey.export({ type: "spki", format: "der" });
+  const subjectPubKeyDer = subjectKeyPair.publicKey.export({
+    type: "spki",
+    format: "der",
+  });
 
   const version = Buffer.from([0xa0, 0x03, 0x02, 0x01, 0x02]);
   const serial = Buffer.from([0x02, 0x01, 0x01]);
@@ -202,8 +251,16 @@ function buildMinimalCertWithValidity(
   const issuerDn = buildDN(issuerCn);
   const subjectDn = buildDN(subjectCn);
 
-  const notBefore = Buffer.from([0x17, 0x0d, ...Buffer.from(notBeforeUtc, "ascii")]);
-  const notAfter = Buffer.from([0x17, 0x0d, ...Buffer.from(notAfterUtc, "ascii")]);
+  const notBefore = Buffer.from([
+    0x17,
+    0x0d,
+    ...Buffer.from(notBeforeUtc, "ascii"),
+  ]);
+  const notAfter = Buffer.from([
+    0x17,
+    0x0d,
+    ...Buffer.from(notAfterUtc, "ascii"),
+  ]);
   const validity = derSequence(Buffer.concat([notBefore, notAfter]));
 
   let extensions = Buffer.alloc(0);
@@ -211,7 +268,10 @@ function buildMinimalCertWithValidity(
     const bcOid = Buffer.from([0x06, 0x03, 0x55, 0x1d, 0x13]);
     const bcCritical = Buffer.from([0x01, 0x01, 0xff]);
     const bcValue = derSequence(Buffer.from([0x01, 0x01, 0xff]));
-    const bcOctet = Buffer.concat([Buffer.from([0x04, bcValue.length]), bcValue]);
+    const bcOctet = Buffer.concat([
+      Buffer.from([0x04, bcValue.length]),
+      bcValue,
+    ]);
     const bcExt = derSequence(Buffer.concat([bcOid, bcCritical, bcOctet]));
     extensions = Buffer.concat([
       Buffer.from([0xa3]),
@@ -221,7 +281,14 @@ function buildMinimalCertWithValidity(
   }
 
   const tbsContent = Buffer.concat([
-    version, serial, algorithm, issuerDn, validity, subjectDn, subjectPubKeyDer, extensions,
+    version,
+    serial,
+    algorithm,
+    issuerDn,
+    validity,
+    subjectDn,
+    subjectPubKeyDer,
+    extensions,
   ]);
   const tbsCert = derSequence(tbsContent);
 
@@ -230,7 +297,10 @@ function buildMinimalCertWithValidity(
   const sigDer = signer.sign(signerKeyPair.privateKey);
 
   const sigAlg = algorithm;
-  const sigBitString = Buffer.concat([Buffer.from([0x03, sigDer.length + 1, 0x00]), sigDer]);
+  const sigBitString = Buffer.concat([
+    Buffer.from([0x03, sigDer.length + 1, 0x00]),
+    sigDer,
+  ]);
   const cert = derSequence(Buffer.concat([tbsCert, sigAlg, sigBitString]));
 
   const b64 = cert.toString("base64");
@@ -243,7 +313,10 @@ function buildDN(cn: string): Buffer {
   const cnOid = Buffer.from([0x06, 0x03, 0x55, 0x04, 0x03]); // OID 2.5.4.3 (CN)
   const cnValue = Buffer.concat([Buffer.from([0x0c, cnBytes.length]), cnBytes]); // UTF8String
   const attrValue = derSequence(Buffer.concat([cnOid, cnValue]));
-  const rdnSet = Buffer.concat([Buffer.from([0x31, attrValue.length]), attrValue]);
+  const rdnSet = Buffer.concat([
+    Buffer.from([0x31, attrValue.length]),
+    attrValue,
+  ]);
   return derSequence(rdnSet);
 }
 
@@ -278,10 +351,14 @@ function buildMinimalCert(
 
   // Validity: 2020-01-01 to 2049-01-01 (UTCTime: 50-99=1950-1999, 00-49=2000-2049)
   const notBefore = Buffer.from([
-    0x17, 0x0d, ...Buffer.from("200101000000Z", "ascii"),
+    0x17,
+    0x0d,
+    ...Buffer.from("200101000000Z", "ascii"),
   ]);
   const notAfter = Buffer.from([
-    0x17, 0x0d, ...Buffer.from("490101000000Z", "ascii"),
+    0x17,
+    0x0d,
+    ...Buffer.from("490101000000Z", "ascii"),
   ]);
   const validity = derSequence(Buffer.concat([notBefore, notAfter]));
 
@@ -292,7 +369,10 @@ function buildMinimalCert(
     const bcOid = Buffer.from([0x06, 0x03, 0x55, 0x1d, 0x13]); // 2.5.29.19
     const bcCritical = Buffer.from([0x01, 0x01, 0xff]); // BOOLEAN TRUE
     const bcValue = derSequence(Buffer.from([0x01, 0x01, 0xff])); // CA=TRUE
-    const bcOctet = Buffer.concat([Buffer.from([0x04, bcValue.length]), bcValue]);
+    const bcOctet = Buffer.concat([
+      Buffer.from([0x04, bcValue.length]),
+      bcValue,
+    ]);
     const bcExt = derSequence(Buffer.concat([bcOid, bcCritical, bcOctet]));
     extensions = Buffer.concat([
       Buffer.from([0xa3]),
@@ -438,7 +518,9 @@ describe("TEE Remote Attestation", () => {
   // --- Types ---
   describe("types", () => {
     it("AttestationStatus has 5 values", () => {
-      expect(AttestationStatus.CryptographicallyVerified).to.equal("cryptographically_verified");
+      expect(AttestationStatus.CryptographicallyVerified).to.equal(
+        "cryptographically_verified",
+      );
       expect(AttestationStatus.ProviderVerified).to.equal("provider_verified");
       expect(AttestationStatus.ProviderTrusted).to.equal("provider_trusted");
       expect(AttestationStatus.Failed).to.equal("failed");
@@ -619,11 +701,15 @@ describe("TEE Remote Attestation", () => {
     });
 
     it("falls back to ProviderTrusted when custody API throws", async () => {
-      const wallet = createMockTeeWalletWithCustody("crossmint", new Error("API down"));
+      const wallet = createMockTeeWalletWithCustody(
+        "crossmint",
+        new Error("API down"),
+      );
       const result = await verifyCrossmint(wallet);
       expect(result.status).to.equal(AttestationStatus.ProviderTrusted);
       expect(result.message).to.include("API call failed");
-      expect((result.metadata.rawAttestation as any)?.custodyCheckFailed).to.be.true;
+      expect((result.metadata.rawAttestation as any)?.custodyCheckFailed).to.be
+        .true;
     });
   });
 
@@ -663,7 +749,10 @@ describe("TEE Remote Attestation", () => {
     });
 
     it("returns ProviderTrusted when custody API throws", async () => {
-      const wallet = createMockTeeWalletWithCustody("privy", new Error("network"));
+      const wallet = createMockTeeWalletWithCustody(
+        "privy",
+        new Error("network"),
+      );
       const result = await verifyPrivy(wallet);
       expect(result.status).to.equal(AttestationStatus.ProviderTrusted);
     });
@@ -689,7 +778,9 @@ describe("TEE Remote Attestation", () => {
       const wallet: TeeWallet & { getAttestation: () => Promise<never> } = {
         publicKey: kp.publicKey,
         provider: "turnkey",
-        async signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T> {
+        async signTransaction<T extends Transaction | VersionedTransaction>(
+          tx: T,
+        ): Promise<T> {
           return tx;
         },
         async getAttestation(): Promise<never> {
@@ -715,7 +806,9 @@ describe("TEE Remote Attestation", () => {
       });
 
       const result = await verifyTurnkey(wallet);
-      expect(result.status).to.equal(AttestationStatus.CryptographicallyVerified);
+      expect(result.status).to.equal(
+        AttestationStatus.CryptographicallyVerified,
+      );
       expect(result.metadata.enclaveType).to.equal("nitro");
       expect(result.metadata.certChainLength).to.equal(1);
       expect(result.metadata.pcrValues).to.exist;
@@ -804,7 +897,9 @@ describe("TEE Remote Attestation", () => {
       });
 
       const result = await verifyTurnkey(wallet, { expectedPcr3: pcr3 });
-      expect(result.status).to.equal(AttestationStatus.CryptographicallyVerified);
+      expect(result.status).to.equal(
+        AttestationStatus.CryptographicallyVerified,
+      );
       expect(result.metadata.pcrValues?.pcr3).to.equal(pcr3);
     });
 
@@ -827,7 +922,9 @@ describe("TEE Remote Attestation", () => {
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).to.be.instanceOf(TeeAttestationError);
-        expect((err as Error).message).to.include("signature verification failed");
+        expect((err as Error).message).to.include(
+          "signature verification failed",
+        );
       }
     });
 
@@ -887,7 +984,9 @@ describe("TEE Remote Attestation", () => {
         expect.fail("Should have thrown for expired certificate");
       } catch (err) {
         expect(err).to.be.instanceOf(AttestationCertChainError);
-        expect((err as Error).message).to.include("outside its validity period");
+        expect((err as Error).message).to.include(
+          "outside its validity period",
+        );
       }
     });
 
@@ -933,7 +1032,9 @@ describe("TEE Remote Attestation", () => {
         expect.fail("Should have thrown for empty app proof fields");
       } catch (err) {
         expect(err).to.be.instanceOf(TeeAttestationError);
-        expect((err as Error).message).to.include("App proof fields present but empty");
+        expect((err as Error).message).to.include(
+          "App proof fields present but empty",
+        );
       }
     });
 
@@ -974,7 +1075,9 @@ describe("TEE Remote Attestation", () => {
       const wallet: TeeWallet & { getAttestation: () => Promise<any> } = {
         publicKey: kp.publicKey,
         provider: "turnkey",
-        async signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T> {
+        async signTransaction<T extends Transaction | VersionedTransaction>(
+          tx: T,
+        ): Promise<T> {
           return tx;
         },
         async getAttestation() {
@@ -991,7 +1094,9 @@ describe("TEE Remote Attestation", () => {
         expect.fail("Should have thrown for non-string bootProof");
       } catch (err) {
         expect(err).to.be.instanceOf(TeeAttestationError);
-        expect((err as Error).message).to.include("bootProof must be a non-empty base64 string");
+        expect((err as Error).message).to.include(
+          "bootProof must be a non-empty base64 string",
+        );
       }
     });
 
@@ -1073,7 +1178,9 @@ describe("TEE Remote Attestation", () => {
         },
       });
       expect(callbackResult).to.exist;
-      expect(callbackResult!.status).to.equal(AttestationStatus.ProviderTrusted);
+      expect(callbackResult!.status).to.equal(
+        AttestationStatus.ProviderTrusted,
+      );
     });
 
     it("does not fire onVerified for Unavailable status", async () => {
@@ -1091,7 +1198,10 @@ describe("TEE Remote Attestation", () => {
     it("throws when requireAttestation=true and wallet is non-TEE", async () => {
       const wallet = createMockWallet();
       try {
-        await verifyTeeAttestation(wallet, { requireAttestation: true, cacheTtlMs: 0 });
+        await verifyTeeAttestation(wallet, {
+          requireAttestation: true,
+          cacheTtlMs: 0,
+        });
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).to.be.instanceOf(TeeAttestationError);
@@ -1103,7 +1213,9 @@ describe("TEE Remote Attestation", () => {
       const wallet = createMockWallet();
       const result = await verifyTeeAttestation(wallet, { cacheTtlMs: 0 });
       expect(result.status).to.equal(AttestationStatus.Unavailable);
-      expect(result.message).to.include("does not expose a recognized TEE provider");
+      expect(result.message).to.include(
+        "does not expose a recognized TEE provider",
+      );
     });
 
     it("verify uses config cacheTtlMs for cache entries (F7)", async () => {
@@ -1214,7 +1326,9 @@ describe("TEE Remote Attestation", () => {
         expect.fail("Should have thrown for tampered payload");
       } catch (err) {
         expect(err).to.be.instanceOf(TeeAttestationError);
-        expect((err as Error).message).to.include("signature verification failed");
+        expect((err as Error).message).to.include(
+          "signature verification failed",
+        );
       }
     });
 
@@ -1223,8 +1337,13 @@ describe("TEE Remote Attestation", () => {
       setTestRootCa(caPem);
 
       // Generate a P-256 key pair for app proof
-      const appKeyPair = crypto.generateKeyPairSync("ec", { namedCurve: "P-256" });
-      const appPubKeyDer = appKeyPair.publicKey.export({ type: "spki", format: "der" }) as Buffer;
+      const appKeyPair = crypto.generateKeyPairSync("ec", {
+        namedCurve: "P-256",
+      });
+      const appPubKeyDer = appKeyPair.publicKey.export({
+        type: "spki",
+        format: "der",
+      }) as Buffer;
       // Uncompressed P-256 public key is the last 65 bytes of the SPKI DER
       const appPubKeyBytes = appPubKeyDer.subarray(appPubKeyDer.length - 65);
 
@@ -1245,10 +1364,14 @@ describe("TEE Remote Attestation", () => {
         publicKey: bootPubKey,
       });
 
-      const wallet: TeeWallet & { getAttestation: () => Promise<TurnkeyAttestationBundle> } = {
+      const wallet: TeeWallet & {
+        getAttestation: () => Promise<TurnkeyAttestationBundle>;
+      } = {
         publicKey: kp.publicKey,
         provider: "turnkey",
-        async signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T> {
+        async signTransaction<T extends Transaction | VersionedTransaction>(
+          tx: T,
+        ): Promise<T> {
           return tx;
         },
         async getAttestation() {
@@ -1261,15 +1384,22 @@ describe("TEE Remote Attestation", () => {
       };
 
       const result = await verifyTurnkey(wallet);
-      expect(result.status).to.equal(AttestationStatus.CryptographicallyVerified);
+      expect(result.status).to.equal(
+        AttestationStatus.CryptographicallyVerified,
+      );
     });
 
     it("rejects invalid app proof signature (C1 — wrong P-256 sig)", async () => {
       const { caPem, leafCert, leafKey } = generateTestCertChain();
       setTestRootCa(caPem);
 
-      const appKeyPair = crypto.generateKeyPairSync("ec", { namedCurve: "P-256" });
-      const appPubKeyDer = appKeyPair.publicKey.export({ type: "spki", format: "der" }) as Buffer;
+      const appKeyPair = crypto.generateKeyPairSync("ec", {
+        namedCurve: "P-256",
+      });
+      const appPubKeyDer = appKeyPair.publicKey.export({
+        type: "spki",
+        format: "der",
+      }) as Buffer;
       const appPubKeyBytes = appPubKeyDer.subarray(appPubKeyDer.length - 65);
 
       const bootPubKey = crypto.randomBytes(65);
@@ -1281,16 +1411,22 @@ describe("TEE Remote Attestation", () => {
 
       const kp = Keypair.generate();
       // Sign with a DIFFERENT key pair — signature won't match appPublicKey
-      const wrongKeyPair = crypto.generateKeyPairSync("ec", { namedCurve: "P-256" });
+      const wrongKeyPair = crypto.generateKeyPairSync("ec", {
+        namedCurve: "P-256",
+      });
       const badSig = crypto.sign("SHA256", kp.publicKey.toBuffer(), {
         key: wrongKeyPair.privateKey,
         dsaEncoding: "der",
       });
 
-      const wallet: TeeWallet & { getAttestation: () => Promise<TurnkeyAttestationBundle> } = {
+      const wallet: TeeWallet & {
+        getAttestation: () => Promise<TurnkeyAttestationBundle>;
+      } = {
         publicKey: kp.publicKey,
         provider: "turnkey",
-        async signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T> {
+        async signTransaction<T extends Transaction | VersionedTransaction>(
+          tx: T,
+        ): Promise<T> {
           return tx;
         },
         async getAttestation() {
@@ -1307,7 +1443,9 @@ describe("TEE Remote Attestation", () => {
         expect.fail("Should have thrown for invalid app proof signature");
       } catch (err) {
         expect(err).to.be.instanceOf(TeeAttestationError);
-        expect((err as Error).message).to.include("P-256 signature verification failed");
+        expect((err as Error).message).to.include(
+          "P-256 signature verification failed",
+        );
       }
     });
 
@@ -1387,7 +1525,9 @@ describe("TEE Remote Attestation", () => {
         expect.fail("Should have thrown — PCR3 absent");
       } catch (err) {
         expect(err).to.be.instanceOf(AttestationPcrMismatchError);
-        expect((err as AttestationPcrMismatchError).actual).to.equal("<absent>");
+        expect((err as AttestationPcrMismatchError).actual).to.equal(
+          "<absent>",
+        );
       }
     });
 
@@ -1402,7 +1542,10 @@ describe("TEE Remote Attestation", () => {
 
       // 2. Call WITH requireAttestation — should throw even though the wallet is the same
       try {
-        await verifyTeeAttestation(wallet, { requireAttestation: true, cacheTtlMs: 0 });
+        await verifyTeeAttestation(wallet, {
+          requireAttestation: true,
+          cacheTtlMs: 0,
+        });
         expect.fail("Should have thrown — requireAttestation enforced");
       } catch (err) {
         expect(err).to.be.instanceOf(TeeAttestationError);
@@ -1425,9 +1568,14 @@ describe("TEE Remote Attestation", () => {
     it("config-aware cache key separates different expectedPcr3 values (H3)", async () => {
       const wallet = createMockTeeWallet("crossmint");
       // Cache with no expectedPcr3
-      const result1 = await verifyTeeAttestation(wallet, { cacheTtlMs: 60_000 });
+      const result1 = await verifyTeeAttestation(wallet, {
+        cacheTtlMs: 60_000,
+      });
       // Cache with expectedPcr3 — should NOT return the first cached result
-      const result2 = await verifyTeeAttestation(wallet, { cacheTtlMs: 60_000, expectedPcr3: "abc123" });
+      const result2 = await verifyTeeAttestation(wallet, {
+        cacheTtlMs: 60_000,
+        expectedPcr3: "abc123",
+      });
       // They should be different objects (different cache keys)
       expect(result1).to.not.equal(result2);
     });
@@ -1437,7 +1585,9 @@ describe("TEE Remote Attestation", () => {
       const wallet = {
         publicKey: kp.publicKey,
         provider: "",
-        async signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T> {
+        async signTransaction<T extends Transaction | VersionedTransaction>(
+          tx: T,
+        ): Promise<T> {
           return tx;
         },
       };
@@ -1493,15 +1643,22 @@ describe("TEE Remote Attestation", () => {
   describe("ProviderVerified + minAttestationLevel", () => {
     it("caches ProviderVerified results", async () => {
       const wallet = createMockTeeWalletWithCustody("crossmint", true);
-      const result1 = await verifyTeeAttestation(wallet, { cacheTtlMs: 60_000 });
+      const result1 = await verifyTeeAttestation(wallet, {
+        cacheTtlMs: 60_000,
+      });
       expect(result1.status).to.equal(AttestationStatus.ProviderVerified);
-      const result2 = await verifyTeeAttestation(wallet, { cacheTtlMs: 60_000 });
+      const result2 = await verifyTeeAttestation(wallet, {
+        cacheTtlMs: 60_000,
+      });
       // Same reference from cache
       expect(result1).to.equal(result2);
     });
 
     it("does not cache ProviderTrusted from custody API failure", async () => {
-      const wallet = createMockTeeWalletWithCustody("crossmint", new Error("API down"));
+      const wallet = createMockTeeWalletWithCustody(
+        "crossmint",
+        new Error("API down"),
+      );
       await verifyTeeAttestation(wallet, { cacheTtlMs: 60_000 });
       const cache = getGlobalCache();
       const pubkey = wallet.publicKey.toBase58();
@@ -1514,10 +1671,14 @@ describe("TEE Remote Attestation", () => {
       let callbackResult: AttestationResult | undefined;
       await verifyTeeAttestation(wallet, {
         cacheTtlMs: 0,
-        onVerified: (r) => { callbackResult = r; },
+        onVerified: (r) => {
+          callbackResult = r;
+        },
       });
       expect(callbackResult).to.exist;
-      expect(callbackResult!.status).to.equal(AttestationStatus.ProviderVerified);
+      expect(callbackResult!.status).to.equal(
+        AttestationStatus.ProviderVerified,
+      );
     });
 
     it("dispatcher passes wallet object to crossmint verifier", async () => {
@@ -1545,7 +1706,9 @@ describe("TEE Remote Attestation", () => {
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).to.be.instanceOf(TeeAttestationError);
-        expect((err as Error).message).to.include("does not meet minimum required level");
+        expect((err as Error).message).to.include(
+          "does not meet minimum required level",
+        );
         expect((err as Error).message).to.include("provider_verified");
       }
     });
@@ -1569,7 +1732,9 @@ describe("TEE Remote Attestation", () => {
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).to.be.instanceOf(TeeAttestationError);
-        expect((err as Error).message).to.include("does not meet minimum required level");
+        expect((err as Error).message).to.include(
+          "does not meet minimum required level",
+        );
         expect((err as Error).message).to.include("cryptographic");
       }
     });
@@ -1577,14 +1742,19 @@ describe("TEE Remote Attestation", () => {
     it("minAttestationLevel: accepts CryptographicallyVerified at any level", async () => {
       const { caPem, leafCert, leafKey } = generateTestCertChain();
       setTestRootCa(caPem);
-      const bootProof = await buildTestCoseSign1({ leafKey, certChain: [leafCert] });
+      const bootProof = await buildTestCoseSign1({
+        leafKey,
+        certChain: [leafCert],
+      });
       const wallet = createMockTurnkeyWalletWithAttestation({ bootProof });
 
       const result = await verifyTeeAttestation(wallet, {
         cacheTtlMs: 0,
         minAttestationLevel: "cryptographic",
       });
-      expect(result.status).to.equal(AttestationStatus.CryptographicallyVerified);
+      expect(result.status).to.equal(
+        AttestationStatus.CryptographicallyVerified,
+      );
     });
 
     it("minAttestationLevel: defaults to accepting ProviderTrusted (backward compat)", async () => {
@@ -1605,10 +1775,14 @@ describe("TEE Remote Attestation", () => {
 
     it("turnkey: rejects when getAttestation times out", async () => {
       const kp = Keypair.generate();
-      const wallet: TeeWallet & { getAttestation: () => Promise<TurnkeyAttestationBundle | null> } = {
+      const wallet: TeeWallet & {
+        getAttestation: () => Promise<TurnkeyAttestationBundle | null>;
+      } = {
         publicKey: kp.publicKey,
         provider: "turnkey",
-        async signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T> {
+        async signTransaction<T extends Transaction | VersionedTransaction>(
+          tx: T,
+        ): Promise<T> {
           return tx;
         },
         getAttestation(): Promise<TurnkeyAttestationBundle | null> {
@@ -1626,7 +1800,11 @@ describe("TEE Remote Attestation", () => {
     }).timeout(35_000);
 
     it("AttestationLevel type is usable", () => {
-      const levels: AttestationLevel[] = ["provider_trusted", "provider_verified", "cryptographic"];
+      const levels: AttestationLevel[] = [
+        "provider_trusted",
+        "provider_verified",
+        "cryptographic",
+      ];
       expect(levels).to.have.lengthOf(3);
     });
   });
@@ -1649,7 +1827,11 @@ describe("TEE Remote Attestation", () => {
     });
 
     it("AttestationPcrMismatchError stores pcr fields", () => {
-      const err = new AttestationPcrMismatchError(3, "expected-hex", "actual-hex");
+      const err = new AttestationPcrMismatchError(
+        3,
+        "expected-hex",
+        "actual-hex",
+      );
       expect(err.name).to.equal("AttestationPcrMismatchError");
       expect(err.pcrIndex).to.equal(3);
       expect(err.expected).to.equal("expected-hex");

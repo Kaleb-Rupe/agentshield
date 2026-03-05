@@ -1,10 +1,7 @@
 import { expect } from "chai";
 import { Keypair } from "@solana/web3.js";
 import { checkEscrow } from "../../src/tools/check-escrow";
-import {
-  createMockClient,
-  TEST_VAULT_PDA,
-} from "../helpers/mock-client";
+import { createMockClient, TEST_VAULT_PDA } from "../helpers/mock-client";
 
 describe("shield_check_escrow", () => {
   const destVault = Keypair.generate().publicKey.toBase58();

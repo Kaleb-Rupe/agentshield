@@ -86,6 +86,8 @@ import { setupStatus } from "./tools/setup-status";
 import { configure } from "./tools/configure";
 import { configureFromFile } from "./tools/configure-from-file";
 import { fundWallet } from "./tools/fund-wallet";
+import { discoverVault } from "./tools/discover-vault";
+import { confirmVault } from "./tools/confirm-vault";
 
 // Resources
 import { getPolicyResource } from "./resources/policy";
@@ -142,9 +144,7 @@ async function main() {
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(
-      `[phalnx-mcp] Config error: ${msg} — running in setup mode.`,
-    );
+    console.error(`[phalnx-mcp] Config error: ${msg} — running in setup mode.`);
   }
 
   /**
@@ -277,6 +277,47 @@ async function main() {
     },
     async (input) => ({
       content: [{ type: "text", text: await configureFromFile(null, input) }],
+    }),
+  );
+
+  registerTool(
+    server,
+    "shield_discover_vault",
+    "Discover vaults owned by a public key. Derives vault PDA(s) from owner + vaultId and checks on-chain. Use to find vault addresses after creation, or scan for all vaults owned by an address.",
+    {
+      owner: z.string().describe("Owner public key (base58)"),
+      vaultId: z
+        .number()
+        .optional()
+        .describe("Specific vault ID. If omitted, scans a range."),
+      scanRange: z
+        .number()
+        .optional()
+        .default(10)
+        .describe("Number of IDs to scan (max 256). Default: 10."),
+    },
+    async (input) => ({
+      content: [{ type: "text", text: await discoverVault(null, input) }],
+    }),
+  );
+
+  registerTool(
+    server,
+    "shield_confirm_vault",
+    "Confirm a vault exists on-chain and save its address to config. Use after signing the vault creation Blink to populate the vault address.",
+    {
+      owner: z
+        .string()
+        .optional()
+        .describe("Owner public key (base58). Defaults to configured wallet."),
+      vaultId: z
+        .number()
+        .optional()
+        .default(0)
+        .describe("Vault ID. Default: 0"),
+    },
+    async (input) => ({
+      content: [{ type: "text", text: await confirmVault(null, input) }],
     }),
   );
 
@@ -891,7 +932,9 @@ async function main() {
       tokenMint: z.string().describe("Token mint address (base58)"),
       proof: z
         .string()
-        .describe("Base64-encoded proof data (SHA-256 must match condition_hash)"),
+        .describe(
+          "Base64-encoded proof data (SHA-256 must match condition_hash)",
+        ),
     },
     requireClient((input) => settleEscrow(client!, input)),
   );
@@ -1391,9 +1434,7 @@ async function main() {
           "sync_positions",
         ])
         .describe("Phalnx admin action to propose"),
-      phalnxVault: z
-        .string()
-        .describe("Phalnx vault PDA address (base58)"),
+      phalnxVault: z.string().describe("Phalnx vault PDA address (base58)"),
       actionParams: z
         .string()
         .optional()

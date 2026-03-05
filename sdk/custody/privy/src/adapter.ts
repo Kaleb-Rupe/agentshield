@@ -68,9 +68,9 @@ export class PrivyRESTClient implements PrivySDKClient {
   }
 
   private get authHeaders(): Record<string, string> {
-    const credentials = Buffer.from(
-      `${this.appId}:${this.appSecret}`,
-    ).toString("base64");
+    const credentials = Buffer.from(`${this.appId}:${this.appSecret}`).toString(
+      "base64",
+    );
     return {
       Authorization: `Basic ${credentials}`,
       "privy-app-id": this.appId,
@@ -89,9 +89,7 @@ export class PrivyRESTClient implements PrivySDKClient {
 
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(
-        `Privy wallet creation failed (${res.status}): ${text}`,
-      );
+      throw new Error(`Privy wallet creation failed (${res.status}): ${text}`);
     }
 
     const data = (await res.json()) as Record<string, unknown>;
@@ -107,9 +105,7 @@ export class PrivyRESTClient implements PrivySDKClient {
     return { id, address };
   }
 
-  async getWallet(
-    walletId: string,
-  ): Promise<{ id: string; address: string }> {
+  async getWallet(walletId: string): Promise<{ id: string; address: string }> {
     const res = await fetch(
       `${this.baseUrl}/v1/wallets/${encodeURIComponent(walletId)}`,
       {
@@ -120,9 +116,7 @@ export class PrivyRESTClient implements PrivySDKClient {
 
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(
-        `Privy get wallet failed (${res.status}): ${text}`,
-      );
+      throw new Error(`Privy get wallet failed (${res.status}): ${text}`);
     }
 
     const data = (await res.json()) as Record<string, unknown>;
@@ -211,9 +205,8 @@ export class PrivyRESTClient implements PrivySDKClient {
     }
 
     const data = (await res.json()) as Record<string, unknown>;
-    const signedTransaction = (
-      data.data as Record<string, unknown> | undefined
-    )?.signed_transaction as string;
+    const signedTransaction = (data.data as Record<string, unknown> | undefined)
+      ?.signed_transaction as string;
     if (!signedTransaction) {
       throw new Error(
         "Privy signing returned no signed_transaction. Response: " +

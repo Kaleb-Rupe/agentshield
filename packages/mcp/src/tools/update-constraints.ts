@@ -5,9 +5,7 @@ import { formatError } from "../errors";
 
 const dataConstraintSchema = z.object({
   offset: z.number().int().min(0).describe("Byte offset in instruction data"),
-  operator: z
-    .enum(["eq", "ne", "gte", "lte"])
-    .describe("Comparison operator"),
+  operator: z.enum(["eq", "ne", "gte", "lte"]).describe("Comparison operator"),
   value: z
     .array(z.number().int().min(0).max(255))
     .min(1)
@@ -34,11 +32,16 @@ export type UpdateConstraintsInput = z.infer<typeof updateConstraintsSchema>;
 
 function operatorToAnchor(op: string): any {
   switch (op) {
-    case "eq": return { eq: {} };
-    case "ne": return { ne: {} };
-    case "gte": return { gte: {} };
-    case "lte": return { lte: {} };
-    default: throw new Error(`Unknown operator: ${op}`);
+    case "eq":
+      return { eq: {} };
+    case "ne":
+      return { ne: {} };
+    case "gte":
+      return { gte: {} };
+    case "lte":
+      return { lte: {} };
+    default:
+      throw new Error(`Unknown operator: ${op}`);
   }
 }
 

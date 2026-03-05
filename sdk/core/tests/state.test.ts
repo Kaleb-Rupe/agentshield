@@ -178,9 +178,7 @@ describe("ShieldState", () => {
       }
 
       // Verify via storage — should have exactly 500 entries
-      const persisted = JSON.parse(
-        storage.data["phalnx:spends"],
-      ) as unknown[];
+      const persisted = JSON.parse(storage.data["phalnx:spends"]) as unknown[];
       expect(persisted.length).to.equal(500);
     });
   });

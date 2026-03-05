@@ -28,15 +28,22 @@ export const queueConstraintsUpdateSchema = z.object({
     .describe("New constraint entries to apply after timelock"),
 });
 
-export type QueueConstraintsUpdateInput = z.infer<typeof queueConstraintsUpdateSchema>;
+export type QueueConstraintsUpdateInput = z.infer<
+  typeof queueConstraintsUpdateSchema
+>;
 
 function operatorToAnchor(op: string): any {
   switch (op) {
-    case "eq": return { eq: {} };
-    case "ne": return { ne: {} };
-    case "gte": return { gte: {} };
-    case "lte": return { lte: {} };
-    default: throw new Error(`Unknown operator: ${op}`);
+    case "eq":
+      return { eq: {} };
+    case "ne":
+      return { ne: {} };
+    case "gte":
+      return { gte: {} };
+    case "lte":
+      return { lte: {} };
+    default:
+      throw new Error(`Unknown operator: ${op}`);
   }
 }
 

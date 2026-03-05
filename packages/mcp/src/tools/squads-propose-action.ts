@@ -23,9 +23,7 @@ export const squadsProposeActionSchema = z.object({
     .default(0)
     .describe("Squads vault authority index (default 0)"),
   action: z.enum(ACTION_TYPES).describe("Phalnx admin action to propose"),
-  phalnxVault: z
-    .string()
-    .describe("Phalnx vault PDA address (base58)"),
+  phalnxVault: z.string().describe("Phalnx vault PDA address (base58)"),
   actionParams: z
     .string()
     .optional()

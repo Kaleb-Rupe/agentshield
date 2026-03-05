@@ -1,7 +1,11 @@
 import { expect } from "chai";
 import { Keypair } from "@solana/web3.js";
 import { registerAgent } from "../../src/tools/register-agent";
-import { createMockClient, TEST_VAULT_PDA, TEST_AGENT } from "../helpers/mock-client";
+import {
+  createMockClient,
+  TEST_VAULT_PDA,
+  TEST_AGENT,
+} from "../helpers/mock-client";
 
 describe("shield_register_agent (permissions)", () => {
   const agentKey = Keypair.generate().publicKey.toBase58();

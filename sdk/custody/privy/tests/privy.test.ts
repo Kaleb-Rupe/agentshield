@@ -148,9 +148,9 @@ describe("@phalnx/custody-privy", () => {
 
   describe("config", () => {
     it("validateConfig throws on empty appId", () => {
-      expect(() =>
-        validateConfig({ appId: "", appSecret: "secret" }),
-      ).to.throw("appId is required");
+      expect(() => validateConfig({ appId: "", appSecret: "secret" })).to.throw(
+        "appId is required",
+      );
     });
 
     it("validateConfig throws on whitespace-only appId", () => {
@@ -301,10 +301,7 @@ describe("@phalnx/custody-privy", () => {
     it("throws on empty appId", async () => {
       const client = createMockClient();
       try {
-        await PrivyWallet.create(
-          { appId: "", appSecret: "sk_test" },
-          client,
-        );
+        await PrivyWallet.create({ appId: "", appSecret: "sk_test" }, client);
         expect.fail("should have thrown");
       } catch (err: any) {
         expect(err.message).to.include("appId is required");
@@ -314,10 +311,7 @@ describe("@phalnx/custody-privy", () => {
     it("throws on empty appSecret", async () => {
       const client = createMockClient();
       try {
-        await PrivyWallet.create(
-          { appId: "clx_test", appSecret: "" },
-          client,
-        );
+        await PrivyWallet.create({ appId: "clx_test", appSecret: "" }, client);
         expect.fail("should have thrown");
       } catch (err: any) {
         expect(err.message).to.include("appSecret is required");
@@ -433,9 +427,7 @@ describe("@phalnx/custody-privy", () => {
       const tx = createTestTransaction();
       await wallet.signTransaction(tx);
 
-      const signCall = client.calls.find(
-        (c) => c.method === "signTransaction",
-      );
+      const signCall = client.calls.find((c) => c.method === "signTransaction");
       expect(signCall).to.exist;
       expect(signCall!.args[0]).to.equal(wallet.walletId);
       expect(signCall!.args[2]).to.equal("base64");

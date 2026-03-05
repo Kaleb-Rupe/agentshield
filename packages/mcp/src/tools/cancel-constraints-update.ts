@@ -7,16 +7,16 @@ export const cancelConstraintsUpdateSchema = z.object({
   vault: z.string().describe("Vault PDA address (base58)"),
 });
 
-export type CancelConstraintsUpdateInput = z.infer<typeof cancelConstraintsUpdateSchema>;
+export type CancelConstraintsUpdateInput = z.infer<
+  typeof cancelConstraintsUpdateSchema
+>;
 
 export async function cancelConstraintsUpdate(
   client: PhalnxClient,
   input: CancelConstraintsUpdateInput,
 ): Promise<string> {
   try {
-    const sig = await client.cancelConstraintsUpdate(
-      toPublicKey(input.vault),
-    );
+    const sig = await client.cancelConstraintsUpdate(toPublicKey(input.vault));
 
     return [
       "## Constraints Update Cancelled",

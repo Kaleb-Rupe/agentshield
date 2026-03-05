@@ -48,10 +48,7 @@ pub fn handler(
     let policy = &mut ctx.accounts.policy;
 
     // When timelock > 0, immediate updates are blocked
-    require!(
-        policy.timelock_duration == 0,
-        PhalnxError::TimelockActive
-    );
+    require!(policy.timelock_duration == 0, PhalnxError::TimelockActive);
 
     if let Some(cap) = daily_spending_cap_usd {
         policy.daily_spending_cap_usd = cap;

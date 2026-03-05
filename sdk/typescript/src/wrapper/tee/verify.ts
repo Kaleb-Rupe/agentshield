@@ -28,14 +28,21 @@ const globalCache = new AttestationCache(DEFAULT_CACHE_TTL_MS);
 function detectProvider(wallet: WalletLike): TeeProvider | null {
   if (!isTeeWallet(wallet)) return null;
   const provider = (wallet as TeeWallet).provider.toLowerCase();
-  if (provider === "crossmint" || provider === "turnkey" || provider === "privy") {
+  if (
+    provider === "crossmint" ||
+    provider === "turnkey" ||
+    provider === "privy"
+  ) {
     return provider as TeeProvider;
   }
   return null;
 }
 
 /** Check if an attestation status meets the minimum required level. */
-function attestationStatusMeetsLevel(status: AttestationStatus, level: AttestationLevel): boolean {
+function attestationStatusMeetsLevel(
+  status: AttestationStatus,
+  level: AttestationLevel,
+): boolean {
   const levelOrder: Record<AttestationLevel, number> = {
     provider_trusted: 0,
     provider_verified: 1,
@@ -129,7 +136,8 @@ export async function verifyTeeAttestation(
     const isCustodyFallback =
       result.metadata.rawAttestation &&
       typeof result.metadata.rawAttestation === "object" &&
-      (result.metadata.rawAttestation as Record<string, unknown>).custodyCheckFailed === true;
+      (result.metadata.rawAttestation as Record<string, unknown>)
+        .custodyCheckFailed === true;
     if (
       useCache &&
       !isCustodyFallback &&
@@ -171,7 +179,9 @@ export async function verifyTeeAttestation(
 
   // Enforce minAttestationLevel if configured
   if (config?.minAttestationLevel) {
-    if (!attestationStatusMeetsLevel(result.status, config.minAttestationLevel)) {
+    if (
+      !attestationStatusMeetsLevel(result.status, config.minAttestationLevel)
+    ) {
       throw new TeeAttestationError(
         `Attestation level ${result.status} does not meet minimum required level: ${config.minAttestationLevel}`,
       );

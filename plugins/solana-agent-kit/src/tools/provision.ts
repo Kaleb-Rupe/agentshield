@@ -4,9 +4,7 @@ export const provisionSchema = z.object({
   platformUrl: z
     .string()
     .optional()
-    .describe(
-      "Phalnx platform URL (default: https://app.phalnx.io)",
-    ),
+    .describe("Phalnx platform URL (default: https://app.phalnx.io)"),
   template: z
     .enum(["conservative", "moderate", "aggressive"])
     .optional()

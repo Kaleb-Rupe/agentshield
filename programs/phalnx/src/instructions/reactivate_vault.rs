@@ -39,10 +39,7 @@ pub fn handler(
     // 3. Optionally assign new agent
     if let Some(agent_key) = new_agent {
         let permissions = new_agent_permissions.unwrap();
-        require!(
-            agent_key != Pubkey::default(),
-            PhalnxError::InvalidAgentKey
-        );
+        require!(agent_key != Pubkey::default(), PhalnxError::InvalidAgentKey);
         require!(agent_key != vault.owner, PhalnxError::AgentIsOwner);
         require!(
             permissions & !FULL_PERMISSIONS == 0,
@@ -63,10 +60,7 @@ pub fn handler(
     }
 
     // 4. Guard against soft-lock: cannot activate with no agents
-    require!(
-        !vault.agents.is_empty(),
-        PhalnxError::NoAgentRegistered
-    );
+    require!(!vault.agents.is_empty(), PhalnxError::NoAgentRegistered);
 
     // 5. Mutate status only after all checks pass
     vault.status = VaultStatus::Active;

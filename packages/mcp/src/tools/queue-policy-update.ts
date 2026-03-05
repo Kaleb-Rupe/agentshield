@@ -1,9 +1,6 @@
 import { z } from "zod";
 import { BN } from "@coral-xyz/anchor";
-import type {
-  PhalnxClient,
-  QueuePolicyUpdateParams,
-} from "@phalnx/sdk";
+import type { PhalnxClient, QueuePolicyUpdateParams } from "@phalnx/sdk";
 import { toPublicKey, toBN } from "../utils";
 import { formatError } from "../errors";
 

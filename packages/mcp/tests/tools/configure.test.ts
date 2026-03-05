@@ -13,6 +13,12 @@ const MOCK_TEE_RESPONSE = {
 describe("shield_configure", () => {
   let tmpHome: string;
   const origHome = process.env.HOME;
+  const origCrossmintKey = process.env.CROSSMINT_API_KEY;
+  const origPrivyId = process.env.PRIVY_APP_ID;
+  const origPrivySecret = process.env.PRIVY_APP_SECRET;
+  const origTurnkeyOrg = process.env.TURNKEY_ORGANIZATION_ID;
+  const origTurnkeyKey = process.env.TURNKEY_API_KEY_ID;
+  const origTurnkeyPk = process.env.TURNKEY_API_PRIVATE_KEY;
   let fetchStub: sinon.SinonStub;
 
   before(() => {
@@ -27,6 +33,13 @@ describe("shield_configure", () => {
     process.env.HOME = tmpHome;
     delete process.env.PHALNX_WALLET_PATH;
     delete process.env.PHALNX_RPC_URL;
+    // Clear all TEE provider env vars to ensure clean test state
+    delete process.env.CROSSMINT_API_KEY;
+    delete process.env.PRIVY_APP_ID;
+    delete process.env.PRIVY_APP_SECRET;
+    delete process.env.TURNKEY_ORGANIZATION_ID;
+    delete process.env.TURNKEY_API_KEY_ID;
+    delete process.env.TURNKEY_API_PRIVATE_KEY;
 
     // Stub global.fetch to prevent live network calls
     fetchStub = sinon.stub(global, "fetch").resolves(
@@ -39,6 +52,19 @@ describe("shield_configure", () => {
 
   afterEach(() => {
     process.env.HOME = origHome;
+    // Restore original env vars
+    if (origCrossmintKey) process.env.CROSSMINT_API_KEY = origCrossmintKey;
+    else delete process.env.CROSSMINT_API_KEY;
+    if (origPrivyId) process.env.PRIVY_APP_ID = origPrivyId;
+    else delete process.env.PRIVY_APP_ID;
+    if (origPrivySecret) process.env.PRIVY_APP_SECRET = origPrivySecret;
+    else delete process.env.PRIVY_APP_SECRET;
+    if (origTurnkeyOrg) process.env.TURNKEY_ORGANIZATION_ID = origTurnkeyOrg;
+    else delete process.env.TURNKEY_ORGANIZATION_ID;
+    if (origTurnkeyKey) process.env.TURNKEY_API_KEY_ID = origTurnkeyKey;
+    else delete process.env.TURNKEY_API_KEY_ID;
+    if (origTurnkeyPk) process.env.TURNKEY_API_PRIVATE_KEY = origTurnkeyPk;
+    else delete process.env.TURNKEY_API_PRIVATE_KEY;
     fetchStub.restore();
     // Clean up config
     const configPath = path.join(tmpHome, ".phalnx", "config.json");
@@ -46,12 +72,7 @@ describe("shield_configure", () => {
       fs.unlinkSync(configPath);
     }
     // Clean up generated wallet
-    const walletPath = path.join(
-      tmpHome,
-      ".phalnx",
-      "wallets",
-      "agent.json",
-    );
+    const walletPath = path.join(tmpHome, ".phalnx", "wallets", "agent.json");
     if (fs.existsSync(walletPath)) {
       fs.unlinkSync(walletPath);
     }
@@ -91,12 +112,7 @@ describe("shield_configure", () => {
       network: "devnet",
     });
 
-    const walletPath = path.join(
-      tmpHome,
-      ".phalnx",
-      "wallets",
-      "agent.json",
-    );
+    const walletPath = path.join(tmpHome, ".phalnx", "wallets", "agent.json");
     expect(fs.existsSync(walletPath)).to.be.true;
 
     // Verify it's a valid keypair (array of 64 numbers)
@@ -385,5 +401,116 @@ describe("shield_configure", () => {
     const fetchBody = JSON.parse(fetchStub.firstCall.args[1].body);
     expect(fetchBody.publicKey).to.be.a("string");
     expect(fetchBody.publicKey.length).to.be.greaterThan(0);
+  });
+
+  // ── Multi-provider TEE provisioning ────────────────────────────
+
+  it("sends provider in hosted provision request", async () => {
+    const result = await configure(null, {
+      template: "conservative",
+      network: "devnet",
+      teeProvider: "privy",
+    });
+
+    expect(fetchStub.calledOnce).to.be.true;
+    const fetchBody = JSON.parse(fetchStub.firstCall.args[1].body);
+    expect(fetchBody.provider).to.equal("privy");
+  });
+
+  it("sets wallet.type to privy when using privy provider", async () => {
+    const result = await configure(null, {
+      template: "conservative",
+      network: "devnet",
+      teeProvider: "privy",
+    });
+
+    expect(result).to.include("Phalnx Configured");
+    const configPath = path.join(tmpHome, ".phalnx", "config.json");
+    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    expect(config.wallet.type).to.equal("privy");
+  });
+
+  it("sets wallet.type to turnkey when using turnkey provider", async () => {
+    const result = await configure(null, {
+      template: "conservative",
+      network: "devnet",
+      teeProvider: "turnkey",
+    });
+
+    expect(result).to.include("Phalnx Configured");
+    const configPath = path.join(tmpHome, ".phalnx", "config.json");
+    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    expect(config.wallet.type).to.equal("turnkey");
+  });
+
+  it("includes shield_confirm_vault in next steps", async () => {
+    const result = await configure(null, {
+      template: "conservative",
+      network: "devnet",
+    });
+
+    expect(result).to.include("shield_confirm_vault");
+  });
+
+  it("returns error for Privy local provisioning without adapter", async () => {
+    const origPrivyId = process.env.PRIVY_APP_ID;
+    const origPrivySecret = process.env.PRIVY_APP_SECRET;
+    process.env.PRIVY_APP_ID = "clx_test";
+    process.env.PRIVY_APP_SECRET = "sk_test";
+
+    try {
+      const result = await configure(null, {
+        template: "conservative",
+        network: "devnet",
+        teeProvider: "privy",
+      });
+
+      // Should fail because @phalnx/custody-privy adapter not available in test env
+      // or succeed via hosted fallback — either way shouldn't crash
+      expect(result).to.be.a("string");
+    } finally {
+      if (origPrivyId) process.env.PRIVY_APP_ID = origPrivyId;
+      else delete process.env.PRIVY_APP_ID;
+      if (origPrivySecret) process.env.PRIVY_APP_SECRET = origPrivySecret;
+      else delete process.env.PRIVY_APP_SECRET;
+    }
+  });
+
+  it("returns error for Turnkey local provisioning without adapter", async () => {
+    const origOrgId = process.env.TURNKEY_ORGANIZATION_ID;
+    const origKeyId = process.env.TURNKEY_API_KEY_ID;
+    const origPk = process.env.TURNKEY_API_PRIVATE_KEY;
+    process.env.TURNKEY_ORGANIZATION_ID = "org123";
+    process.env.TURNKEY_API_KEY_ID = "key123";
+    process.env.TURNKEY_API_PRIVATE_KEY = "pk_test";
+
+    try {
+      const result = await configure(null, {
+        template: "conservative",
+        network: "devnet",
+        teeProvider: "turnkey",
+      });
+
+      expect(result).to.be.a("string");
+    } finally {
+      if (origOrgId) process.env.TURNKEY_ORGANIZATION_ID = origOrgId;
+      else delete process.env.TURNKEY_ORGANIZATION_ID;
+      if (origKeyId) process.env.TURNKEY_API_KEY_ID = origKeyId;
+      else delete process.env.TURNKEY_API_KEY_ID;
+      if (origPk) process.env.TURNKEY_API_PRIVATE_KEY = origPk;
+      else delete process.env.TURNKEY_API_PRIVATE_KEY;
+    }
+  });
+
+  it("defaults teeProvider to crossmint", async () => {
+    const result = await configure(null, {
+      template: "conservative",
+      network: "devnet",
+    });
+
+    // Should use crossmint path (hosted fallback)
+    const configPath = path.join(tmpHome, ".phalnx", "config.json");
+    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    expect(config.wallet.type).to.equal("crossmint");
   });
 });

@@ -14,11 +14,7 @@ import {
   x402FetchSchema,
 } from "./tools";
 
-export {
-  PhalnxPluginConfig,
-  ResolvedConfig,
-  resolveWallet,
-} from "./types";
+export { PhalnxPluginConfig, ResolvedConfig, resolveWallet } from "./types";
 export { createShieldedWallet, type FactoryConfig } from "./factory";
 export * from "./tools";
 

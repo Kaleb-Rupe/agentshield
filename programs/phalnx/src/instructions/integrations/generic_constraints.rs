@@ -105,20 +105,23 @@ mod tests {
         let val_200 = 200u64.to_le_bytes().to_vec();
 
         // 100 >= 50 → pass
-        assert!(
-            verify_data_constraints(&ix_data, &[dc(0, ConstraintOperator::Gte, val_50.clone())])
-                .is_ok()
-        );
+        assert!(verify_data_constraints(
+            &ix_data,
+            &[dc(0, ConstraintOperator::Gte, val_50.clone())]
+        )
+        .is_ok());
         // 100 >= 100 → pass
-        assert!(
-            verify_data_constraints(&ix_data, &[dc(0, ConstraintOperator::Gte, val_100.clone())])
-                .is_ok()
-        );
+        assert!(verify_data_constraints(
+            &ix_data,
+            &[dc(0, ConstraintOperator::Gte, val_100.clone())]
+        )
+        .is_ok());
         // 100 >= 200 → fail
-        assert!(
-            verify_data_constraints(&ix_data, &[dc(0, ConstraintOperator::Gte, val_200.clone())])
-                .is_err()
-        );
+        assert!(verify_data_constraints(
+            &ix_data,
+            &[dc(0, ConstraintOperator::Gte, val_200.clone())]
+        )
+        .is_err());
 
         // 100 <= 200 → pass
         assert!(

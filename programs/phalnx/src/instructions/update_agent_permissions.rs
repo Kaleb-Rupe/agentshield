@@ -34,10 +34,7 @@ pub fn handler(
 
     // Timelock guard: direct permission updates only allowed without timelock.
     // For timelocked vaults, use revoke_agent + register_agent instead.
-    require!(
-        policy.timelock_duration == 0,
-        PhalnxError::TimelockActive
-    );
+    require!(policy.timelock_duration == 0, PhalnxError::TimelockActive);
 
     require!(
         new_permissions & !FULL_PERMISSIONS == 0,

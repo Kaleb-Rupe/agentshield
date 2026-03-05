@@ -23,10 +23,17 @@ export class AttestationCache {
   private readonly ttlMs: number;
   private readonly maxEntries: number;
 
-  constructor(ttlMs: number = DEFAULT_CACHE_TTL_MS, maxEntries: number = MAX_CACHE_ENTRIES) {
+  constructor(
+    ttlMs: number = DEFAULT_CACHE_TTL_MS,
+    maxEntries: number = MAX_CACHE_ENTRIES,
+  ) {
     // M5: Guard against NaN/negative/non-finite TTL values
-    this.ttlMs = Number.isFinite(ttlMs) && ttlMs > 0 ? ttlMs : DEFAULT_CACHE_TTL_MS;
-    this.maxEntries = Number.isFinite(maxEntries) && maxEntries > 0 ? maxEntries : MAX_CACHE_ENTRIES;
+    this.ttlMs =
+      Number.isFinite(ttlMs) && ttlMs > 0 ? ttlMs : DEFAULT_CACHE_TTL_MS;
+    this.maxEntries =
+      Number.isFinite(maxEntries) && maxEntries > 0
+        ? maxEntries
+        : MAX_CACHE_ENTRIES;
   }
 
   /** Get a cached result if it exists and hasn't expired. */
@@ -47,9 +54,10 @@ export class AttestationCache {
       const oldestKey = this.cache.keys().next().value;
       if (oldestKey !== undefined) this.cache.delete(oldestKey);
     }
-    const effectiveTtl = ttlMs !== undefined && Number.isFinite(ttlMs) && ttlMs > 0
-      ? ttlMs
-      : this.ttlMs;
+    const effectiveTtl =
+      ttlMs !== undefined && Number.isFinite(ttlMs) && ttlMs > 0
+        ? ttlMs
+        : this.ttlMs;
     this.cache.set(publicKey, {
       result,
       expiresAt: Date.now() + effectiveTtl,

@@ -69,10 +69,8 @@ pub fn handler(ctx: Context<RefundEscrow>) -> Result<()> {
     // 1. If signer is agent (not owner), check RefundEscrow permission
     if source_vault.owner != ctx.accounts.source_signer.key() {
         require!(
-            source_vault.has_permission(
-                &ctx.accounts.source_signer.key(),
-                &ActionType::RefundEscrow
-            ),
+            source_vault
+                .has_permission(&ctx.accounts.source_signer.key(), &ActionType::RefundEscrow),
             PhalnxError::InsufficientPermissions
         );
     }
