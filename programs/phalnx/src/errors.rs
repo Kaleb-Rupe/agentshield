@@ -197,4 +197,8 @@ pub enum PhalnxError {
 
     #[msg("Pending constraints update has expired and is stale")]
     ConstraintsUpdateExpired,
+
+    // --- Per-agent spend limit errors (6063) ---
+    #[msg("Agent rolling 24h spend exceeds per-agent spending limit")]
+    AgentSpendLimitExceeded,
 }

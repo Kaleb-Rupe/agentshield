@@ -78,6 +78,7 @@ describe("jupiter-integration", () => {
   let vaultPda: PublicKey;
   let policyPda: PublicKey;
   let trackerPda: PublicKey;
+  let overlayPda: PublicKey;
   // Protocol treasury (must match hardcoded constant in program)
   const protocolTreasury = new PublicKey(
     "ASHie1dFTnDSnrHMPGmniJhMgfJVGPm3rAaEPnrtWDiT",
@@ -232,6 +233,10 @@ describe("jupiter-integration", () => {
       [Buffer.from("tracker"), vaultPda.toBuffer()],
       program.programId,
     );
+    [overlayPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("agent_spend"), vaultPda.toBuffer(), Buffer.from([0])],
+      program.programId,
+    );
 
     // Create protocol treasury ATA (needed for fee transfers)
     protocolTreasuryUsdcAta = createAtaIdempotentHelper(
@@ -262,6 +267,7 @@ describe("jupiter-integration", () => {
         vault: vaultPda,
         policy: policyPda,
         tracker: trackerPda,
+        agentSpendOverlay: overlayPda,
         feeDestination: feeDestination.publicKey,
         systemProgram: SystemProgram.programId,
       })
@@ -269,10 +275,11 @@ describe("jupiter-integration", () => {
 
     // Register agent
     await program.methods
-      .registerAgent(agent.publicKey, FULL_PERMISSIONS)
+      .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
       .accountsPartial({
         owner: owner.publicKey,
         vault: vaultPda,
+        agentSpendOverlay: overlayPda,
       })
       .rpc();
 
@@ -514,6 +521,11 @@ describe("jupiter-integration", () => {
         program.programId,
       );
 
+      const [frozenOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), frozenVault.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
+
       // Create and freeze vault
       await program.methods
         .initializeVault(
@@ -534,14 +546,15 @@ describe("jupiter-integration", () => {
           vault: frozenVault,
           policy: frozenPolicy,
           tracker: frozenTracker,
+          agentSpendOverlay: frozenOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         })
         .rpc();
 
       await program.methods
-        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
-        .accountsPartial({ owner: owner.publicKey, vault: frozenVault })
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accountsPartial({ owner: owner.publicKey, vault: frozenVault, agentSpendOverlay: frozenOverlay })
         .rpc();
 
       // Freeze it
@@ -628,6 +641,11 @@ describe("jupiter-integration", () => {
         program.programId,
       );
 
+      const [rollingOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), rollingVault.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
+
       // Create vault with tight cap: 100 USDC daily, 60 USDC max tx
       await program.methods
         .initializeVault(
@@ -648,14 +666,15 @@ describe("jupiter-integration", () => {
           vault: rollingVault,
           policy: rollingPolicy,
           tracker: rollingTracker,
+          agentSpendOverlay: rollingOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         })
         .rpc();
 
       await program.methods
-        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
-        .accountsPartial({ owner: owner.publicKey, vault: rollingVault })
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accountsPartial({ owner: owner.publicKey, vault: rollingVault, agentSpendOverlay: rollingOverlay })
         .rpc();
 
       // Deposit USDC into rolling vault (needed for protocol fee transfers)

@@ -12,10 +12,26 @@ import {
   provisionSchema,
   x402Fetch,
   x402FetchSchema,
+  createEscrow,
+  createEscrowSchema,
+  settleEscrow,
+  settleEscrowSchema,
+  refundEscrow,
+  refundEscrowSchema,
+  checkEscrow,
+  checkEscrowSchema,
 } from "./tools";
 
 export { PhalnxPluginConfig, ResolvedConfig, resolveWallet } from "./types";
-export { createShieldedWallet, type FactoryConfig } from "./factory";
+export {
+  createShieldedWallet,
+  createClientSideWallet,
+  createOnChainVault,
+  createSAKAgentWithShield,
+  type FactoryConfig,
+  type OnChainVaultConfig,
+  type SAKAgentConfig,
+} from "./factory";
 export * from "./tools";
 
 /**
@@ -96,6 +112,36 @@ export function createPhalnxPlugin(config: PhalnxPluginConfig) {
           "If the server requires payment, the shielded wallet signs and retries.",
         schema: x402FetchSchema,
         handler: (agent: any, input: any) => x402Fetch(agent, resolved, input),
+      },
+      shield_create_escrow: {
+        description:
+          "Create an inter-vault escrow deposit with configurable expiry " +
+          "and optional SHA-256 condition hash.",
+        schema: createEscrowSchema,
+        handler: (agent: any, input: any) =>
+          createEscrow(agent, resolved, input),
+      },
+      shield_settle_escrow: {
+        description:
+          "Settle an active escrow, releasing funds to the destination vault.",
+        schema: settleEscrowSchema,
+        handler: (agent: any, input: any) =>
+          settleEscrow(agent, resolved, input),
+      },
+      shield_refund_escrow: {
+        description:
+          "Refund an expired escrow, returning funds to the source vault. " +
+          "Cap is NOT reversed (prevents cap-washing).",
+        schema: refundEscrowSchema,
+        handler: (agent: any, input: any) =>
+          refundEscrow(agent, resolved, input),
+      },
+      shield_check_escrow: {
+        description:
+          "Check the on-chain status of an escrow deposit.",
+        schema: checkEscrowSchema,
+        handler: (agent: any, input: any) =>
+          checkEscrow(agent, resolved, input),
       },
     },
   };

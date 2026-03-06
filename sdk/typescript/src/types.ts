@@ -115,6 +115,7 @@ export type EpochBucket = {
 export type AgentEntry = {
   pubkey: PublicKey;
   permissions: BN;
+  spendingLimitUsd: BN;
 };
 
 // Re-export IDL types for convenience
@@ -130,6 +131,7 @@ export type AgentVaultAccount = {
   totalVolume: BN;
   openPositions: number;
   totalFeesCollected: BN;
+  treasuryShard: number;
 };
 
 export type PolicyConfigAccount = {
@@ -146,6 +148,7 @@ export type PolicyConfigAccount = {
   timelockDuration: BN;
   allowedDestinations: PublicKey[];
   hasConstraints: boolean;
+  hasProtocolCaps: boolean;
   bump: number;
 };
 

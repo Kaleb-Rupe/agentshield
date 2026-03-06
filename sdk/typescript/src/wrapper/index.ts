@@ -53,6 +53,7 @@ export {
   TeeAttestationError,
   AttestationCertChainError,
   AttestationPcrMismatchError,
+  TransactionSimulationError,
 } from "./errors";
 export type { PolicyViolation } from "./errors";
 
@@ -108,6 +109,16 @@ export type {
 
 // Policy engine (wrapper versions — accept PublicKey-based TransactionAnalysis)
 export { evaluatePolicy, enforcePolicy, recordTransaction } from "./engine";
+
+// Dry-run policy evaluation (pre-flight check without executing)
+export { dryRunPolicy } from "./dry-run";
+export type {
+  DryRunInput,
+  DryRunIntent,
+  DryRunResult,
+  DryRunSpendingSummary,
+  FeeEstimate,
+} from "./dry-run";
 
 // x402 — HTTP 402 payment support
 export {

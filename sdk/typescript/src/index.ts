@@ -4,6 +4,28 @@
 export { PhalnxClient, type PhalnxClientOptions } from "./client";
 export { IDL } from "./idl-json";
 
+// Simulation
+export {
+  simulateTransaction,
+  isHeliusConnection,
+  ANCHOR_ERROR_MAP,
+  type SimulationResult,
+  type SimulationError,
+  type SimulateOptions,
+} from "./simulation";
+
+// Intents
+export {
+  createIntent,
+  summarizeAction,
+  MemoryIntentStorage,
+  DEFAULT_INTENT_TTL_MS,
+  type IntentAction,
+  type IntentStatus,
+  type TransactionIntent,
+  type IntentStorage,
+} from "./intents";
+
 export {
   getVaultPDA,
   getPolicyPDA,
@@ -13,6 +35,7 @@ export {
   getEscrowPDA,
   getConstraintsPDA,
   getPendingConstraintsPDA,
+  getAgentOverlayPDA,
   fetchVault,
   fetchPolicy,
   fetchTracker,
@@ -360,6 +383,7 @@ export {
   ShieldDeniedError,
   ShieldConfigError,
   TeeRequiredError,
+  TransactionSimulationError,
   // TEE Remote Attestation
   TeeAttestationError,
   AttestationCertChainError,
@@ -388,6 +412,8 @@ export {
   evaluatePolicy,
   enforcePolicy,
   recordTransaction,
+  // Dry-run policy evaluation
+  dryRunPolicy,
   // x402 — HTTP 402 payment support
   shieldedFetch,
   createShieldedFetchForWallet,
@@ -412,6 +438,12 @@ export type {
   PaymentPayload,
   ResourceInfo,
   SettleResponse,
+  // Dry-run types
+  DryRunInput,
+  DryRunIntent,
+  DryRunResult,
+  DryRunSpendingSummary,
+  FeeEstimate,
   // TEE Remote Attestation types
   TeeProvider,
   AttestationResult,

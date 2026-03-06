@@ -3,10 +3,11 @@ use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
 pub struct AgentEntry {
-    pub pubkey: Pubkey,   // 32 bytes
-    pub permissions: u64, // 8 bytes
+    pub pubkey: Pubkey,          // 32 bytes
+    pub permissions: u64,        // 8 bytes
+    pub spending_limit_usd: u64, // 8 bytes — 0 = no per-agent limit
 }
-// Total: 40 bytes per entry
+// Total: 48 bytes per entry
 
 #[account]
 pub struct AgentVault {
@@ -43,17 +44,21 @@ pub struct AgentVault {
 
     /// Cumulative developer fees collected from this vault (token base units)
     pub total_fees_collected: u64,
+
+    /// Treasury shard index assigned at vault creation.
+    /// Reserved for future horizontal scaling of overlay PDAs.
+    pub treasury_shard: u8,
 }
 
 impl AgentVault {
     /// Account discriminator (8) + owner (32) + vault_id (8) +
-    /// agents vec prefix (4) + agents data (40 * 10) +
+    /// agents vec prefix (4) + agents data (48 * 10) +
     /// fee_destination (32) + status (1) + bump (1) +
     /// created_at (8) + total_transactions (8) + total_volume (8) +
-    /// open_positions (1) + total_fees_collected (8)
+    /// open_positions (1) + total_fees_collected (8) + treasury_shard (1)
     pub const SIZE: usize =
-        8 + 32 + 8 + 4 + (40 * MAX_AGENTS_PER_VAULT) + 32 + 1 + 1 + 8 + 8 + 8 + 1 + 8;
-    // = 519
+        8 + 32 + 8 + 4 + (48 * MAX_AGENTS_PER_VAULT) + 32 + 1 + 1 + 8 + 8 + 8 + 1 + 8 + 1;
+    // = 600
 
     pub fn is_active(&self) -> bool {
         self.status == VaultStatus::Active

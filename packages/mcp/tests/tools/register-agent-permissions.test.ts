@@ -18,8 +18,9 @@ describe("shield_register_agent (permissions)", () => {
     });
     const call = client.calls.find((c) => c.method === "registerAgent");
     expect(call).to.exist;
-    expect(call!.args).to.have.lengthOf(3);
+    expect(call!.args).to.have.lengthOf(4);
     expect(call!.args[2].toString()).to.equal("2097151");
+    expect(call!.args[3].toString()).to.equal("0");
   });
 
   it("registers with custom permissions", async () => {

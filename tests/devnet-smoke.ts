@@ -123,6 +123,10 @@ describe("devnet-smoke-test", () => {
 
   it("1. initialize_vault", async () => {
     // 11 args (includes maxSlippageBps)
+    const [overlayPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("agent_spend"), vaultPda.toBuffer(), Buffer.from([0])],
+      program.programId,
+    );
     await program.methods
       .initializeVault(
         vaultId,
@@ -142,6 +146,7 @@ describe("devnet-smoke-test", () => {
         vault: vaultPda,
         policy: policyPda,
         tracker: trackerPda,
+        agentSpendOverlay: overlayPda,
         feeDestination: feeDestination.publicKey,
         systemProgram: SystemProgram.programId,
       } as any)
@@ -174,11 +179,16 @@ describe("devnet-smoke-test", () => {
   });
 
   it("3. register_agent", async () => {
+    const [overlayPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("agent_spend"), vaultPda.toBuffer(), Buffer.from([0])],
+      program.programId,
+    );
     await program.methods
-      .registerAgent(agent.publicKey, new BN(2097151)) // FULL_PERMISSIONS
+      .registerAgent(agent.publicKey, new BN(2097151), new BN(0)) // FULL_PERMISSIONS
       .accounts({
         owner: owner.publicKey,
         vault: vaultPda,
+        agentSpendOverlay: overlayPda,
       } as any)
       .rpc();
 
@@ -364,6 +374,7 @@ describe("devnet-smoke-test", () => {
         vault: vaultPda,
         policy: policyPda,
         tracker: trackerPda,
+        agentSpendOverlay: overlayPda,
         systemProgram: SystemProgram.programId,
       } as any)
       .rpc();

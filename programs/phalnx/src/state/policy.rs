@@ -60,6 +60,9 @@ pub struct PolicyConfig {
     /// Set true by create_instruction_constraints, false by close_instruction_constraints.
     pub has_constraints: bool,
 
+    /// Whether per-protocol spend caps are configured (reserved, not enforced yet).
+    pub has_protocol_caps: bool,
+
     /// Bump seed for PDA
     pub bump: u8,
 }
@@ -70,7 +73,8 @@ impl PolicyConfig {
     /// protocols vec (4 + 32 * MAX) +
     /// max_leverage (2) + can_open (1) + max_positions (1) +
     /// developer_fee_rate (2) + max_slippage_bps (2) + timelock_duration (8) +
-    /// allowed_destinations vec (4 + 32 * MAX) + has_constraints (1) + bump (1)
+    /// allowed_destinations vec (4 + 32 * MAX) + has_constraints (1) +
+    /// has_protocol_caps (1) + bump (1)
     pub const SIZE: usize = 8
         + 32
         + 8
@@ -85,6 +89,7 @@ impl PolicyConfig {
         + 8
         + (4 + 32 * MAX_ALLOWED_DESTINATIONS)
         + 1 // has_constraints
+        + 1 // has_protocol_caps
         + 1;
 
     /// Check if a protocol is allowed based on the protocol mode.

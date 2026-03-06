@@ -19,6 +19,8 @@ import { evaluatePolicy, recordTransaction } from "./engine";
 import { ShieldDeniedError } from "./errors";
 import { ShieldState, ShieldStorage } from "./state";
 import { getTokenInfo } from "./registry";
+import { dryRunPolicy } from "./dry-run";
+import type { DryRunInput, DryRunResult } from "./dry-run";
 
 /**
  * A wallet-like object that shield() can wrap.
@@ -80,6 +82,8 @@ export interface ShieldedWallet extends WalletLike {
   resume(): void;
   /** Get a summary of current spending relative to policy limits */
   getSpendingSummary(): SpendingSummary;
+  /** Dry-run a hypothetical action against policies without executing */
+  dryRun(input: DryRunInput): DryRunResult;
   /** Make an HTTP request with automatic x402 payment support */
   fetch?: (url: string | URL, init?: RequestInit) => Promise<Response>;
 }
@@ -294,6 +298,10 @@ export function shield(
     resume(): void {
       paused = false;
       onResume?.();
+    },
+
+    dryRun(input: DryRunInput): DryRunResult {
+      return dryRunPolicy(resolved, state, input);
     },
 
     getSpendingSummary(): SpendingSummary {

@@ -28,8 +28,8 @@ const STORAGE_KEY_SPENDS = "phalnx:spends";
 const STORAGE_KEY_TXS = "phalnx:txs";
 
 /** Max entries to keep in each tracker to prevent unbounded growth */
-const MAX_SPEND_ENTRIES = 500;
-const MAX_TX_ENTRIES = 500;
+const MAX_SPEND_ENTRIES = 5000;
+const MAX_TX_ENTRIES = 5000;
 
 export class ShieldState {
   private spendEntries: SpendEntry[] = [];

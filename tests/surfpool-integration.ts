@@ -79,6 +79,7 @@ describe("surfpool-integration", function () {
     let vaultPda: PublicKey;
     let policyPda: PublicKey;
     let trackerPda: PublicKey;
+    let overlayPda: PublicKey;
     let vaultUsdcAta: PublicKey;
     let ownerUsdcAta: PublicKey;
     let protocolTreasuryAta: PublicKey;
@@ -102,6 +103,10 @@ describe("surfpool-integration", function () {
       vaultPda = pdas.vaultPda;
       policyPda = pdas.policyPda;
       trackerPda = pdas.trackerPda;
+      [overlayPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), vaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       // Fund owner with USDC via cheatcode (lazy-forked from devnet)
       ownerUsdcAta = await fundWithTokens(
@@ -135,6 +140,7 @@ describe("surfpool-integration", function () {
           vault: vaultPda,
           policy: policyPda,
           tracker: trackerPda,
+          agentSpendOverlay: overlayPda,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -149,10 +155,11 @@ describe("surfpool-integration", function () {
     it("registers agent and deposits USDC", async () => {
       // Register agent
       await program.methods
-        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
         .accounts({
           owner: env.payer.publicKey,
           vault: vaultPda,
+          agentSpendOverlay: overlayPda,
         } as any)
         .rpc();
 
@@ -264,6 +271,7 @@ describe("surfpool-integration", function () {
     let vaultPda: PublicKey;
     let policyPda: PublicKey;
     let trackerPda: PublicKey;
+    let overlayPda: PublicKey;
     let vaultUsdcAta: PublicKey;
     let protocolTreasuryAta: PublicKey;
 
@@ -283,6 +291,10 @@ describe("surfpool-integration", function () {
       vaultPda = pdas.vaultPda;
       policyPda = pdas.policyPda;
       trackerPda = pdas.trackerPda;
+      [overlayPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), vaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       // Initialize vault
       await program.methods
@@ -304,16 +316,18 @@ describe("surfpool-integration", function () {
           vault: vaultPda,
           policy: policyPda,
           tracker: trackerPda,
+          agentSpendOverlay: overlayPda,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();
 
       await program.methods
-        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
         .accounts({
           owner: env.payer.publicKey,
           vault: vaultPda,
+          agentSpendOverlay: overlayPda,
         } as any)
         .rpc();
 
@@ -516,6 +530,7 @@ describe("surfpool-integration", function () {
     let vaultPda: PublicKey;
     let policyPda: PublicKey;
     let trackerPda: PublicKey;
+    let overlayPda: PublicKey;
     let vaultUsdcAta: PublicKey;
     let protocolTreasuryAta: PublicKey;
 
@@ -535,6 +550,10 @@ describe("surfpool-integration", function () {
       vaultPda = pdas.vaultPda;
       policyPda = pdas.policyPda;
       trackerPda = pdas.trackerPda;
+      [overlayPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), vaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -555,16 +574,18 @@ describe("surfpool-integration", function () {
           vault: vaultPda,
           policy: policyPda,
           tracker: trackerPda,
+          agentSpendOverlay: overlayPda,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();
 
       await program.methods
-        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
         .accounts({
           owner: env.payer.publicKey,
           vault: vaultPda,
+          agentSpendOverlay: overlayPda,
         } as any)
         .rpc();
 
@@ -787,6 +808,7 @@ describe("surfpool-integration", function () {
     let vaultPda: PublicKey;
     let policyPda: PublicKey;
     let trackerPda: PublicKey;
+    let overlayPda: PublicKey;
     let vaultUsdcAta: PublicKey;
     let vaultUsdtAta: PublicKey;
 
@@ -806,6 +828,10 @@ describe("surfpool-integration", function () {
       vaultPda = pdas.vaultPda;
       policyPda = pdas.policyPda;
       trackerPda = pdas.trackerPda;
+      [overlayPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), vaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -826,16 +852,18 @@ describe("surfpool-integration", function () {
           vault: vaultPda,
           policy: policyPda,
           tracker: trackerPda,
+          agentSpendOverlay: overlayPda,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();
 
       await program.methods
-        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
         .accounts({
           owner: env.payer.publicKey,
           vault: vaultPda,
+          agentSpendOverlay: overlayPda,
         } as any)
         .rpc();
     });
@@ -958,6 +986,7 @@ describe("surfpool-integration", function () {
     let vaultPda: PublicKey;
     let policyPda: PublicKey;
     let trackerPda: PublicKey;
+    let overlayPda: PublicKey;
     let vaultUsdcAta: PublicKey;
     let protocolTreasuryAta: PublicKey;
 
@@ -977,6 +1006,10 @@ describe("surfpool-integration", function () {
       vaultPda = pdas.vaultPda;
       policyPda = pdas.policyPda;
       trackerPda = pdas.trackerPda;
+      [overlayPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), vaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -997,16 +1030,18 @@ describe("surfpool-integration", function () {
           vault: vaultPda,
           policy: policyPda,
           tracker: trackerPda,
+          agentSpendOverlay: overlayPda,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();
 
       await program.methods
-        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
         .accounts({
           owner: env.payer.publicKey,
           vault: vaultPda,
+          agentSpendOverlay: overlayPda,
         } as any)
         .rpc();
 
@@ -1114,6 +1149,10 @@ describe("surfpool-integration", function () {
         profileVaultId,
         program.programId,
       );
+      const [profileOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), profilePdas.vaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       const tx = await program.methods
         .initializeVault(
@@ -1134,6 +1173,7 @@ describe("surfpool-integration", function () {
           vault: profilePdas.vaultPda,
           policy: profilePdas.policyPda,
           tracker: profilePdas.trackerPda,
+          agentSpendOverlay: profileOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -1184,6 +1224,10 @@ describe("surfpool-integration", function () {
         testVaultId,
         program.programId,
       );
+      const [persistOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), pdas.vaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -1204,6 +1248,7 @@ describe("surfpool-integration", function () {
           vault: pdas.vaultPda,
           policy: pdas.policyPda,
           tracker: pdas.trackerPda,
+          agentSpendOverlay: persistOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -1229,6 +1274,10 @@ describe("surfpool-integration", function () {
         preResetVaultId,
         program.programId,
       );
+      const [resetOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), pdas.vaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -1249,6 +1298,7 @@ describe("surfpool-integration", function () {
           vault: pdas.vaultPda,
           policy: pdas.policyPda,
           tracker: pdas.trackerPda,
+          agentSpendOverlay: resetOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -1289,6 +1339,10 @@ describe("surfpool-integration", function () {
         postResetVaultId,
         program.programId,
       );
+      const [postResetOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), pdas.vaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -1309,6 +1363,7 @@ describe("surfpool-integration", function () {
           vault: pdas.vaultPda,
           policy: pdas.policyPda,
           tracker: pdas.trackerPda,
+          agentSpendOverlay: postResetOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -1342,6 +1397,10 @@ describe("surfpool-integration", function () {
       policyPda = pdas.policyPda;
       trackerPda = pdas.trackerPda;
       pendingPolicyPda = pdas.pendingPolicyPda;
+      const [timelockOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), vaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       // Create vault WITH timelock (60 seconds)
       await program.methods
@@ -1363,6 +1422,7 @@ describe("surfpool-integration", function () {
           vault: vaultPda,
           policy: policyPda,
           tracker: trackerPda,
+          agentSpendOverlay: timelockOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)

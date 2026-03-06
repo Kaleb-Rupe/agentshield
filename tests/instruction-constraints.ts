@@ -50,6 +50,7 @@ describe("instruction-constraints", () => {
   let vaultPda: PublicKey;
   let policyPda: PublicKey;
   let trackerPda: PublicKey;
+  let overlayPda: PublicKey;
   let constraintsPda: PublicKey;
   let pendingConstraintsPda: PublicKey;
   let ownerUsdcAta: PublicKey;
@@ -115,6 +116,10 @@ describe("instruction-constraints", () => {
       [Buffer.from("tracker"), vaultPda.toBuffer()],
       program.programId,
     );
+    [overlayPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("agent_spend"), vaultPda.toBuffer(), Buffer.from([0])],
+      program.programId,
+    );
     [constraintsPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("constraints"), vaultPda.toBuffer()],
       program.programId,
@@ -144,6 +149,7 @@ describe("instruction-constraints", () => {
         vault: vaultPda,
         policy: policyPda,
         tracker: trackerPda,
+        agentSpendOverlay: overlayPda,
         feeDestination: feeDestination.publicKey,
         systemProgram: SystemProgram.programId,
       } as any)
@@ -151,10 +157,11 @@ describe("instruction-constraints", () => {
 
     // Register agent
     await program.methods
-      .registerAgent(agent.publicKey, FULL_PERMISSIONS)
+      .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
       .accounts({
         owner: owner.publicKey,
         vault: vaultPda,
+        agentSpendOverlay: overlayPda,
       } as any)
       .rpc();
 
@@ -516,6 +523,10 @@ describe("instruction-constraints", () => {
       );
 
       // Init vault 2
+      const [vault2Overlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), vault2Pda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
       await program.methods
         .initializeVault(
           vaultId2,
@@ -535,6 +546,7 @@ describe("instruction-constraints", () => {
           vault: vault2Pda,
           policy: policy2Pda,
           tracker: tracker2Pda,
+          agentSpendOverlay: vault2Overlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -748,6 +760,11 @@ describe("instruction-constraints", () => {
         program.programId,
       );
 
+      const [tlOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), tlVaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
+
       // Init vault with timelock = 60 seconds
       await program.methods
         .initializeVault(
@@ -768,6 +785,7 @@ describe("instruction-constraints", () => {
           vault: tlVaultPda,
           policy: tlPolicyPda,
           tracker: tlTrackerPda,
+          agentSpendOverlay: tlOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)

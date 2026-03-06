@@ -28,7 +28,7 @@ pub struct InitializeVault<'info> {
     )]
     pub policy: Account<'info, PolicyConfig>,
 
-    /// Zero-copy SpendTracker — 2,352 bytes fixed size
+    /// Zero-copy SpendTracker
     #[account(
         init,
         payer = owner,
@@ -37,6 +37,16 @@ pub struct InitializeVault<'info> {
         bump,
     )]
     pub tracker: AccountLoader<'info, SpendTracker>,
+
+    /// Agent spend overlay shard 0 — per-agent contribution tracking
+    #[account(
+        init,
+        payer = owner,
+        space = AgentSpendOverlay::SIZE,
+        seeds = [b"agent_spend", vault.key().as_ref(), &[0u8]],
+        bump,
+    )]
+    pub agent_spend_overlay: AccountLoader<'info, AgentSpendOverlay>,
 
     /// CHECK: This is the fee destination wallet; validated by the caller/SDK.
     pub fee_destination: UncheckedAccount<'info>,
@@ -100,6 +110,7 @@ pub fn handler(
     vault.total_volume = 0;
     vault.open_positions = 0;
     vault.total_fees_collected = 0;
+    vault.treasury_shard = 0;
 
     // Initialize policy
     let policy = &mut ctx.accounts.policy;
@@ -116,13 +127,18 @@ pub fn handler(
     policy.timelock_duration = timelock_duration;
     policy.allowed_destinations = allowed_destinations;
     policy.has_constraints = false;
+    policy.has_protocol_caps = false;
     policy.bump = ctx.bumps.policy;
 
-    // Initialize zero-copy tracker
+    // Initialize zero-copy tracker (buckets + protocol_counters zero-initialized by allocator)
     let mut tracker = ctx.accounts.tracker.load_init()?;
     tracker.vault = vault.key();
     tracker.bump = ctx.bumps.tracker;
-    // buckets are zero-initialized by the allocator
+
+    // Initialize agent spend overlay shard 0
+    let mut overlay = ctx.accounts.agent_spend_overlay.load_init()?;
+    overlay.vault = vault.key();
+    overlay.bump = ctx.bumps.agent_spend_overlay;
 
     emit!(VaultCreated {
         vault: vault.key(),

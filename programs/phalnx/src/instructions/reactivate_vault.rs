@@ -56,6 +56,7 @@ pub fn handler(
         vault.agents.push(AgentEntry {
             pubkey: agent_key,
             permissions,
+            spending_limit_usd: 0, // reactivation agent starts with no per-agent limit
         });
     }
 

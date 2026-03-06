@@ -15,9 +15,22 @@ pub struct RegisterAgent<'info> {
         bump = vault.bump,
     )]
     pub vault: Account<'info, AgentVault>,
+
+    /// Agent spend overlay (shard 0) — for claiming a per-agent tracking slot.
+    #[account(
+        mut,
+        seeds = [b"agent_spend", vault.key().as_ref(), &[0u8]],
+        bump,
+    )]
+    pub agent_spend_overlay: AccountLoader<'info, AgentSpendOverlay>,
 }
 
-pub fn handler(ctx: Context<RegisterAgent>, agent: Pubkey, permissions: u64) -> Result<()> {
+pub fn handler(
+    ctx: Context<RegisterAgent>,
+    agent: Pubkey,
+    permissions: u64,
+    spending_limit_usd: u64,
+) -> Result<()> {
     let vault = &mut ctx.accounts.vault;
 
     require!(
@@ -39,13 +52,24 @@ pub fn handler(ctx: Context<RegisterAgent>, agent: Pubkey, permissions: u64) -> 
     vault.agents.push(AgentEntry {
         pubkey: agent,
         permissions,
+        spending_limit_usd,
     });
+
+    // Try to claim a slot in the overlay for per-agent tracking.
+    // If shard 0 is full (7 agents), silently continue — agents 8-10
+    // won't have per-agent tracking but vault-wide cap still applies.
+    if let Ok(mut overlay) = ctx.accounts.agent_spend_overlay.load_mut() {
+        if overlay.find_agent_slot(&agent).is_none() {
+            let _ = overlay.claim_slot(&agent);
+        }
+    }
 
     let clock = Clock::get()?;
     emit!(AgentRegistered {
         vault: vault.key(),
         agent,
         permissions,
+        spending_limit_usd,
         timestamp: clock.unix_timestamp,
     });
 

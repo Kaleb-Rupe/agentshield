@@ -1,3 +1,4 @@
+pub mod agent_spend_overlay;
 pub mod constraints;
 pub mod escrow;
 pub mod pending_constraints;
@@ -7,6 +8,7 @@ pub mod session;
 pub mod tracker;
 pub mod vault;
 
+pub use agent_spend_overlay::*;
 pub use constraints::*;
 pub use escrow::*;
 pub use pending_constraints::*;
@@ -50,6 +52,13 @@ pub const MAX_ESCROW_DURATION: i64 = 2_592_000;
 /// sha256("global:finalize_session")[0..8] — used by validate_and_authorize
 /// to identify finalize_session instructions in the transaction.
 pub const FINALIZE_SESSION_DISCRIMINATOR: [u8; 8] = [34, 148, 144, 47, 37, 130, 206, 161];
+
+/// Number of treasury shards. Currently 1 (single shard).
+/// Reserved for future horizontal scaling of overlay PDAs.
+pub const NUM_TREASURY_SHARDS: u8 = 1;
+
+/// Alias for ENTRIES_PER_SHARD re-exported from agent_spend_overlay.
+pub const AGENT_OVERLAY_ENTRIES_PER_SHARD: usize = 7;
 
 // Build requires exactly one of: --features mainnet OR --features devnet
 #[cfg(not(any(feature = "mainnet", feature = "devnet")))]

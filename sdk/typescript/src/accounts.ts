@@ -220,6 +220,19 @@ export async function fetchEscrowByAddress(
   )) as EscrowDepositAccount;
 }
 
+// --- Agent Spend Overlay PDAs ---
+
+export function getAgentOverlayPDA(
+  vault: PublicKey,
+  shardIndex: number = 0,
+  programId: PublicKey = PHALNX_PROGRAM_ID,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("agent_spend"), vault.toBuffer(), Buffer.from([shardIndex])],
+    programId,
+  );
+}
+
 // --- Constraint PDAs ---
 
 export function getConstraintsPDA(

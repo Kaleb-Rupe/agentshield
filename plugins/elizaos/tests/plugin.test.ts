@@ -59,8 +59,8 @@ describe("ElizaOS Plugin", () => {
       expect(phalnxPlugin.description).to.include("guardrails");
     });
 
-    it("has 6 actions", () => {
-      expect(phalnxPlugin.actions).to.have.length(6);
+    it("has 9 actions", () => {
+      expect(phalnxPlugin.actions).to.have.length(9);
     });
 
     it("has 2 providers", () => {
@@ -78,6 +78,9 @@ describe("ElizaOS Plugin", () => {
       expect(names).to.include("SHIELD_PAUSE_RESUME");
       expect(names).to.include("SHIELD_TRANSACTION_HISTORY");
       expect(names).to.include("SHIELD_X402_FETCH");
+      expect(names).to.include("SHIELD_CREATE_ESCROW");
+      expect(names).to.include("SHIELD_SETTLE_ESCROW");
+      expect(names).to.include("SHIELD_REFUND_ESCROW");
     });
   });
 

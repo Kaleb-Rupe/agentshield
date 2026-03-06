@@ -268,6 +268,10 @@ export async function createFullVault(
   }
 
   // Initialize vault (11 args — includes maxSlippageBps)
+  const [overlayPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from("agent_spend"), pdas.vaultPda.toBuffer(), Buffer.from([0])],
+    program.programId,
+  );
   await program.methods
     .initializeVault(
       vaultId,
@@ -287,18 +291,20 @@ export async function createFullVault(
       vault: pdas.vaultPda,
       policy: pdas.policyPda,
       tracker: pdas.trackerPda,
+      agentSpendOverlay: overlayPda,
       feeDestination,
       systemProgram: SystemProgram.programId,
     } as any)
     .rpc();
 
-  // Register agent (multi-agent: agent pubkey + permissions bitmask)
+  // Register agent (multi-agent: agent pubkey + permissions bitmask + spending limit)
   if (!skipAgent) {
     await program.methods
-      .registerAgent(agent.publicKey, new BN(2097151)) // FULL_PERMISSIONS
+      .registerAgent(agent.publicKey, new BN(2097151), new BN(0)) // FULL_PERMISSIONS
       .accounts({
         owner: owner.publicKey,
         vault: pdas.vaultPda,
+        agentSpendOverlay: overlayPda,
       } as any)
       .rpc();
   }
@@ -322,6 +328,7 @@ export async function createFullVault(
 
   return {
     ...pdas,
+    overlayPda,
     vaultTokenAta,
     ownerTokenAta,
     protocolTreasuryAta,

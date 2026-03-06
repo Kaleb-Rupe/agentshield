@@ -8,6 +8,9 @@ export {
   transactionHistoryAction,
   provisionAction,
   x402FetchAction,
+  createEscrowAction,
+  settleEscrowAction,
+  refundEscrowAction,
 } from "./actions";
 export { shieldStatusProvider, spendTrackingProvider } from "./providers";
 export { policyCheckEvaluator } from "./evaluators";

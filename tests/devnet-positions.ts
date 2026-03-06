@@ -213,6 +213,7 @@ describe("devnet-positions", () => {
           vault: vault.vaultPda,
           policy: vault.policyPda,
           tracker: vault.trackerPda,
+          agentSpendOverlay: vault.overlayPda,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();

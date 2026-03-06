@@ -176,12 +176,16 @@ export async function findNextVaultId(
   ownerPubkey: PublicKey,
   programId?: PublicKey,
 ): Promise<number> {
-  for (let id = 0; id <= 255; id++) {
-    const [vaultPda] = getVaultPDA(ownerPubkey, new BN(id), programId);
-    const account = await connection.getAccountInfo(vaultPda);
-    if (!account) {
-      return id;
-    }
+  // Batch probe: 100 PDAs per RPC call instead of 256 sequential calls
+  const BATCH_SIZE = 100;
+  for (let start = 0; start < 256; start += BATCH_SIZE) {
+    const end = Math.min(start + BATCH_SIZE, 256);
+    const pdas = Array.from({ length: end - start }, (_, i) =>
+      getVaultPDA(ownerPubkey, new BN(start + i), programId)[0],
+    );
+    const accounts = await connection.getMultipleAccountsInfo(pdas);
+    const emptyIdx = accounts.findIndex((a) => a === null);
+    if (emptyIdx >= 0) return start + emptyIdx;
   }
   throw new Error("All 256 vault slots are in use for this owner.");
 }
@@ -403,6 +407,10 @@ function createHardenedWallet(
 
     resume(): void {
       original.resume();
+    },
+
+    dryRun(input: any): any {
+      return original.dryRun(input);
     },
 
     getSpendingSummary(): SpendingSummary {

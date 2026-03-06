@@ -16,3 +16,17 @@ export {
 } from "./transactionHistory";
 export { provision, provisionSchema, type ProvisionInput } from "./provision";
 export { x402Fetch, x402FetchSchema, type X402FetchInput } from "./x402Fetch";
+export {
+  createEscrow,
+  createEscrowSchema,
+  settleEscrow,
+  settleEscrowSchema,
+  refundEscrow,
+  refundEscrowSchema,
+  checkEscrow,
+  checkEscrowSchema,
+  type CreateEscrowInput,
+  type SettleEscrowInput,
+  type RefundEscrowInput,
+  type CheckEscrowInput,
+} from "./escrow";

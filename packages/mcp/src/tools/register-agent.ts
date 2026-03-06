@@ -14,6 +14,14 @@ export const registerAgentSchema = z.object({
         "Bit 0 = Swap, Bits 1-4 = Perps (Open/Close/Increase/Decrease), Bit 7 = Transfer, " +
         "Bits 18-20 = Escrow (Create/Settle/Refund).",
     ),
+  spendingLimitUsd: z
+    .string()
+    .optional()
+    .describe(
+      "Per-agent rolling 24h spending limit in USD (6 decimals). " +
+        "0 or omitted = no per-agent limit (vault-wide cap still applies). " +
+        "Example: '500000000' = $500/day.",
+    ),
 });
 
 export type RegisterAgentInput = z.infer<typeof registerAgentSchema>;
@@ -25,10 +33,12 @@ export async function registerAgent(
   try {
     const { BN } = await import("@coral-xyz/anchor");
     const permissions = new BN(input.permissions ?? "2097151");
+    const spendingLimitUsd = new BN(input.spendingLimitUsd ?? "0");
     const sig = await client.registerAgent(
       toPublicKey(input.vault),
       toPublicKey(input.agent),
       permissions,
+      spendingLimitUsd,
     );
 
     return [
@@ -36,6 +46,7 @@ export async function registerAgent(
       `- **Vault:** ${input.vault}`,
       `- **Agent:** ${input.agent}`,
       `- **Permissions:** ${permissions.toString()}`,
+      `- **Spending Limit:** ${spendingLimitUsd.isZero() ? "Unlimited (vault-wide cap only)" : `$${(parseInt(spendingLimitUsd.toString()) / 1_000_000).toFixed(2)}/day`}`,
       `- **Transaction:** ${sig}`,
       "",
       "The agent can now execute trades through this vault within the vault's policy limits " +

@@ -1,4 +1,5 @@
 use crate::errors::PhalnxError;
+use crate::state::MAX_ALLOWED_PROTOCOLS;
 use anchor_lang::prelude::*;
 
 /// 10-minute epoch duration in seconds
@@ -24,13 +25,16 @@ pub struct SpendTracker {
     /// 144 epoch buckets for rolling 24h spend tracking
     pub buckets: [EpochBucket; NUM_EPOCHS], // 2,304 bytes (144 × 16)
 
+    /// Reserved per-protocol spend counters (zeroed, no enforcement yet)
+    pub protocol_counters: [ProtocolSpendCounter; MAX_ALLOWED_PROTOCOLS], // 480 bytes (10 × 48)
+
     /// Bump seed for PDA
     pub bump: u8, // 1 byte
 
     /// Padding for 8-byte alignment
     pub _padding: [u8; 7], // 7 bytes
 }
-// Total data: 2,344 bytes + 8 (discriminator) = 2,352 bytes
+// Total data: 2,824 bytes + 8 (discriminator) = 2,832 bytes
 
 /// A single epoch bucket tracking aggregate USD spend.
 /// 16 bytes per bucket. USD-only — rate limiting stays client-side.
@@ -44,9 +48,22 @@ pub struct EpochBucket {
     pub usd_amount: u64, // 8 bytes
 }
 
+/// Reserved per-protocol spend counter for future per-protocol caps.
+/// Zeroed at init — no enforcement logic yet.
+/// 48 bytes per entry (32 + 8 + 8).
+#[zero_copy]
+pub struct ProtocolSpendCounter {
+    /// Protocol program ID
+    pub protocol: [u8; 32],
+    /// Window start timestamp (for future rolling window)
+    pub window_start: i64,
+    /// Accumulated spend in window (for future cap enforcement)
+    pub window_spend: u64,
+}
+
 impl SpendTracker {
     /// Total account size including 8-byte discriminator
-    pub const SIZE: usize = 8 + 32 + (16 * NUM_EPOCHS) + 1 + 7;
+    pub const SIZE: usize = 8 + 32 + (16 * NUM_EPOCHS) + (48 * MAX_ALLOWED_PROTOCOLS) + 1 + 7;
 
     /// Record a spend in the current epoch bucket.
     /// If the bucket is from a different epoch, reset it first.

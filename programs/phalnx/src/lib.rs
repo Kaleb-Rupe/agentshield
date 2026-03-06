@@ -64,8 +64,9 @@ pub mod phalnx {
         ctx: Context<RegisterAgent>,
         agent: Pubkey,
         permissions: u64,
+        spending_limit_usd: u64,
     ) -> Result<()> {
-        instructions::register_agent::handler(ctx, agent, permissions)
+        instructions::register_agent::handler(ctx, agent, permissions, spending_limit_usd)
     }
 
     /// Update the policy configuration for a vault.
@@ -242,14 +243,20 @@ pub mod phalnx {
         instructions::agent_transfer::handler(ctx, amount)
     }
 
-    /// Update an agent's permission bitmask.
+    /// Update an agent's permission bitmask and spending limit.
     /// Only the owner can call this. Blocked when timelock is active.
     pub fn update_agent_permissions(
         ctx: Context<UpdateAgentPermissions>,
         agent: Pubkey,
         new_permissions: u64,
+        spending_limit_usd: u64,
     ) -> Result<()> {
-        instructions::update_agent_permissions::handler(ctx, agent, new_permissions)
+        instructions::update_agent_permissions::handler(
+            ctx,
+            agent,
+            new_permissions,
+            spending_limit_usd,
+        )
     }
 
     /// Sync the vault's open position counter with the actual state.

@@ -20,6 +20,13 @@ export const updateAgentPermissionsSchema = z.object({
         "Bit 19 = SettleEscrow, Bit 20 = RefundEscrow. " +
         "Full permissions = 2097151.",
     ),
+  spendingLimitUsd: z
+    .string()
+    .optional()
+    .describe(
+      "Per-agent rolling 24h spending limit in USD (6 decimals). " +
+        "0 or omitted = no per-agent limit. Example: '500000000' = $500/day.",
+    ),
 });
 
 export type UpdateAgentPermissionsInput = z.infer<
@@ -32,10 +39,12 @@ export async function updateAgentPermissions(
 ): Promise<string> {
   try {
     const { BN } = await import("@coral-xyz/anchor");
+    const spendingLimitUsd = new BN(input.spendingLimitUsd ?? "0");
     const sig = await client.updateAgentPermissions(
       toPublicKey(input.vault),
       toPublicKey(input.agent),
       new BN(input.permissions),
+      spendingLimitUsd,
     );
 
     return [
@@ -43,6 +52,7 @@ export async function updateAgentPermissions(
       `- **Vault:** ${input.vault}`,
       `- **Agent:** ${input.agent}`,
       `- **New Permissions:** ${input.permissions}`,
+      `- **Spending Limit:** ${spendingLimitUsd.isZero() ? "Unlimited" : `$${(parseInt(spendingLimitUsd.toString()) / 1_000_000).toFixed(2)}/day`}`,
       `- **Transaction:** ${sig}`,
     ].join("\n");
   } catch (error) {

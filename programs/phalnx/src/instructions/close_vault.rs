@@ -36,6 +36,15 @@ pub struct CloseVault<'info> {
     )]
     pub tracker: AccountLoader<'info, SpendTracker>,
 
+    /// Zero-copy AgentSpendOverlay — close returns rent to owner
+    #[account(
+        mut,
+        seeds = [b"agent_spend", vault.key().as_ref(), &[0u8]],
+        bump,
+        close = owner,
+    )]
+    pub agent_spend_overlay: AccountLoader<'info, AgentSpendOverlay>,
+
     pub system_program: Program<'info, System>,
 }
 

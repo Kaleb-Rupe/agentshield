@@ -22,6 +22,17 @@ pub struct AgentRegistered {
     pub vault: Pubkey,
     pub agent: Pubkey,
     pub permissions: u64,
+    pub spending_limit_usd: u64,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct AgentSpendLimitChecked {
+    pub vault: Pubkey,
+    pub agent: Pubkey,
+    pub agent_rolling_spend: u64,
+    pub spending_limit_usd: u64,
+    pub amount: u64,
     pub timestamp: i64,
 }
 

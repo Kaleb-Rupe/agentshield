@@ -453,6 +453,13 @@ const ERROR_MAP: Record<number, ErrorInfo> = {
     suggestion:
       "The pending constraints update is past its expiration window. Cancel it and queue a fresh update.",
   },
+  6063: {
+    code: 6063,
+    name: "AgentSpendLimitExceeded",
+    message: "Agent's rolling 24h spend exceeds their individual spending limit",
+    suggestion:
+      "This agent has reached their per-agent spending cap. Wait for the rolling window to expire or ask the vault owner to increase the agent's spending_limit_usd via update_agent_permissions.",
+  },
 };
 
 /** Truncate and strip control characters from external messages. */

@@ -268,6 +268,10 @@ describe("escrow-integration", () => {
     );
 
     // ── Initialize source vault ────────────────────────────────────────────
+    const [sourceOverlay] = PublicKey.findProgramAddressSync(
+      [Buffer.from("agent_spend"), sourceVaultPda.toBuffer(), Buffer.from([0])],
+      program.programId,
+    );
     await program.methods
       .initializeVault(
         sourceVaultId,
@@ -287,6 +291,7 @@ describe("escrow-integration", () => {
         vault: sourceVaultPda,
         policy: sourcePolicyPda,
         tracker: sourceTrackerPda,
+        agentSpendOverlay: sourceOverlay,
         feeDestination: sourceFeeDestination.publicKey,
         systemProgram: SystemProgram.programId,
       } as any)
@@ -294,10 +299,11 @@ describe("escrow-integration", () => {
 
     // Register source agent
     await program.methods
-      .registerAgent(sourceAgent.publicKey, FULL_PERMISSIONS)
+      .registerAgent(sourceAgent.publicKey, FULL_PERMISSIONS, new BN(0))
       .accounts({
         owner: sourceOwner.publicKey,
         vault: sourceVaultPda,
+        agentSpendOverlay: sourceOverlay,
       } as any)
       .rpc();
 
@@ -334,6 +340,10 @@ describe("escrow-integration", () => {
       destProvider as unknown as anchor.Provider,
     );
 
+    const [destOverlay] = PublicKey.findProgramAddressSync(
+      [Buffer.from("agent_spend"), destVaultPda.toBuffer(), Buffer.from([0])],
+      program.programId,
+    );
     await destProgram.methods
       .initializeVault(
         destVaultId,
@@ -353,6 +363,7 @@ describe("escrow-integration", () => {
         vault: destVaultPda,
         policy: destPolicyPda,
         tracker: destTrackerPda,
+        agentSpendOverlay: destOverlay,
         feeDestination: destFeeDestination.publicKey,
         systemProgram: SystemProgram.programId,
       } as any)
@@ -360,10 +371,11 @@ describe("escrow-integration", () => {
 
     // Register destination agent
     await destProgram.methods
-      .registerAgent(destAgent.publicKey, FULL_PERMISSIONS)
+      .registerAgent(destAgent.publicKey, FULL_PERMISSIONS, new BN(0))
       .accounts({
         owner: destOwnerKeypair.publicKey,
         vault: destVaultPda,
+        agentSpendOverlay: destOverlay,
       } as any)
       .rpc();
 

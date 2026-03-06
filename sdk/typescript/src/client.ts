@@ -175,6 +175,19 @@ import {
   type JupiterApiConfig,
 } from "./integrations/jupiter-api";
 import {
+  simulateTransaction,
+  type SimulationResult,
+  type SimulateOptions,
+} from "./simulation";
+import { TransactionSimulationError } from "./wrapper/errors";
+import {
+  createIntent,
+  MemoryIntentStorage,
+  type IntentStorage,
+  type TransactionIntent,
+  type IntentAction,
+} from "./intents";
+import {
   createSquadsMultisig,
   proposeVaultAction,
   approveProposal,
@@ -206,6 +219,10 @@ export interface PhalnxClientOptions {
   priorityFees?: import("./priority-fees").PriorityFeeConfig | false;
   /** Jupiter API configuration (API key, base URL, retry, timeout). */
   jupiterApiConfig?: JupiterApiConfig;
+  /** When true, simulate transactions before sending. Default: false. */
+  simulateBeforeSend?: boolean;
+  /** Custom intent storage. Default: MemoryIntentStorage (lazy-initialized). */
+  intentStorage?: IntentStorage;
 }
 
 export class PhalnxClient {
@@ -215,6 +232,8 @@ export class PhalnxClient {
   private readonly priorityFeeConfig:
     | import("./priority-fees").PriorityFeeConfig
     | false;
+  private readonly _simulateBeforeSend: boolean;
+  private _intentStorage: IntentStorage | undefined;
 
   constructor(
     connection: Connection,
@@ -239,6 +258,8 @@ export class PhalnxClient {
       resolvedIdl = opts.idl ?? PhalnxIDL;
       this.requireDestinations = opts.requireDestinations ?? false;
       this.priorityFeeConfig = opts.priorityFees ?? {};
+      this._simulateBeforeSend = opts.simulateBeforeSend ?? false;
+      this._intentStorage = opts.intentStorage;
       if (opts.jupiterApiConfig) {
         configureJupiterApi(opts.jupiterApiConfig);
       }
@@ -247,12 +268,55 @@ export class PhalnxClient {
       resolvedIdl = idl ?? PhalnxIDL;
       this.requireDestinations = false;
       this.priorityFeeConfig = {};
+      this._simulateBeforeSend = false;
     }
 
     if (programId) {
       resolvedIdl.address = programId.toBase58();
     }
     this.program = new Program<Phalnx>(resolvedIdl, this.provider) as any;
+  }
+
+  // --- Simulation & Send Helpers ---
+
+  private async sendWithOptionalSimulation(
+    signed: VersionedTransaction,
+    blockhash?: string,
+    lastValidBlockHeight?: number,
+  ): Promise<string> {
+    if (this._simulateBeforeSend) {
+      const simResult = await simulateTransaction(
+        this.provider.connection,
+        signed,
+        { replaceRecentBlockhash: false },
+      );
+      if (!simResult.success) {
+        throw new TransactionSimulationError(simResult);
+      }
+    }
+
+    const sig = await this.provider.connection.sendRawTransaction(
+      signed.serialize(),
+    );
+
+    if (!blockhash || lastValidBlockHeight === undefined) {
+      const latest = await this.provider.connection.getLatestBlockhash();
+      blockhash = latest.blockhash;
+      lastValidBlockHeight = latest.lastValidBlockHeight;
+    }
+
+    await this.provider.connection.confirmTransaction(
+      { signature: sig, blockhash, lastValidBlockHeight },
+      "confirmed",
+    );
+    return sig;
+  }
+
+  async simulate(
+    tx: VersionedTransaction,
+    options?: SimulateOptions,
+  ): Promise<SimulationResult> {
+    return simulateTransaction(this.provider.connection, tx, options);
   }
 
   // --- PDA Helpers ---
@@ -351,6 +415,7 @@ export class PhalnxClient {
     vault: PublicKey,
     agent: PublicKey,
     permissions: BN,
+    spendingLimitUsd: BN = new BN(0),
   ): Promise<string> {
     const owner = this.provider.wallet.publicKey;
     return buildRegisterAgent(
@@ -359,6 +424,7 @@ export class PhalnxClient {
       vault,
       agent,
       permissions,
+      spendingLimitUsd,
     ).rpc();
   }
 
@@ -459,6 +525,7 @@ export class PhalnxClient {
     vault: PublicKey,
     agent: PublicKey,
     newPermissions: BN,
+    spendingLimitUsd: BN = new BN(0),
   ): Promise<string> {
     const owner = this.provider.wallet.publicKey;
     return buildUpdateAgentPermissions(
@@ -467,6 +534,7 @@ export class PhalnxClient {
       vault,
       agent,
       newPermissions,
+      spendingLimitUsd,
     ).rpc();
   }
 
@@ -590,15 +658,7 @@ export class PhalnxClient {
     }
 
     const signed = await this.provider.wallet.signTransaction(tx);
-    const sig = await this.provider.connection.sendRawTransaction(
-      signed.serialize(),
-    );
-    await this.provider.connection.confirmTransaction(
-      { signature: sig, blockhash, lastValidBlockHeight },
-      "confirmed",
-    );
-
-    return sig;
+    return this.sendWithOptionalSimulation(signed, blockhash, lastValidBlockHeight);
   }
 
   /**
@@ -626,17 +686,7 @@ export class PhalnxClient {
     }
 
     const signed = await this.provider.wallet.signTransaction(tx);
-    const sig = await this.provider.connection.sendRawTransaction(
-      signed.serialize(),
-    );
-    const { blockhash, lastValidBlockHeight } =
-      await this.provider.connection.getLatestBlockhash();
-    await this.provider.connection.confirmTransaction(
-      { signature: sig, blockhash, lastValidBlockHeight },
-      "confirmed",
-    );
-
-    return sig;
+    return this.sendWithOptionalSimulation(signed);
   }
 
   // --- Jupiter Integration ---
@@ -693,15 +743,7 @@ export class PhalnxClient {
     }
 
     const signed = await this.provider.wallet.signTransaction(tx);
-    const sig = await this.provider.connection.sendRawTransaction(
-      signed.serialize(),
-    );
-    await this.provider.connection.confirmTransaction(
-      { signature: sig, blockhash, lastValidBlockHeight },
-      "confirmed",
-    );
-
-    return sig;
+    return this.sendWithOptionalSimulation(signed, blockhash, lastValidBlockHeight);
   }
 
   // --- Jupiter Price API ---
@@ -760,15 +802,7 @@ export class PhalnxClient {
 
     const tx = new VersionedTransaction(messageV0);
     const signed = await this.provider.wallet.signTransaction(tx);
-    const sig = await this.provider.connection.sendRawTransaction(
-      signed.serialize(),
-    );
-    await this.provider.connection.confirmTransaction(
-      { signature: sig, blockhash, lastValidBlockHeight },
-      "confirmed",
-    );
-
-    return sig;
+    return this.sendWithOptionalSimulation(signed, blockhash, lastValidBlockHeight);
   }
 
   async jupiterLendWithdraw(
@@ -791,15 +825,7 @@ export class PhalnxClient {
 
     const tx = new VersionedTransaction(messageV0);
     const signed = await this.provider.wallet.signTransaction(tx);
-    const sig = await this.provider.connection.sendRawTransaction(
-      signed.serialize(),
-    );
-    await this.provider.connection.confirmTransaction(
-      { signature: sig, blockhash, lastValidBlockHeight },
-      "confirmed",
-    );
-
-    return sig;
+    return this.sendWithOptionalSimulation(signed, blockhash, lastValidBlockHeight);
   }
 
   // --- Jupiter Trigger Orders ---
@@ -1128,19 +1154,7 @@ export class PhalnxClient {
 
     const tx = new VersionedTransaction(msg);
     const signed = await this.provider.wallet.signTransaction(tx);
-    const sig = await this.provider.connection.sendRawTransaction(
-      signed.serialize(),
-    );
-    const result = await this.provider.connection.getLatestBlockhash();
-    await this.provider.connection.confirmTransaction(
-      {
-        signature: sig,
-        blockhash: result.blockhash,
-        lastValidBlockHeight: result.lastValidBlockHeight,
-      },
-      "confirmed",
-    );
-    return sig;
+    return this.sendWithOptionalSimulation(signed);
   }
 
   /**
@@ -1166,17 +1180,7 @@ export class PhalnxClient {
     }
 
     const signed = await this.provider.wallet.signTransaction(tx);
-    const sig = await this.provider.connection.sendRawTransaction(
-      signed.serialize(),
-    );
-    const { blockhash, lastValidBlockHeight } =
-      await this.provider.connection.getLatestBlockhash();
-    await this.provider.connection.confirmTransaction(
-      { signature: sig, blockhash, lastValidBlockHeight },
-      "confirmed",
-    );
-
-    return sig;
+    return this.sendWithOptionalSimulation(signed);
   }
 
   // --- Escrow Operations ---
@@ -1485,5 +1489,141 @@ export class PhalnxClient {
       default:
         throw new Error(`Unknown Squads action: ${params.action}`);
     }
+  }
+
+  // --- Intents (Human-in-the-loop proposal flow) ---
+
+  getIntentStorage(): IntentStorage {
+    if (!this._intentStorage) {
+      this._intentStorage = new MemoryIntentStorage();
+    }
+    return this._intentStorage;
+  }
+
+  async proposeSwap(params: {
+    vault: PublicKey;
+    inputMint: string;
+    outputMint: string;
+    amount: string;
+    slippageBps?: number;
+  }): Promise<TransactionIntent> {
+    const agent = this.provider.wallet.publicKey;
+    const intent = createIntent(
+      { type: "swap", params: { inputMint: params.inputMint, outputMint: params.outputMint, amount: params.amount, slippageBps: params.slippageBps } },
+      params.vault,
+      agent,
+    );
+    await this.getIntentStorage().save(intent);
+    return intent;
+  }
+
+  async proposeOpenPosition(params: {
+    vault: PublicKey;
+    market: string;
+    side: "long" | "short";
+    collateral: string;
+    leverage: number;
+  }): Promise<TransactionIntent> {
+    const agent = this.provider.wallet.publicKey;
+    const intent = createIntent(
+      { type: "openPosition", params: { market: params.market, side: params.side, collateral: params.collateral, leverage: params.leverage } },
+      params.vault,
+      agent,
+    );
+    await this.getIntentStorage().save(intent);
+    return intent;
+  }
+
+  async proposeTransfer(params: {
+    vault: PublicKey;
+    destination: string;
+    mint: string;
+    amount: string;
+  }): Promise<TransactionIntent> {
+    const agent = this.provider.wallet.publicKey;
+    const intent = createIntent(
+      { type: "transfer", params: { destination: params.destination, mint: params.mint, amount: params.amount } },
+      params.vault,
+      agent,
+    );
+    await this.getIntentStorage().save(intent);
+    return intent;
+  }
+
+  async proposeDeposit(params: {
+    vault: PublicKey;
+    mint: string;
+    amount: string;
+  }): Promise<TransactionIntent> {
+    const agent = this.provider.wallet.publicKey;
+    const intent = createIntent(
+      { type: "deposit", params: { mint: params.mint, amount: params.amount } },
+      params.vault,
+      agent,
+    );
+    await this.getIntentStorage().save(intent);
+    return intent;
+  }
+
+  async approveIntent(intentId: string): Promise<void> {
+    const storage = this.getIntentStorage();
+    await storage.update(intentId, { status: "approved", updatedAt: Date.now() });
+  }
+
+  async rejectIntent(intentId: string): Promise<void> {
+    const storage = this.getIntentStorage();
+    await storage.update(intentId, { status: "rejected", updatedAt: Date.now() });
+  }
+
+  async executeIntent(_intentId: string): Promise<string> {
+    const storage = this.getIntentStorage();
+    const intent = await storage.get(_intentId);
+    if (!intent) throw new Error(`Intent not found: ${_intentId}`);
+    if (intent.status !== "approved") {
+      throw new Error(`Intent must be approved before execution. Current status: ${intent.status}`);
+    }
+
+    await storage.update(_intentId, { status: "executed", updatedAt: Date.now() });
+
+    // Execute the underlying action based on intent type
+    try {
+      switch (intent.action.type) {
+        case "swap": {
+          const vaultAccount = await this.fetchVaultByAddress(intent.vault);
+          const swapParams: JupiterSwapParams = {
+            owner: new PublicKey(vaultAccount.owner),
+            vaultId: new BN(vaultAccount.vaultId.toString()),
+            agent: intent.agent,
+            inputMint: new PublicKey(intent.action.params.inputMint),
+            outputMint: new PublicKey(intent.action.params.outputMint),
+            amount: new BN(intent.action.params.amount),
+            slippageBps: intent.action.params.slippageBps ?? 50,
+          };
+          const tx = await this.jupiterSwap(swapParams);
+          const signed = await this.provider.wallet.signTransaction(tx);
+          return this.sendWithOptionalSimulation(signed);
+        }
+        default:
+          throw new Error(`Intent execution for '${intent.action.type}' not yet implemented`);
+      }
+    } catch (err: any) {
+      await storage.update(_intentId, {
+        status: "failed",
+        updatedAt: Date.now(),
+        error: err.message ?? String(err),
+      });
+      throw err;
+    }
+  }
+
+  async listIntents(filter?: {
+    status?: import("./intents").IntentStatus;
+    vault?: PublicKey;
+  }): Promise<TransactionIntent[]> {
+    return this.getIntentStorage().list(filter);
+  }
+
+  async getIntent(id: string): Promise<TransactionIntent | null> {
+    return this.getIntentStorage().get(id);
   }
 }

@@ -5,6 +5,9 @@ import {
   transactionHistoryAction,
   provisionAction,
   x402FetchAction,
+  createEscrowAction,
+  settleEscrowAction,
+  refundEscrowAction,
 } from "./actions";
 import { shieldStatusProvider, spendTrackingProvider } from "./providers";
 import { policyCheckEvaluator } from "./evaluators";
@@ -38,6 +41,9 @@ export const phalnxPlugin = {
     transactionHistoryAction,
     provisionAction,
     x402FetchAction,
+    createEscrowAction,
+    settleEscrowAction,
+    refundEscrowAction,
   ],
 
   providers: [shieldStatusProvider, spendTrackingProvider],

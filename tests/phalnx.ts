@@ -62,6 +62,7 @@ describe("phalnx", () => {
   let policyBump: number;
   let trackerPda: PublicKey;
   let trackerBump: number;
+  let overlayPda: PublicKey;
   // Token accounts
   let ownerUsdcAta: PublicKey;
   let vaultUsdcAta: PublicKey;
@@ -142,6 +143,11 @@ describe("phalnx", () => {
       [Buffer.from("tracker"), vaultPda.toBuffer()],
       program.programId,
     );
+
+    [overlayPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("agent_spend"), vaultPda.toBuffer(), Buffer.from([0])],
+      program.programId,
+    );
   });
 
   // =========================================================================
@@ -171,6 +177,7 @@ describe("phalnx", () => {
           vault: vaultPda,
           policy: policyPda,
           tracker: trackerPda,
+          agentSpendOverlay: overlayPda,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -229,6 +236,7 @@ describe("phalnx", () => {
             vault: vaultPda,
             policy: policyPda,
             tracker: trackerPda,
+            agentSpendOverlay: overlayPda,
             feeDestination: feeDestination.publicKey,
             systemProgram: SystemProgram.programId,
           } as any)
@@ -258,6 +266,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), vault2.toBuffer()],
         program.programId,
       );
+      const [overlay2] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), vault2.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       // protocol_mode = 3 is invalid (valid values: 0=all, 1=allowlist, 2=denylist)
       try {
@@ -280,6 +292,7 @@ describe("phalnx", () => {
             vault: vault2,
             policy: policy2,
             tracker: tracker2,
+            agentSpendOverlay: overlay2,
             feeDestination: feeDestination.publicKey,
             systemProgram: SystemProgram.programId,
           } as any)
@@ -367,10 +380,11 @@ describe("phalnx", () => {
   describe("register_agent", () => {
     it("registers an agent pubkey", async () => {
       await program.methods
-        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
         .accounts({
           owner: owner.publicKey,
           vault: vaultPda,
+          agentSpendOverlay: overlayPda,
         } as any)
         .rpc();
 
@@ -384,10 +398,11 @@ describe("phalnx", () => {
       try {
         // Register the SAME agent pubkey that was already registered
         await program.methods
-          .registerAgent(agent.publicKey, FULL_PERMISSIONS)
+          .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
           .accounts({
             owner: owner.publicKey,
             vault: vaultPda,
+            agentSpendOverlay: overlayPda,
           } as any)
           .rpc();
         expect.fail("Should have thrown");
@@ -415,6 +430,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), v.toBuffer()],
         program.programId,
       );
+      const [vOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), v.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       // First create the vault
       await program.methods
@@ -436,6 +455,7 @@ describe("phalnx", () => {
           vault: v,
           policy: p,
           tracker: t,
+          agentSpendOverlay: vOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -444,10 +464,11 @@ describe("phalnx", () => {
       // Try to register agent as non-owner
       try {
         await program.methods
-          .registerAgent(agent.publicKey, FULL_PERMISSIONS)
+          .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
           .accounts({
             owner: unauthorizedUser.publicKey,
             vault: v,
+            agentSpendOverlay: vOverlay,
           } as any)
           .signers([unauthorizedUser])
           .rpc();
@@ -581,6 +602,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), revokeVaultPda.toBuffer()],
         program.programId,
       );
+      const [revokeOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), revokeVaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -601,14 +626,14 @@ describe("phalnx", () => {
           vault: revokeVaultPda,
           policy: rp,
           tracker: rt,
+          agentSpendOverlay: revokeOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();
-
       await program.methods
-        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
-        .accounts({ owner: owner.publicKey, vault: revokeVaultPda } as any)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accounts({ owner: owner.publicKey, vault: revokeVaultPda, agentSpendOverlay: revokeOverlay } as any)
         .rpc();
     });
 
@@ -679,6 +704,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), reactVaultPda.toBuffer()],
         program.programId,
       );
+      const [reactOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), reactVaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -699,6 +728,7 @@ describe("phalnx", () => {
           vault: reactVaultPda,
           policy: rp,
           tracker: rt,
+          agentSpendOverlay: reactOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -706,8 +736,8 @@ describe("phalnx", () => {
 
       // Register agent then freeze by revoking
       await program.methods
-        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
-        .accounts({ owner: owner.publicKey, vault: reactVaultPda } as any)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accounts({ owner: owner.publicKey, vault: reactVaultPda, agentSpendOverlay: reactOverlay } as any)
         .rpc();
 
       await program.methods
@@ -1335,6 +1365,7 @@ describe("phalnx", () => {
     let closeVaultPda: PublicKey;
     let closePolicyPda: PublicKey;
     let closeTrackerPda: PublicKey;
+    let closeOverlayPda: PublicKey;
 
     before(async () => {
       [closeVaultPda] = PublicKey.findProgramAddressSync(
@@ -1351,6 +1382,10 @@ describe("phalnx", () => {
       );
       [closeTrackerPda] = PublicKey.findProgramAddressSync(
         [Buffer.from("tracker"), closeVaultPda.toBuffer()],
+        program.programId,
+      );
+      [closeOverlayPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), closeVaultPda.toBuffer(), Buffer.from([0])],
         program.programId,
       );
 
@@ -1373,6 +1408,7 @@ describe("phalnx", () => {
           vault: closeVaultPda,
           policy: closePolicyPda,
           tracker: closeTrackerPda,
+          agentSpendOverlay: closeOverlayPda,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -1389,6 +1425,7 @@ describe("phalnx", () => {
           vault: closeVaultPda,
           policy: closePolicyPda,
           tracker: closeTrackerPda,
+          agentSpendOverlay: closeOverlayPda,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();
@@ -1422,6 +1459,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), v.toBuffer()],
         program.programId,
       );
+      const [vOverlay21] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), v.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -1442,6 +1483,7 @@ describe("phalnx", () => {
           vault: v,
           policy: p,
           tracker: t,
+          agentSpendOverlay: vOverlay21,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -1455,6 +1497,7 @@ describe("phalnx", () => {
             vault: v,
             policy: p,
             tracker: t,
+            agentSpendOverlay: vOverlay21,
             systemProgram: SystemProgram.programId,
           } as any)
           .signers([unauthorizedUser])
@@ -1496,6 +1539,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), feeVaultPda.toBuffer()],
         program.programId,
       );
+      const [feeOverlayInit] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), feeVaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -1516,6 +1563,7 @@ describe("phalnx", () => {
           vault: feeVaultPda,
           policy: feePolicyPda,
           tracker: feeTrackerPda,
+          agentSpendOverlay: feeOverlayInit,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -1543,6 +1591,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), bv.toBuffer()],
         program.programId,
       );
+      const [bOverlay31] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), bv.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       try {
         await program.methods
@@ -1564,6 +1616,7 @@ describe("phalnx", () => {
             vault: bv,
             policy: bp,
             tracker: bt,
+            agentSpendOverlay: bOverlay31,
             feeDestination: feeDestination.publicKey,
             systemProgram: SystemProgram.programId,
           } as any)
@@ -1678,9 +1731,13 @@ describe("phalnx", () => {
         .rpc();
 
       // Register agent on fee vault
+      const [feeOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), feeVaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
       await program.methods
-        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
-        .accounts({ owner: owner.publicKey, vault: feeVaultPda } as any)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accounts({ owner: owner.publicKey, vault: feeVaultPda, agentSpendOverlay: feeOverlay } as any)
         .rpc();
 
       // Deposit to the fee vault
@@ -1950,6 +2007,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), mv.toBuffer()],
         program.programId,
       );
+      const [mOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), mv.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -1970,6 +2031,7 @@ describe("phalnx", () => {
           vault: mv,
           policy: mp,
           tracker: mt,
+          agentSpendOverlay: mOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -2021,6 +2083,10 @@ describe("phalnx", () => {
         ],
         program.programId,
       );
+      const [lifecycleOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), lifecycleVaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       // Create vault with USDC allowed
       await program.methods
@@ -2042,6 +2108,7 @@ describe("phalnx", () => {
           vault: lifecycleVaultPda,
           policy: lifecyclePolicyPda,
           tracker: lifecycleTrackerPda,
+          agentSpendOverlay: lifecycleOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -2049,8 +2116,8 @@ describe("phalnx", () => {
 
       // Register agent
       await program.methods
-        .registerAgent(lifecycleAgent.publicKey, FULL_PERMISSIONS)
-        .accounts({ owner: owner.publicKey, vault: lifecycleVaultPda } as any)
+        .registerAgent(lifecycleAgent.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accounts({ owner: owner.publicKey, vault: lifecycleVaultPda, agentSpendOverlay: lifecycleOverlay } as any)
         .rpc();
 
       // Deposit USDC to vault
@@ -2264,6 +2331,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), v.toBuffer()],
         program.programId,
       );
+      const [vOverlay2] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), v.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -2284,15 +2355,15 @@ describe("phalnx", () => {
           vault: v,
           policy: p,
           tracker: t,
+          agentSpendOverlay: vOverlay2,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();
-
       try {
         await program.methods
-          .registerAgent(owner.publicKey, FULL_PERMISSIONS) // owner = agent → reject
-          .accounts({ owner: owner.publicKey, vault: v } as any)
+          .registerAgent(owner.publicKey, FULL_PERMISSIONS, new BN(0)) // owner = agent → reject
+          .accounts({ owner: owner.publicKey, vault: v, agentSpendOverlay: vOverlay2 } as any)
           .rpc();
         expect.fail("Should have thrown");
       } catch (err: any) {
@@ -2410,6 +2481,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), fv.toBuffer()],
         program.programId,
       );
+      const [fvOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), fv.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -2430,6 +2505,7 @@ describe("phalnx", () => {
           vault: fv,
           policy: fp,
           tracker: ft,
+          agentSpendOverlay: fvOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -2437,8 +2513,8 @@ describe("phalnx", () => {
 
       // Register agent then freeze by revoking
       await program.methods
-        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
-        .accounts({ owner: owner.publicKey, vault: fv } as any)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accounts({ owner: owner.publicKey, vault: fv, agentSpendOverlay: fvOverlay } as any)
         .rpc();
 
       await program.methods
@@ -2488,6 +2564,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), cv.toBuffer()],
         program.programId,
       );
+      const [cvOverlay61] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), cv.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -2508,6 +2588,7 @@ describe("phalnx", () => {
           vault: cv,
           policy: cp,
           tracker: ct,
+          agentSpendOverlay: cvOverlay61,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -2521,6 +2602,7 @@ describe("phalnx", () => {
           vault: cv,
           policy: cp,
           tracker: ct,
+          agentSpendOverlay: cvOverlay61,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();
@@ -2587,6 +2669,10 @@ describe("phalnx", () => {
         ],
         program.programId,
       );
+      const [cvOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), cv.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -2607,6 +2693,7 @@ describe("phalnx", () => {
           vault: cv,
           policy: cp,
           tracker: ct,
+          agentSpendOverlay: cvOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -2614,8 +2701,8 @@ describe("phalnx", () => {
 
       // Register agent, then close
       await program.methods
-        .registerAgent(agent.publicKey, FULL_PERMISSIONS)
-        .accounts({ owner: owner.publicKey, vault: cv } as any)
+        .registerAgent(agent.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accounts({ owner: owner.publicKey, vault: cv, agentSpendOverlay: cvOverlay } as any)
         .rpc();
 
       await program.methods
@@ -2625,6 +2712,7 @@ describe("phalnx", () => {
           vault: cv,
           policy: cp,
           tracker: ct,
+          agentSpendOverlay: cvOverlay,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();
@@ -2705,6 +2793,10 @@ describe("phalnx", () => {
       );
 
       // Large daily cap to allow many transactions
+      const [ringOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), ringVaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
       await program.methods
         .initializeVault(
           ringVaultId,
@@ -2724,14 +2816,14 @@ describe("phalnx", () => {
           vault: ringVaultPda,
           policy: ringPolicyPda,
           tracker: ringTrackerPda,
+          agentSpendOverlay: ringOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();
-
       await program.methods
-        .registerAgent(ringAgent.publicKey, FULL_PERMISSIONS)
-        .accounts({ owner: owner.publicKey, vault: ringVaultPda } as any)
+        .registerAgent(ringAgent.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accounts({ owner: owner.publicKey, vault: ringVaultPda, agentSpendOverlay: ringOverlay } as any)
         .rpc();
 
       ringVaultUsdcAta = anchor.utils.token.associatedAddress({
@@ -2858,6 +2950,10 @@ describe("phalnx", () => {
       );
 
       // developer_fee_rate = 0 to isolate protocol fee
+      const [feeEdgeOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), feeEdgeVaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
       await program.methods
         .initializeVault(
           feeEdgeVaultId,
@@ -2877,14 +2973,14 @@ describe("phalnx", () => {
           vault: feeEdgeVaultPda,
           policy: feeEdgePolicyPda,
           tracker: feeEdgeTrackerPda,
+          agentSpendOverlay: feeEdgeOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();
-
       await program.methods
-        .registerAgent(feeEdgeAgent.publicKey, FULL_PERMISSIONS)
-        .accounts({ owner: owner.publicKey, vault: feeEdgeVaultPda } as any)
+        .registerAgent(feeEdgeAgent.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accounts({ owner: owner.publicKey, vault: feeEdgeVaultPda, agentSpendOverlay: feeEdgeOverlay } as any)
         .rpc();
 
       feeEdgeVaultUsdcAta = anchor.utils.token.associatedAddress({
@@ -3118,6 +3214,10 @@ describe("phalnx", () => {
       );
 
       // Create vault WITH timelock (60 seconds)
+      const [tlOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), tlVaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
       await program.methods
         .initializeVault(
           tlVaultId,
@@ -3137,14 +3237,14 @@ describe("phalnx", () => {
           vault: tlVaultPda,
           policy: tlPolicyPda,
           tracker: tlTrackerPda,
+          agentSpendOverlay: tlOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();
-
       await program.methods
-        .registerAgent(tlAgent.publicKey, FULL_PERMISSIONS)
-        .accounts({ owner: owner.publicKey, vault: tlVaultPda } as any)
+        .registerAgent(tlAgent.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accounts({ owner: owner.publicKey, vault: tlVaultPda, agentSpendOverlay: tlOverlay } as any)
         .rpc();
     });
 
@@ -3393,6 +3493,10 @@ describe("phalnx", () => {
         [Buffer.from("pending_policy"), noTlVault.toBuffer()],
         program.programId,
       );
+      const [noTlOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), noTlVault.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -3413,6 +3517,7 @@ describe("phalnx", () => {
           vault: noTlVault,
           policy: noTlPolicy,
           tracker: noTlTracker,
+          agentSpendOverlay: noTlOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -3628,6 +3733,10 @@ describe("phalnx", () => {
       );
 
       // Create vault with destination allowlist
+      const [destOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), destVaultPda.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
       await program.methods
         .initializeVault(
           destVaultId,
@@ -3647,14 +3756,14 @@ describe("phalnx", () => {
           vault: destVaultPda,
           policy: destPolicyPda,
           tracker: destTrackerPda,
+          agentSpendOverlay: destOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();
-
       await program.methods
-        .registerAgent(destAgent.publicKey, FULL_PERMISSIONS)
-        .accounts({ owner: owner.publicKey, vault: destVaultPda } as any)
+        .registerAgent(destAgent.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accounts({ owner: owner.publicKey, vault: destVaultPda, agentSpendOverlay: destOverlay } as any)
         .rpc();
 
       // Deposit USDC
@@ -3761,6 +3870,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), anyVault.toBuffer()],
         program.programId,
       );
+      const [anyOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), anyVault.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -3781,14 +3894,14 @@ describe("phalnx", () => {
           vault: anyVault,
           policy: anyPolicy,
           tracker: anyTracker,
+          agentSpendOverlay: anyOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();
-
       await program.methods
-        .registerAgent(destAgent.publicKey, FULL_PERMISSIONS)
-        .accounts({ owner: owner.publicKey, vault: anyVault } as any)
+        .registerAgent(destAgent.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accounts({ owner: owner.publicKey, vault: anyVault, agentSpendOverlay: anyOverlay } as any)
         .rpc();
 
       const anyVaultAta = getAssociatedTokenAddressSync(
@@ -3847,6 +3960,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), bv.toBuffer()],
         program.programId,
       );
+      const [bOverlay512] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), bv.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       // Generate 11 destinations (max is 10)
       const tooMany = Array.from(
@@ -3874,6 +3991,7 @@ describe("phalnx", () => {
             vault: bv,
             policy: bp,
             tracker: bt,
+            agentSpendOverlay: bOverlay512,
             feeDestination: feeDestination.publicKey,
             systemProgram: SystemProgram.programId,
           } as any)
@@ -3985,6 +4103,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), fv.toBuffer()],
         program.programId,
       );
+      const [fvOverlay2] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), fv.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -4005,14 +4127,14 @@ describe("phalnx", () => {
           vault: fv,
           policy: fp,
           tracker: ft,
+          agentSpendOverlay: fvOverlay2,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
         .rpc();
-
       await program.methods
-        .registerAgent(destAgent.publicKey, FULL_PERMISSIONS)
-        .accounts({ owner: owner.publicKey, vault: fv } as any)
+        .registerAgent(destAgent.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accounts({ owner: owner.publicKey, vault: fv, agentSpendOverlay: fvOverlay2 } as any)
         .rpc();
 
       const fvAta = getAssociatedTokenAddressSync(usdcMint, fv, true);
@@ -4085,6 +4207,7 @@ describe("phalnx", () => {
     let maVault: PublicKey;
     let maPolicy: PublicKey;
     let maTracker: PublicKey;
+    let maOverlay: PublicKey;
     const agent2 = Keypair.generate();
     let maVaultUsdcAta: PublicKey;
 
@@ -4107,6 +4230,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), maVault.toBuffer()],
         program.programId,
       );
+      [maOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), maVault.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       await program.methods
         .initializeVault(
@@ -4127,6 +4254,7 @@ describe("phalnx", () => {
           vault: maVault,
           policy: maPolicy,
           tracker: maTracker,
+          agentSpendOverlay: maOverlay,
           feeDestination: feeDestination.publicKey,
           systemProgram: SystemProgram.programId,
         } as any)
@@ -4158,14 +4286,14 @@ describe("phalnx", () => {
       // Agent 1: Swap-only (bit 0)
       const SWAP_ONLY = new BN(1);
       await program.methods
-        .registerAgent(agent.publicKey, SWAP_ONLY)
-        .accounts({ owner: owner.publicKey, vault: maVault } as any)
+        .registerAgent(agent.publicKey, SWAP_ONLY, new BN(0))
+        .accounts({ owner: owner.publicKey, vault: maVault, agentSpendOverlay: maOverlay } as any)
         .rpc();
 
       // Agent 2: full permissions
       await program.methods
-        .registerAgent(agent2.publicKey, FULL_PERMISSIONS)
-        .accounts({ owner: owner.publicKey, vault: maVault } as any)
+        .registerAgent(agent2.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accounts({ owner: owner.publicKey, vault: maVault, agentSpendOverlay: maOverlay } as any)
         .rpc();
 
       const vault = await program.account.agentVault.fetch(maVault);
@@ -4341,8 +4469,8 @@ describe("phalnx", () => {
         const a = Keypair.generate();
         airdropSol(svm, a.publicKey, LAMPORTS_PER_SOL);
         await program.methods
-          .registerAgent(a.publicKey, FULL_PERMISSIONS)
-          .accounts({ owner: owner.publicKey, vault: maVault } as any)
+          .registerAgent(a.publicKey, FULL_PERMISSIONS, new BN(0))
+          .accounts({ owner: owner.publicKey, vault: maVault, agentSpendOverlay: maOverlay } as any)
           .rpc();
       }
 
@@ -4354,8 +4482,8 @@ describe("phalnx", () => {
       const extra = Keypair.generate();
       try {
         await program.methods
-          .registerAgent(extra.publicKey, FULL_PERMISSIONS)
-          .accounts({ owner: owner.publicKey, vault: maVault } as any)
+          .registerAgent(extra.publicKey, FULL_PERMISSIONS, new BN(0))
+          .accounts({ owner: owner.publicKey, vault: maVault, agentSpendOverlay: maOverlay } as any)
           .rpc();
         expect.fail("Should have thrown");
       } catch (err: any) {
@@ -4396,13 +4524,13 @@ describe("phalnx", () => {
       const updAgent = Keypair.generate();
       airdropSol(svm, updAgent.publicKey, LAMPORTS_PER_SOL);
       await program.methods
-        .registerAgent(updAgent.publicKey, new BN(1))
-        .accounts({ owner: owner.publicKey, vault: maVault } as any)
+        .registerAgent(updAgent.publicKey, new BN(1), new BN(0))
+        .accounts({ owner: owner.publicKey, vault: maVault, agentSpendOverlay: maOverlay } as any)
         .rpc();
 
       // Update permissions to full
       await program.methods
-        .updateAgentPermissions(updAgent.publicKey, FULL_PERMISSIONS)
+        .updateAgentPermissions(updAgent.publicKey, FULL_PERMISSIONS, new BN(0))
         .accounts({
           owner: owner.publicKey,
           vault: maVault,
@@ -4426,8 +4554,8 @@ describe("phalnx", () => {
       const BAD_PERMS = new BN(1n << 21n);
       try {
         await program.methods
-          .registerAgent(badAgent.publicKey, BAD_PERMS)
-          .accounts({ owner: owner.publicKey, vault: maVault } as any)
+          .registerAgent(badAgent.publicKey, BAD_PERMS, new BN(0))
+          .accounts({ owner: owner.publicKey, vault: maVault, agentSpendOverlay: maOverlay } as any)
           .rpc();
         expect.fail("Should have thrown");
       } catch (err: any) {

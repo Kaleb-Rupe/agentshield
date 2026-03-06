@@ -23,6 +23,7 @@ import {
   getEscrowPDA,
   getConstraintsPDA,
   getPendingConstraintsPDA,
+  getAgentOverlayPDA,
 } from "./accounts";
 
 export function buildInitializeVault(
@@ -53,6 +54,7 @@ export function buildInitializeVault(
       vault,
       policy,
       tracker,
+      agentSpendOverlay: getAgentOverlayPDA(vault, 0, program.programId)[0],
       feeDestination: params.feeDestination,
       systemProgram: SystemProgram.programId,
     } as any);
@@ -86,11 +88,16 @@ export function buildRegisterAgent(
   vault: PublicKey,
   agent: PublicKey,
   permissions: BN,
+  spendingLimitUsd: BN = new BN(0),
 ) {
-  return program.methods.registerAgent(agent, permissions).accounts({
-    owner,
-    vault,
-  } as any);
+  const [agentSpendOverlay] = getAgentOverlayPDA(vault, 0, program.programId);
+  return program.methods
+    .registerAgent(agent, permissions, spendingLimitUsd)
+    .accounts({
+      owner,
+      vault,
+      agentSpendOverlay,
+    } as any);
 }
 
 export function buildUpdatePolicy(
@@ -373,11 +380,12 @@ export function buildUpdateAgentPermissions(
   vault: PublicKey,
   agent: PublicKey,
   newPermissions: BN,
+  spendingLimitUsd: BN = new BN(0),
 ) {
   const [policy] = getPolicyPDA(vault, program.programId);
 
   return program.methods
-    .updateAgentPermissions(agent, newPermissions)
+    .updateAgentPermissions(agent, newPermissions, spendingLimitUsd)
     .accounts({
       owner,
       vault,

@@ -29,6 +29,7 @@ pub fn handler(
     ctx: Context<UpdateAgentPermissions>,
     agent: Pubkey,
     new_permissions: u64,
+    spending_limit_usd: u64,
 ) -> Result<()> {
     let policy = &ctx.accounts.policy;
 
@@ -49,6 +50,7 @@ pub fn handler(
         .ok_or(error!(PhalnxError::UnauthorizedAgent))?;
     let old_permissions = entry.permissions;
     entry.permissions = new_permissions;
+    entry.spending_limit_usd = spending_limit_usd;
 
     emit!(AgentPermissionsUpdated {
         vault: vault.key(),

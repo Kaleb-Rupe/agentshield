@@ -166,6 +166,7 @@ describe("devnet-security", () => {
           vault: vault.vaultPda,
           policy: vault.policyPda,
           tracker: vault.trackerPda,
+          agentSpendOverlay: vault.overlayPda,
           systemProgram: SystemProgram.programId,
         } as any)
         .signers([attacker])

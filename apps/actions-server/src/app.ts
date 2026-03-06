@@ -7,6 +7,7 @@ import { status } from "./routes/status";
 import { protection } from "./routes/protection";
 import { emergencyCloseAuth } from "./routes/emergency-close-auth";
 import { syncPositions } from "./routes/sync-positions";
+import { escrow } from "./routes/escrow";
 
 const app = new Hono();
 
@@ -19,6 +20,7 @@ app.route("/", status);
 app.route("/", protection);
 app.route("/", emergencyCloseAuth);
 app.route("/", syncPositions);
+app.route("/", escrow);
 
 // Health check
 app.get("/health", (c) => c.json({ status: "ok" }));

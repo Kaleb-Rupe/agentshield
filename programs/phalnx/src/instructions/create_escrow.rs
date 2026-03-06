@@ -44,7 +44,7 @@ pub struct CreateEscrow<'info> {
         seeds = [b"vault", destination_vault.owner.as_ref(), destination_vault.vault_id.to_le_bytes().as_ref()],
         bump = destination_vault.bump,
     )]
-    pub destination_vault: Account<'info, AgentVault>,
+    pub destination_vault: Box<Account<'info, AgentVault>>,
 
     #[account(
         init,

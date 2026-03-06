@@ -53,3 +53,24 @@ export class AttestationPcrMismatchError extends TeeAttestationError {
     this.actual = actual;
   }
 }
+
+/**
+ * Thrown when transaction simulation fails, with parsed Anchor error details.
+ */
+export class TransactionSimulationError extends Error {
+  readonly result: import("../simulation").SimulationResult;
+  readonly anchorCode?: number;
+  readonly anchorName?: string;
+
+  constructor(result: import("../simulation").SimulationResult) {
+    const msg =
+      result.error?.suggestion ??
+      result.error?.anchorName ??
+      "Transaction simulation failed";
+    super(msg);
+    this.name = "TransactionSimulationError";
+    this.result = result;
+    this.anchorCode = result.error?.anchorCode;
+    this.anchorName = result.error?.anchorName;
+  }
+}

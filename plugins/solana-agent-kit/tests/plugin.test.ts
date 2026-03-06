@@ -64,10 +64,19 @@ describe("SAK Plugin", () => {
       );
     });
 
-    it("has 6 methods", () => {
+    it("has 10 methods", () => {
       const wallet = shieldWallet(createMockWallet());
       const plugin = createPhalnxPlugin({ wallet });
-      expect(Object.keys(plugin.methods)).to.have.length(6);
+      expect(Object.keys(plugin.methods)).to.have.length(10);
+    });
+
+    it("includes escrow methods", () => {
+      const wallet = shieldWallet(createMockWallet());
+      const plugin = createPhalnxPlugin({ wallet });
+      expect(plugin.methods).to.have.property("shield_create_escrow");
+      expect(plugin.methods).to.have.property("shield_settle_escrow");
+      expect(plugin.methods).to.have.property("shield_refund_escrow");
+      expect(plugin.methods).to.have.property("shield_check_escrow");
     });
 
     it("includes shield_x402_fetch method", () => {

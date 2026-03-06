@@ -168,18 +168,18 @@ describe("ShieldState", () => {
   });
 
   describe("MAX_SPEND_ENTRIES trimming", () => {
-    it("keeps only 500 entries when more are added", () => {
+    it("keeps only 5000 entries when more are added", () => {
       const storage = createMockStorage();
       const state = new ShieldState(storage);
 
-      // Add 501 entries
-      for (let i = 0; i < 501; i++) {
+      // Add 5001 entries
+      for (let i = 0; i < 5001; i++) {
         state.recordSpend("USDC", BigInt(1));
       }
 
-      // Verify via storage — should have exactly 500 entries
+      // Verify via storage — should have exactly 5000 entries
       const persisted = JSON.parse(storage.data["phalnx:spends"]) as unknown[];
-      expect(persisted.length).to.equal(500);
+      expect(persisted.length).to.equal(5000);
     });
   });
 
