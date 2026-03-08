@@ -123,6 +123,7 @@ impl FuzzTest {
             max_transaction_size_usd: cap,
             protocol_mode: 0, // all protocols allowed
             protocols: vec![],
+            protocol_caps: vec![],
             max_leverage_bps: 10_000,
             max_concurrent_positions: 5,
             developer_fee_rate: fee_rate,
@@ -277,6 +278,9 @@ impl FuzzTest {
             timelock_duration: None,
             allowed_destinations: Some(vec![destination]),
             max_slippage_bps: None,
+            session_expiry_slots: None,
+            has_protocol_caps: None,
+            protocol_caps: None,
         };
 
         let policy_accounts = phalnx::accounts::UpdatePolicy {
@@ -615,6 +619,9 @@ impl FuzzTest {
             timelock_duration: None,
             allowed_destinations: None,
             max_slippage_bps: None,
+            session_expiry_slots: None,
+            has_protocol_caps: None,
+            protocol_caps: None,
         };
 
         let accounts = phalnx::accounts::UpdatePolicy {
@@ -973,7 +980,13 @@ impl FuzzTest {
         let data = phalnx::instruction::RevokeAgent {
             agent_to_remove: agent,
         };
-        let accounts = phalnx::accounts::RevokeAgent { owner, vault };
+        let (agent_spend_overlay, _) =
+            Pubkey::find_program_address(&[b"agent_spend", vault.as_ref(), &[0u8]], &program_id());
+        let accounts = phalnx::accounts::RevokeAgent {
+            owner,
+            vault,
+            agent_spend_overlay,
+        };
 
         let ix = Instruction::new_with_bytes(
             program_id(),
@@ -1054,6 +1067,9 @@ impl FuzzTest {
             timelock_duration: None,
             allowed_destinations: None,
             max_slippage_bps: None,
+            session_expiry_slots: None,
+            has_protocol_caps: None,
+            protocol_caps: None,
         };
 
         let accounts = phalnx::accounts::QueuePolicyUpdate {

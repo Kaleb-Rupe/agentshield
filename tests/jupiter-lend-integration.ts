@@ -125,6 +125,12 @@ describe("jupiter-lend-integration", () => {
       units: CU_DEFAULT_COMPOSED,
     });
 
+    // Derive overlay PDA for whatever vault is passed
+    const [overlay] = PublicKey.findProgramAddressSync(
+      [Buffer.from("agent_spend"), vault.toBuffer(), Buffer.from([0])],
+      program.programId,
+    );
+
     // 2. Validate and authorize
     const validateIx = await program.methods
       .validateAndAuthorize(
@@ -146,6 +152,7 @@ describe("jupiter-lend-integration", () => {
         protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
         feeDestinationTokenAccount: null,
         outputStablecoinAccount: null,
+        agentSpendOverlay: overlay,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -168,6 +175,7 @@ describe("jupiter-lend-integration", () => {
         agentSpendOverlay: effectiveOverlay,
         vaultTokenAccount: effectiveVaultAta,
         outputStablecoinAccount: null,
+        agentSpendOverlay: overlay,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -245,6 +253,7 @@ describe("jupiter-lend-integration", () => {
         100, // maxSlippageBps
         new BN(0), // timelockDuration
         [], // allowedDestinations
+        [], // protocolCaps
       )
       .accountsPartial({
         owner: owner.publicKey,
@@ -474,6 +483,7 @@ describe("jupiter-lend-integration", () => {
           100,
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accountsPartial({
           owner: owner.publicKey,
@@ -496,9 +506,17 @@ describe("jupiter-lend-integration", () => {
         .rpc();
 
       // Freeze via revoke
+      const [frozenOverlayRevoke] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), frozenVault.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
       await program.methods
         .revokeAgent(agent.publicKey)
-        .accountsPartial({ owner: owner.publicKey, vault: frozenVault })
+        .accountsPartial({
+          owner: owner.publicKey,
+          vault: frozenVault,
+          agentSpendOverlay: frozenOverlayRevoke,
+        })
         .rpc();
     });
 
@@ -586,6 +604,7 @@ describe("jupiter-lend-integration", () => {
           100,
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accountsPartial({
           owner: owner.publicKey,

@@ -171,6 +171,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps (1%)
           new BN(0), // timelockDuration
           [], // allowedDestinations
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -230,6 +231,7 @@ describe("phalnx", () => {
             100, // maxSlippageBps
             new BN(0),
             [],
+            [], // protocolCaps
           )
           .accounts({
             owner: owner.publicKey,
@@ -286,6 +288,7 @@ describe("phalnx", () => {
             100, // maxSlippageBps
             new BN(0),
             [],
+            [], // protocolCaps
           )
           .accounts({
             owner: owner.publicKey,
@@ -449,6 +452,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -499,6 +503,9 @@ describe("phalnx", () => {
           null, // keep maxSlippageBps
           null, // keep timelockDuration
           null, // keep allowedDestinations
+          null, // keep sessionExpirySlots
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -528,6 +535,9 @@ describe("phalnx", () => {
             null,
             null,
             null,
+            null,
+            null, // hasProtocolCaps
+            null, // protocolCaps
           )
           .accounts({
             owner: unauthorizedUser.publicKey,
@@ -563,6 +573,9 @@ describe("phalnx", () => {
             null,
             null,
             null,
+            null,
+            null, // hasProtocolCaps
+            null, // protocolCaps
           )
           .accounts({
             owner: owner.publicKey,
@@ -584,6 +597,7 @@ describe("phalnx", () => {
     // We'll use a separate vault for revoke/reactivate tests to not affect other tests
     const revokeVaultId = new BN(10);
     let revokeVaultPda: PublicKey;
+    let revokeOverlay: PublicKey;
 
     before(async () => {
       [revokeVaultPda] = PublicKey.findProgramAddressSync(
@@ -602,7 +616,7 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), revokeVaultPda.toBuffer()],
         program.programId,
       );
-      const [revokeOverlay] = PublicKey.findProgramAddressSync(
+      [revokeOverlay] = PublicKey.findProgramAddressSync(
         [
           Buffer.from("agent_spend"),
           revokeVaultPda.toBuffer(),
@@ -624,6 +638,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -648,7 +663,11 @@ describe("phalnx", () => {
     it("freezes the vault", async () => {
       await program.methods
         .revokeAgent(agent.publicKey)
-        .accounts({ owner: owner.publicKey, vault: revokeVaultPda } as any)
+        .accounts({
+          owner: owner.publicKey,
+          vault: revokeVaultPda,
+          agentSpendOverlay: revokeOverlay,
+        } as any)
         .rpc();
 
       const vault = await program.account.agentVault.fetch(revokeVaultPda);
@@ -661,7 +680,11 @@ describe("phalnx", () => {
       try {
         await program.methods
           .revokeAgent(agent.publicKey)
-          .accounts({ owner: owner.publicKey, vault: revokeVaultPda } as any)
+          .accounts({
+            owner: owner.publicKey,
+            vault: revokeVaultPda,
+            agentSpendOverlay: revokeOverlay,
+          } as any)
           .rpc();
         expect.fail("Should have thrown");
       } catch (err: any) {
@@ -676,6 +699,7 @@ describe("phalnx", () => {
           .accounts({
             owner: unauthorizedUser.publicKey,
             vault: revokeVaultPda,
+            agentSpendOverlay: revokeOverlay,
           } as any)
           .signers([unauthorizedUser])
           .rpc();
@@ -694,6 +718,7 @@ describe("phalnx", () => {
   describe("reactivate_vault", () => {
     const reactVaultId = new BN(11);
     let reactVaultPda: PublicKey;
+    let reactOverlay: PublicKey;
 
     before(async () => {
       [reactVaultPda] = PublicKey.findProgramAddressSync(
@@ -712,7 +737,7 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), reactVaultPda.toBuffer()],
         program.programId,
       );
-      const [reactOverlay] = PublicKey.findProgramAddressSync(
+      [reactOverlay] = PublicKey.findProgramAddressSync(
         [
           Buffer.from("agent_spend"),
           reactVaultPda.toBuffer(),
@@ -734,6 +759,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -758,7 +784,11 @@ describe("phalnx", () => {
 
       await program.methods
         .revokeAgent(agent.publicKey)
-        .accounts({ owner: owner.publicKey, vault: reactVaultPda } as any)
+        .accounts({
+          owner: owner.publicKey,
+          vault: reactVaultPda,
+          agentSpendOverlay: reactOverlay,
+        } as any)
         .rpc();
     });
 
@@ -788,7 +818,11 @@ describe("phalnx", () => {
       // Freeze first
       await program.methods
         .revokeAgent(agent.publicKey)
-        .accounts({ owner: owner.publicKey, vault: reactVaultPda } as any)
+        .accounts({
+          owner: owner.publicKey,
+          vault: reactVaultPda,
+          agentSpendOverlay: reactOverlay,
+        } as any)
         .rpc();
 
       try {
@@ -812,7 +846,11 @@ describe("phalnx", () => {
       // Freeze again
       await program.methods
         .revokeAgent(agent.publicKey)
-        .accounts({ owner: owner.publicKey, vault: reactVaultPda } as any)
+        .accounts({
+          owner: owner.publicKey,
+          vault: reactVaultPda,
+          agentSpendOverlay: reactOverlay,
+        } as any)
         .rpc();
 
       const newAgent = Keypair.generate();
@@ -933,13 +971,13 @@ describe("phalnx", () => {
           vault: vaultPda,
           policy: policyPda,
           tracker: trackerPda,
-          agentSpendOverlay: overlayPda,
           session: sessionPda,
           vaultTokenAccount: vaultUsdcAta,
           tokenMintAccount: usdcMint,
           protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
           feeDestinationTokenAccount: null,
           outputStablecoinAccount: null,
+          agentSpendOverlay: overlayPda,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -955,8 +993,8 @@ describe("phalnx", () => {
           sessionRentRecipient: agent.publicKey,
           policy: policyPda,
           tracker: trackerPda,
-          agentSpendOverlay: overlayPda,
           vaultTokenAccount: vaultUsdcAta,
+          agentSpendOverlay: overlayPda,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1037,13 +1075,13 @@ describe("phalnx", () => {
             vault: vaultPda,
             policy: policyPda,
             tracker: trackerPda,
-            agentSpendOverlay: overlayPda,
             session: solSession,
             vaultTokenAccount: vaultSolAta,
             tokenMintAccount: solMint,
             protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
             feeDestinationTokenAccount: null,
             outputStablecoinAccount: null,
+            agentSpendOverlay: overlayPda,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1073,13 +1111,13 @@ describe("phalnx", () => {
             vault: vaultPda,
             policy: policyPda,
             tracker: trackerPda,
-            agentSpendOverlay: overlayPda,
             session: sessionPda,
             vaultTokenAccount: vaultUsdcAta,
             tokenMintAccount: usdcMint,
             protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
             feeDestinationTokenAccount: null,
             outputStablecoinAccount: null,
+            agentSpendOverlay: overlayPda,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1107,13 +1145,13 @@ describe("phalnx", () => {
             vault: vaultPda,
             policy: policyPda,
             tracker: trackerPda,
-            agentSpendOverlay: overlayPda,
             session: sessionPda,
             vaultTokenAccount: vaultUsdcAta,
             tokenMintAccount: usdcMint,
             protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
             feeDestinationTokenAccount: null,
             outputStablecoinAccount: null,
+            agentSpendOverlay: overlayPda,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1142,6 +1180,9 @@ describe("phalnx", () => {
           null,
           null,
           null,
+          null,
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -1164,13 +1205,13 @@ describe("phalnx", () => {
           vault: vaultPda,
           policy: policyPda,
           tracker: trackerPda,
-          agentSpendOverlay: overlayPda,
           session: sessionPda,
           vaultTokenAccount: vaultUsdcAta,
           tokenMintAccount: usdcMint,
           protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
           feeDestinationTokenAccount: null,
           outputStablecoinAccount: null,
+          agentSpendOverlay: overlayPda,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1186,8 +1227,8 @@ describe("phalnx", () => {
           sessionRentRecipient: agent.publicKey,
           policy: policyPda,
           tracker: trackerPda,
-          agentSpendOverlay: overlayPda,
           vaultTokenAccount: vaultUsdcAta,
+          agentSpendOverlay: overlayPda,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1214,13 +1255,13 @@ describe("phalnx", () => {
             vault: vaultPda,
             policy: policyPda,
             tracker: trackerPda,
-            agentSpendOverlay: overlayPda,
             session: sessionPda,
             vaultTokenAccount: vaultUsdcAta,
             tokenMintAccount: usdcMint,
             protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
             feeDestinationTokenAccount: null,
             outputStablecoinAccount: null,
+            agentSpendOverlay: overlayPda,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1246,6 +1287,9 @@ describe("phalnx", () => {
           null,
           null,
           null,
+          null,
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -1283,13 +1327,13 @@ describe("phalnx", () => {
             vault: vaultPda,
             policy: policyPda,
             tracker: trackerPda,
-            agentSpendOverlay: overlayPda,
             session: fakeSession,
             vaultTokenAccount: vaultUsdcAta,
             tokenMintAccount: usdcMint,
             protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
             feeDestinationTokenAccount: null,
             outputStablecoinAccount: null,
+            agentSpendOverlay: overlayPda,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1334,11 +1378,6 @@ describe("phalnx", () => {
         program.programId,
       );
 
-      const [frozenOverlay] = PublicKey.findProgramAddressSync(
-        [Buffer.from("agent_spend"), frozenVault.toBuffer(), Buffer.from([0])],
-        program.programId,
-      );
-
       // Create vault ATA so Anchor account validation passes,
       // allowing the agent/status checks to fire.
       const frozenVaultUsdcAta = createAtaIdempotentHelper(
@@ -1347,6 +1386,11 @@ describe("phalnx", () => {
         usdcMint,
         frozenVault,
         true, // allowOwnerOffCurve — vault is a PDA
+      );
+
+      const [frozenOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), frozenVault.toBuffer(), Buffer.from([0])],
+        program.programId,
       );
 
       try {
@@ -1363,13 +1407,13 @@ describe("phalnx", () => {
             vault: frozenVault,
             policy: frozenPolicy,
             tracker: frozenTracker,
-            agentSpendOverlay: frozenOverlay,
             session: frozenSession,
             vaultTokenAccount: frozenVaultUsdcAta,
             tokenMintAccount: usdcMint,
             protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
             feeDestinationTokenAccount: null,
             outputStablecoinAccount: null,
+            agentSpendOverlay: frozenOverlay,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1437,6 +1481,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -1512,6 +1557,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -1593,6 +1639,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -1646,6 +1693,7 @@ describe("phalnx", () => {
             100, // maxSlippageBps
             new BN(0),
             [],
+            [], // protocolCaps
           )
           .accounts({
             owner: owner.publicKey,
@@ -1678,6 +1726,9 @@ describe("phalnx", () => {
           null,
           null,
           null,
+          null,
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -1703,6 +1754,9 @@ describe("phalnx", () => {
           null,
           null,
           null,
+          null,
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -1730,6 +1784,9 @@ describe("phalnx", () => {
             null,
             null,
             null,
+            null,
+            null, // hasProtocolCaps
+            null, // protocolCaps
           )
           .accounts({
             owner: owner.publicKey,
@@ -1758,6 +1815,9 @@ describe("phalnx", () => {
           null,
           null,
           null,
+          null,
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -1825,13 +1885,13 @@ describe("phalnx", () => {
           vault: feeVaultPda,
           policy: feePolicyPda,
           tracker: feeTrackerPda,
-          agentSpendOverlay: feeOverlay,
           session: feeSessionPda,
           vaultTokenAccount: feeVaultUsdcAta,
           tokenMintAccount: usdcMint,
           protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
           feeDestinationTokenAccount: null,
           outputStablecoinAccount: null,
+          agentSpendOverlay: feeOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1847,8 +1907,8 @@ describe("phalnx", () => {
           sessionRentRecipient: agent.publicKey,
           policy: feePolicyPda,
           tracker: feeTrackerPda,
-          agentSpendOverlay: feeOverlay,
           vaultTokenAccount: feeVaultUsdcAta,
+          agentSpendOverlay: feeOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1881,6 +1941,9 @@ describe("phalnx", () => {
           null,
           null,
           null,
+          null,
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -1930,13 +1993,13 @@ describe("phalnx", () => {
           vault: feeVaultPda,
           policy: feePolicyPda,
           tracker: feeTrackerPda,
-          agentSpendOverlay: feeOverlay,
           session: feeSessionPda,
           vaultTokenAccount: feeVaultUsdcAta,
           tokenMintAccount: usdcMint,
           protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
           feeDestinationTokenAccount: feeDestUsdcAta,
           outputStablecoinAccount: null,
+          agentSpendOverlay: feeOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1952,8 +2015,8 @@ describe("phalnx", () => {
           sessionRentRecipient: agent.publicKey,
           policy: feePolicyPda,
           tracker: feeTrackerPda,
-          agentSpendOverlay: feeOverlay,
           vaultTokenAccount: feeVaultUsdcAta,
+          agentSpendOverlay: feeOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -1997,13 +2060,13 @@ describe("phalnx", () => {
           vault: feeVaultPda,
           policy: feePolicyPda,
           tracker: feeTrackerPda,
-          agentSpendOverlay: feeOverlay,
           session: feeSessionPda,
           vaultTokenAccount: feeVaultUsdcAta,
           tokenMintAccount: usdcMint,
           protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
           feeDestinationTokenAccount: feeDestUsdcAta,
           outputStablecoinAccount: null,
+          agentSpendOverlay: feeOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -2019,8 +2082,8 @@ describe("phalnx", () => {
           sessionRentRecipient: agent.publicKey,
           policy: feePolicyPda,
           tracker: feeTrackerPda,
-          agentSpendOverlay: feeOverlay,
           vaultTokenAccount: feeVaultUsdcAta, // H1: must provide for delegation revocation
+          agentSpendOverlay: feeOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -2071,6 +2134,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -2153,6 +2217,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -2210,13 +2275,13 @@ describe("phalnx", () => {
           vault: lifecycleVaultPda,
           policy: lifecyclePolicyPda,
           tracker: lifecycleTrackerPda,
-          agentSpendOverlay: lifecycleOverlay,
           session: lifecycleSessionPda,
           vaultTokenAccount: lifecycleVaultUsdcAta,
           tokenMintAccount: usdcMint,
           protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
           feeDestinationTokenAccount: null,
           outputStablecoinAccount: null,
+          agentSpendOverlay: lifecycleOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -2232,8 +2297,8 @@ describe("phalnx", () => {
           sessionRentRecipient: lifecycleAgent.publicKey,
           policy: lifecyclePolicyPda,
           tracker: lifecycleTrackerPda,
-          agentSpendOverlay: lifecycleOverlay,
           vaultTokenAccount: lifecycleVaultUsdcAta,
+          agentSpendOverlay: lifecycleOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -2275,13 +2340,13 @@ describe("phalnx", () => {
           vault: lifecycleVaultPda,
           policy: lifecyclePolicyPda,
           tracker: lifecycleTrackerPda,
-          agentSpendOverlay: lifecycleOverlay,
           session: lifecycleSessionPda,
           vaultTokenAccount: lifecycleVaultUsdcAta,
           tokenMintAccount: usdcMint,
           protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
           feeDestinationTokenAccount: null,
           outputStablecoinAccount: null,
+          agentSpendOverlay: lifecycleOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -2297,8 +2362,8 @@ describe("phalnx", () => {
           sessionRentRecipient: unauthorizedUser.publicKey, // wrong recipient
           policy: lifecyclePolicyPda,
           tracker: lifecycleTrackerPda,
-          agentSpendOverlay: lifecycleOverlay,
           vaultTokenAccount: null,
+          agentSpendOverlay: lifecycleOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -2330,13 +2395,13 @@ describe("phalnx", () => {
             vault: lifecycleVaultPda,
             policy: lifecyclePolicyPda,
             tracker: lifecycleTrackerPda,
-            agentSpendOverlay: lifecycleOverlay,
             session: lifecycleSessionPda,
             vaultTokenAccount: lifecycleVaultUsdcAta,
             tokenMintAccount: usdcMint,
             protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
             feeDestinationTokenAccount: null,
             outputStablecoinAccount: null,
+            agentSpendOverlay: lifecycleOverlay,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -2352,8 +2417,8 @@ describe("phalnx", () => {
             sessionRentRecipient: lifecycleAgent.publicKey,
             policy: lifecyclePolicyPda,
             tracker: lifecycleTrackerPda,
-            agentSpendOverlay: lifecycleOverlay,
             vaultTokenAccount: lifecycleVaultUsdcAta,
+            agentSpendOverlay: lifecycleOverlay,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -2410,6 +2475,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -2455,6 +2521,10 @@ describe("phalnx", () => {
         [Buffer.from("tracker"), rv.toBuffer()],
         program.programId,
       );
+      const [rvOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), rv.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
 
       // Reactivate so status is Active but with a NEW agent, not our test agent
       const newAgent = Keypair.generate();
@@ -2465,7 +2535,11 @@ describe("phalnx", () => {
         // May already be active from earlier test, so freeze first
         await program.methods
           .revokeAgent(agent.publicKey)
-          .accounts({ owner: owner.publicKey, vault: rv } as any)
+          .accounts({
+            owner: owner.publicKey,
+            vault: rv,
+            agentSpendOverlay: rvOverlay,
+          } as any)
           .rpc();
       } catch {
         // ignore if already frozen
@@ -2475,11 +2549,6 @@ describe("phalnx", () => {
         .reactivateVault(newAgent.publicKey, FULL_PERMISSIONS)
         .accounts({ owner: owner.publicKey, vault: rv } as any)
         .rpc();
-
-      const [rvOverlay] = PublicKey.findProgramAddressSync(
-        [Buffer.from("agent_spend"), rv.toBuffer(), Buffer.from([0])],
-        program.programId,
-      );
 
       // Now try to use the ORIGINAL agent (who was revoked)
       const [oldSession] = PublicKey.findProgramAddressSync(
@@ -2506,13 +2575,13 @@ describe("phalnx", () => {
             vault: rv,
             policy: rp,
             tracker: rt,
-            agentSpendOverlay: rvOverlay,
             session: oldSession,
             vaultTokenAccount: vaultUsdcAta,
             tokenMintAccount: usdcMint,
             protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
             feeDestinationTokenAccount: null,
             outputStablecoinAccount: null,
+            agentSpendOverlay: rvOverlay,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -2570,6 +2639,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -2594,7 +2664,11 @@ describe("phalnx", () => {
 
       await program.methods
         .revokeAgent(agent.publicKey)
-        .accounts({ owner: owner.publicKey, vault: fv } as any)
+        .accounts({
+          owner: owner.publicKey,
+          vault: fv,
+          agentSpendOverlay: fvOverlay,
+        } as any)
         .rpc();
 
       const frozenVaultUsdcAta = anchor.utils.token.associatedAddress({
@@ -2657,6 +2731,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -2762,6 +2837,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -2810,7 +2886,6 @@ describe("phalnx", () => {
             vault: cv,
             policy: cp,
             tracker: ct,
-            agentSpendOverlay: cvOverlay,
             session: cs,
             vaultTokenAccount: anchor.utils.token.associatedAddress({
               mint: usdcMint,
@@ -2820,6 +2895,7 @@ describe("phalnx", () => {
             protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
             feeDestinationTokenAccount: null,
             outputStablecoinAccount: null,
+            agentSpendOverlay: cvOverlay,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -2891,6 +2967,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -2958,13 +3035,13 @@ describe("phalnx", () => {
             vault: ringVaultPda,
             policy: ringPolicyPda,
             tracker: ringTrackerPda,
-            agentSpendOverlay: ringOverlay,
             session: sessionPda,
             vaultTokenAccount: ringVaultUsdcAta,
             tokenMintAccount: usdcMint,
             protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
             feeDestinationTokenAccount: null,
             outputStablecoinAccount: null,
+            agentSpendOverlay: ringOverlay,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -2980,8 +3057,8 @@ describe("phalnx", () => {
             sessionRentRecipient: ringAgent.publicKey,
             policy: ringPolicyPda,
             tracker: ringTrackerPda,
-            agentSpendOverlay: ringOverlay,
             vaultTokenAccount: ringVaultUsdcAta,
+            agentSpendOverlay: ringOverlay,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -3059,6 +3136,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -3127,13 +3205,13 @@ describe("phalnx", () => {
           vault: feeEdgeVaultPda,
           policy: feeEdgePolicyPda,
           tracker: feeEdgeTrackerPda,
-          agentSpendOverlay: feeEdgeOverlay,
           session: sessionPda,
           vaultTokenAccount: feeEdgeVaultUsdcAta,
           tokenMintAccount: usdcMint,
           protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
           feeDestinationTokenAccount: null,
           outputStablecoinAccount: null,
+          agentSpendOverlay: feeEdgeOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -3149,8 +3227,8 @@ describe("phalnx", () => {
           sessionRentRecipient: feeEdgeAgent.publicKey,
           policy: feeEdgePolicyPda,
           tracker: feeEdgeTrackerPda,
-          agentSpendOverlay: feeEdgeOverlay,
           vaultTokenAccount: feeEdgeVaultUsdcAta, // H1: must provide for delegation revocation
+          agentSpendOverlay: feeEdgeOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -3191,13 +3269,13 @@ describe("phalnx", () => {
           vault: feeEdgeVaultPda,
           policy: feeEdgePolicyPda,
           tracker: feeEdgeTrackerPda,
-          agentSpendOverlay: feeEdgeOverlay,
           session: sessionPda,
           vaultTokenAccount: feeEdgeVaultUsdcAta,
           tokenMintAccount: usdcMint,
           protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
           feeDestinationTokenAccount: null,
           outputStablecoinAccount: null,
+          agentSpendOverlay: feeEdgeOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -3213,8 +3291,8 @@ describe("phalnx", () => {
           sessionRentRecipient: feeEdgeAgent.publicKey,
           policy: feeEdgePolicyPda,
           tracker: feeEdgeTrackerPda,
-          agentSpendOverlay: feeEdgeOverlay,
           vaultTokenAccount: feeEdgeVaultUsdcAta, // H1: must provide for delegation revocation
+          agentSpendOverlay: feeEdgeOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -3241,13 +3319,13 @@ describe("phalnx", () => {
           vault: feeEdgeVaultPda,
           policy: feeEdgePolicyPda,
           tracker: feeEdgeTrackerPda,
-          agentSpendOverlay: feeEdgeOverlay,
           session: sessionPda,
           vaultTokenAccount: feeEdgeVaultUsdcAta,
           tokenMintAccount: usdcMint,
           protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
           feeDestinationTokenAccount: null,
           outputStablecoinAccount: null,
+          agentSpendOverlay: feeEdgeOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -3263,8 +3341,8 @@ describe("phalnx", () => {
           sessionRentRecipient: feeEdgeAgent.publicKey,
           policy: feeEdgePolicyPda,
           tracker: feeEdgeTrackerPda,
-          agentSpendOverlay: feeEdgeOverlay,
           vaultTokenAccount: feeEdgeVaultUsdcAta, // H1: must provide for delegation revocation
+          agentSpendOverlay: feeEdgeOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -3289,6 +3367,7 @@ describe("phalnx", () => {
     let tlPolicyPda: PublicKey;
     let tlTrackerPda: PublicKey;
     let tlPendingPda: PublicKey;
+    let tlOverlay: PublicKey;
     const tlAgent = Keypair.generate();
 
     before(async () => {
@@ -3316,7 +3395,7 @@ describe("phalnx", () => {
       );
 
       // Create vault WITH timelock (60 seconds)
-      const [tlOverlay] = PublicKey.findProgramAddressSync(
+      [tlOverlay] = PublicKey.findProgramAddressSync(
         [Buffer.from("agent_spend"), tlVaultPda.toBuffer(), Buffer.from([0])],
         program.programId,
       );
@@ -3333,6 +3412,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(60), // 60 second timelock
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -3369,6 +3449,9 @@ describe("phalnx", () => {
             null,
             null,
             null,
+            null,
+            null, // hasProtocolCaps
+            null, // protocolCaps
           )
           .accounts({
             owner: owner.publicKey,
@@ -3396,6 +3479,9 @@ describe("phalnx", () => {
           null,
           null,
           null,
+          null,
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -3480,6 +3566,9 @@ describe("phalnx", () => {
           null,
           null,
           null,
+          null,
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -3525,6 +3614,9 @@ describe("phalnx", () => {
           null,
           null,
           null,
+          null,
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -3550,6 +3642,9 @@ describe("phalnx", () => {
             null,
             null,
             null,
+            null,
+            null, // hasProtocolCaps
+            null, // protocolCaps
           )
           .accounts({
             owner: owner.publicKey,
@@ -3617,6 +3712,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -3643,6 +3739,9 @@ describe("phalnx", () => {
             null,
             null,
             null,
+            null,
+            null, // hasProtocolCaps
+            null, // protocolCaps
           )
           .accounts({
             owner: owner.publicKey,
@@ -3673,6 +3772,9 @@ describe("phalnx", () => {
           null,
           new BN(120), // new timelock_duration
           null,
+          null,
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -3715,6 +3817,9 @@ describe("phalnx", () => {
           null,
           new BN(0), // disable timelock
           null,
+          null,
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -3755,6 +3860,9 @@ describe("phalnx", () => {
           null,
           null,
           null,
+          null,
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -3782,6 +3890,9 @@ describe("phalnx", () => {
           null,
           new BN(60),
           null,
+          null,
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -3793,7 +3904,11 @@ describe("phalnx", () => {
       // Revoke agent should work immediately (no timelock)
       await program.methods
         .revokeAgent(tlAgent.publicKey)
-        .accounts({ owner: owner.publicKey, vault: tlVaultPda } as any)
+        .accounts({
+          owner: owner.publicKey,
+          vault: tlVaultPda,
+          agentSpendOverlay: tlOverlay,
+        } as any)
         .rpc();
 
       const vault = await program.account.agentVault.fetch(tlVaultPda);
@@ -3807,9 +3922,9 @@ describe("phalnx", () => {
   describe("destination allowlist & agent_transfer", () => {
     const destVaultId = new BN(510);
     let destVaultPda: PublicKey;
+    let destOverlay: PublicKey;
     let destPolicyPda: PublicKey;
     let destTrackerPda: PublicKey;
-    let destOverlay: PublicKey;
     const destAgent = Keypair.generate();
     const allowedDest = Keypair.generate();
     const blockedDest = Keypair.generate();
@@ -3857,6 +3972,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0), // no timelock
           [allowedDest.publicKey], // only allow transfers to this address
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -4001,6 +4117,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [], // empty allowlist
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -4103,6 +4220,7 @@ describe("phalnx", () => {
             100, // maxSlippageBps
             new BN(0),
             tooMany,
+            [], // protocolCaps
           )
           .accounts({
             owner: owner.publicKey,
@@ -4242,6 +4360,7 @@ describe("phalnx", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -4374,6 +4493,7 @@ describe("phalnx", () => {
           100,
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -4468,13 +4588,13 @@ describe("phalnx", () => {
           vault: maVault,
           policy: maPolicy,
           tracker: maTracker,
-          agentSpendOverlay: maOverlay,
           session,
           vaultTokenAccount: maVaultUsdcAta,
           tokenMintAccount: usdcMint,
           protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
           feeDestinationTokenAccount: null,
           outputStablecoinAccount: null,
+          agentSpendOverlay: maOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -4491,8 +4611,8 @@ describe("phalnx", () => {
           sessionRentRecipient: agent.publicKey,
           policy: maPolicy,
           tracker: maTracker,
-          agentSpendOverlay: maOverlay,
           vaultTokenAccount: maVaultUsdcAta,
+          agentSpendOverlay: maOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -4529,13 +4649,13 @@ describe("phalnx", () => {
           vault: maVault,
           policy: maPolicy,
           tracker: maTracker,
-          agentSpendOverlay: maOverlay,
           session,
           vaultTokenAccount: maVaultUsdcAta,
           tokenMintAccount: usdcMint,
           protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
           feeDestinationTokenAccount: null,
           outputStablecoinAccount: null,
+          agentSpendOverlay: maOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -4552,8 +4672,8 @@ describe("phalnx", () => {
           sessionRentRecipient: agent.publicKey,
           policy: maPolicy,
           tracker: maTracker,
-          agentSpendOverlay: maOverlay,
           vaultTokenAccount: maVaultUsdcAta,
+          agentSpendOverlay: maOverlay,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -4573,7 +4693,11 @@ describe("phalnx", () => {
     it("revoke 1 of 2 agents — vault stays Active", async () => {
       await program.methods
         .revokeAgent(agent.publicKey)
-        .accounts({ owner: owner.publicKey, vault: maVault } as any)
+        .accounts({
+          owner: owner.publicKey,
+          vault: maVault,
+          agentSpendOverlay: maOverlay,
+        } as any)
         .rpc();
 
       const vault = await program.account.agentVault.fetch(maVault);
@@ -4587,7 +4711,11 @@ describe("phalnx", () => {
     it("revoke last agent — vault Frozen", async () => {
       await program.methods
         .revokeAgent(agent2.publicKey)
-        .accounts({ owner: owner.publicKey, vault: maVault } as any)
+        .accounts({
+          owner: owner.publicKey,
+          vault: maVault,
+          agentSpendOverlay: maOverlay,
+        } as any)
         .rpc();
 
       const vault = await program.account.agentVault.fetch(maVault);
@@ -4643,7 +4771,11 @@ describe("phalnx", () => {
       for (const a of vault10.agents) {
         await program.methods
           .revokeAgent(a.pubkey)
-          .accounts({ owner: owner.publicKey, vault: maVault } as any)
+          .accounts({
+            owner: owner.publicKey,
+            vault: maVault,
+            agentSpendOverlay: maOverlay,
+          } as any)
           .rpc();
       }
 
@@ -4714,6 +4846,689 @@ describe("phalnx", () => {
         expect.fail("Should have thrown");
       } catch (err: any) {
         expect(err.toString()).to.include("InvalidPermissions");
+      }
+    });
+  });
+
+  // =========================================================================
+  // Multi-epoch per-agent spend tracking
+  // =========================================================================
+  describe("multi-epoch per-agent spend tracking", () => {
+    const epochVaultId = new BN(800);
+    let epochVault: PublicKey;
+    let epochPolicy: PublicKey;
+    let epochTracker: PublicKey;
+    let epochOverlay: PublicKey;
+    const epochAgent = Keypair.generate();
+    let epochVaultUsdcAta: PublicKey;
+    let epochDestAta: PublicKey;
+    const epochDest = Keypair.generate();
+
+    before(async () => {
+      airdropSol(svm, epochAgent.publicKey, 10 * LAMPORTS_PER_SOL);
+      airdropSol(svm, epochDest.publicKey, 2 * LAMPORTS_PER_SOL);
+
+      // Mint fresh USDC for this test suite (previous tests may have consumed the initial supply)
+      mintToHelper(
+        svm,
+        (owner as any).payer,
+        usdcMint,
+        ownerUsdcAta,
+        owner.publicKey,
+        2_000_000_000n, // 2000 USDC
+      );
+
+      [epochVault] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("vault"),
+          owner.publicKey.toBuffer(),
+          epochVaultId.toArrayLike(Buffer, "le", 8),
+        ],
+        program.programId,
+      );
+      [epochPolicy] = PublicKey.findProgramAddressSync(
+        [Buffer.from("policy"), epochVault.toBuffer()],
+        program.programId,
+      );
+      [epochTracker] = PublicKey.findProgramAddressSync(
+        [Buffer.from("tracker"), epochVault.toBuffer()],
+        program.programId,
+      );
+      [epochOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), epochVault.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
+
+      // Create vault with $2000 daily cap, $1000 per-tx limit
+      await program.methods
+        .initializeVault(
+          epochVaultId,
+          new BN(2_000_000_000), // 2000 USDC daily cap
+          new BN(1_000_000_000), // 1000 USDC max tx
+          1,
+          [jupiterProgramId],
+          new BN(0) as any,
+          3,
+          0,
+          100,
+          new BN(0),
+          [], // empty destination allowlist = allow any
+          [], // protocolCaps
+        )
+        .accounts({
+          owner: owner.publicKey,
+          vault: epochVault,
+          policy: epochPolicy,
+          tracker: epochTracker,
+          agentSpendOverlay: epochOverlay,
+          feeDestination: feeDestination.publicKey,
+          systemProgram: SystemProgram.programId,
+        } as any)
+        .rpc();
+
+      // Register agent with $1000 per-agent spend limit
+      await program.methods
+        .registerAgent(
+          epochAgent.publicKey,
+          FULL_PERMISSIONS,
+          new BN(1_000_000_000),
+        )
+        .accounts({
+          owner: owner.publicKey,
+          vault: epochVault,
+          agentSpendOverlay: epochOverlay,
+        } as any)
+        .rpc();
+
+      // Deposit USDC
+      epochVaultUsdcAta = createAtaIdempotentHelper(
+        svm,
+        (owner as any).payer,
+        usdcMint,
+        epochVault,
+        true,
+      );
+      await program.methods
+        .depositFunds(new BN(1_500_000_000)) // 1500 USDC
+        .accounts({
+          owner: owner.publicKey,
+          vault: epochVault,
+          mint: usdcMint,
+          ownerTokenAccount: ownerUsdcAta,
+          vaultTokenAccount: epochVaultUsdcAta,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        } as any)
+        .rpc();
+
+      // Create destination ATA
+      epochDestAta = createAtaHelper(
+        svm,
+        (owner as any).payer,
+        usdcMint,
+        epochDest.publicKey,
+      );
+    });
+
+    it("accumulates spend across multiple epochs (catches old bug)", async () => {
+      // Epoch 0: spend $500
+      await program.methods
+        .agentTransfer(new BN(500_000_000))
+        .accounts({
+          agent: epochAgent.publicKey,
+          vault: epochVault,
+          policy: epochPolicy,
+          tracker: epochTracker,
+          agentSpendOverlay: epochOverlay,
+          vaultTokenAccount: epochVaultUsdcAta,
+          tokenMintAccount: usdcMint,
+          destinationTokenAccount: epochDestAta,
+          feeDestinationTokenAccount: null,
+          protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        } as any)
+        .signers([epochAgent])
+        .rpc();
+
+      // Advance clock by 1 hour (1 overlay epoch)
+      advanceTime(svm, 3600);
+
+      // Epoch 1: spend $300
+      await program.methods
+        .agentTransfer(new BN(300_000_000))
+        .accounts({
+          agent: epochAgent.publicKey,
+          vault: epochVault,
+          policy: epochPolicy,
+          tracker: epochTracker,
+          agentSpendOverlay: epochOverlay,
+          vaultTokenAccount: epochVaultUsdcAta,
+          tokenMintAccount: usdcMint,
+          destinationTokenAccount: epochDestAta,
+          feeDestinationTokenAccount: null,
+          protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        } as any)
+        .signers([epochAgent])
+        .rpc();
+
+      // At this point, rolling 24h total should be $800 (500 + 300).
+      // The OLD bug would show only $300 because sync_and_zero_if_stale
+      // would zero the epoch-0 bucket when writing epoch-1.
+      // We verify by trying to spend $250 more — total would be $1050 which
+      // exceeds the $1000 per-agent limit.
+      try {
+        await program.methods
+          .agentTransfer(new BN(250_000_000))
+          .accounts({
+            agent: epochAgent.publicKey,
+            vault: epochVault,
+            policy: epochPolicy,
+            tracker: epochTracker,
+            agentSpendOverlay: epochOverlay,
+            vaultTokenAccount: epochVaultUsdcAta,
+            tokenMintAccount: usdcMint,
+            destinationTokenAccount: epochDestAta,
+            feeDestinationTokenAccount: null,
+            protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+          } as any)
+          .signers([epochAgent])
+          .rpc();
+        expect.fail("Should have exceeded per-agent spend limit");
+      } catch (err: any) {
+        expect(err.toString()).to.include("AgentSpendLimitExceeded");
+      }
+
+      // But spending $150 (total = $950 < $1000) should succeed
+      await program.methods
+        .agentTransfer(new BN(150_000_000))
+        .accounts({
+          agent: epochAgent.publicKey,
+          vault: epochVault,
+          policy: epochPolicy,
+          tracker: epochTracker,
+          agentSpendOverlay: epochOverlay,
+          vaultTokenAccount: epochVaultUsdcAta,
+          tokenMintAccount: usdcMint,
+          destinationTokenAccount: epochDestAta,
+          feeDestinationTokenAccount: null,
+          protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        } as any)
+        .signers([epochAgent])
+        .rpc();
+    });
+
+    it("expired epochs drop from rolling total after 24h", async () => {
+      // Advance clock by 23 more hours (total ~24h from first spend).
+      // The epoch-0 $500 should expire from the rolling window.
+      advanceTime(svm, 23 * 3600);
+
+      // After 24h, only epoch-1's $300 + epoch-1's $150 should remain.
+      // The $500 from epoch-0 has expired.
+      // Total rolling: $450 (300 + 150 from ~23h ago).
+      // Spending $500 more (total ~$950) should succeed since $500 expired.
+      await program.methods
+        .agentTransfer(new BN(100_000_000)) // $100 — safe amount to verify window works
+        .accounts({
+          agent: epochAgent.publicKey,
+          vault: epochVault,
+          policy: epochPolicy,
+          tracker: epochTracker,
+          agentSpendOverlay: epochOverlay,
+          vaultTokenAccount: epochVaultUsdcAta,
+          tokenMintAccount: usdcMint,
+          destinationTokenAccount: epochDestAta,
+          feeDestinationTokenAccount: null,
+          protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        } as any)
+        .signers([epochAgent])
+        .rpc();
+
+      // Advance 1 more hour — all previous spends are now >24h ago
+      advanceTime(svm, 3600);
+
+      // Now everything should be expired. Spending $999 (under $1000 limit) should succeed
+      // even though we've spent $1050 total historically.
+      await program.methods
+        .agentTransfer(new BN(100_000_000)) // $100
+        .accounts({
+          agent: epochAgent.publicKey,
+          vault: epochVault,
+          policy: epochPolicy,
+          tracker: epochTracker,
+          agentSpendOverlay: epochOverlay,
+          vaultTokenAccount: epochVaultUsdcAta,
+          tokenMintAccount: usdcMint,
+          destinationTokenAccount: epochDestAta,
+          feeDestinationTokenAccount: null,
+          protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        } as any)
+        .signers([epochAgent])
+        .rpc();
+    });
+  });
+
+  // =========================================================================
+  // per-protocol spend caps
+  // =========================================================================
+  describe("per-protocol spend caps", () => {
+    const protoCapOwner = Keypair.generate();
+    const protoCapAgent = Keypair.generate();
+    const protoCapFee = Keypair.generate();
+    const protocolA = Keypair.generate().publicKey;
+    const protocolB = Keypair.generate().publicKey;
+    const protoCapVaultId = new BN(900);
+    let pcVault: PublicKey;
+    let pcPolicy: PublicKey;
+    let pcTracker: PublicKey;
+    let pcOverlay: PublicKey;
+    let pcOwnerUsdc: PublicKey;
+    let pcVaultUsdc: PublicKey;
+    let pcFeeUsdc: PublicKey;
+
+    before(async () => {
+      airdropSol(svm, protoCapOwner.publicKey, 100 * LAMPORTS_PER_SOL);
+      airdropSol(svm, protoCapAgent.publicKey, 10 * LAMPORTS_PER_SOL);
+      airdropSol(svm, protoCapFee.publicKey, 2 * LAMPORTS_PER_SOL);
+
+      pcOwnerUsdc = createAtaHelper(
+        svm,
+        protoCapOwner,
+        usdcMint,
+        protoCapOwner.publicKey,
+      );
+      mintToHelper(
+        svm,
+        (owner as any).payer,
+        usdcMint,
+        pcOwnerUsdc,
+        owner.publicKey,
+        10_000_000_000n,
+      );
+      pcFeeUsdc = createAtaHelper(
+        svm,
+        protoCapFee,
+        usdcMint,
+        protoCapFee.publicKey,
+      );
+
+      [pcVault] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("vault"),
+          protoCapOwner.publicKey.toBuffer(),
+          protoCapVaultId.toArrayLike(Buffer, "le", 8),
+        ],
+        program.programId,
+      );
+      [pcPolicy] = PublicKey.findProgramAddressSync(
+        [Buffer.from("policy"), pcVault.toBuffer()],
+        program.programId,
+      );
+      [pcTracker] = PublicKey.findProgramAddressSync(
+        [Buffer.from("tracker"), pcVault.toBuffer()],
+        program.programId,
+      );
+      [pcOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), pcVault.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
+
+      pcVaultUsdc = createAtaHelper(
+        svm,
+        protoCapOwner,
+        usdcMint,
+        pcVault,
+        true,
+      );
+      mintToHelper(
+        svm,
+        (owner as any).payer,
+        usdcMint,
+        pcVaultUsdc,
+        owner.publicKey,
+        5_000_000_000n,
+      );
+
+      // Initialize vault with 2 protocols + per-protocol caps:
+      // protocolA: 100 USDC cap, protocolB: 200 USDC cap
+      // Global cap: 1000 USDC, Max tx: 500 USDC
+      await program.methods
+        .initializeVault(
+          protoCapVaultId,
+          new BN(1_000_000_000), // 1000 USDC global cap
+          new BN(500_000_000), // 500 USDC max tx
+          1, // ALLOWLIST mode
+          [protocolA, protocolB],
+          new BN(0) as any,
+          3,
+          0, // no dev fee
+          100, // maxSlippageBps
+          new BN(0),
+          [], // no dest restrictions
+          [new BN(100_000_000), new BN(200_000_000)], // protocolCaps: [100 USDC, 200 USDC]
+        )
+        .accounts({
+          owner: protoCapOwner.publicKey,
+          vault: pcVault,
+          policy: pcPolicy,
+          tracker: pcTracker,
+          agentSpendOverlay: pcOverlay,
+          feeDestination: protoCapFee.publicKey,
+          systemProgram: SystemProgram.programId,
+        } as any)
+        .signers([protoCapOwner])
+        .rpc();
+
+      // Register agent
+      await program.methods
+        .registerAgent(protoCapAgent.publicKey, FULL_PERMISSIONS, new BN(0))
+        .accounts({
+          owner: protoCapOwner.publicKey,
+          vault: pcVault,
+          agentSpendOverlay: pcOverlay,
+        } as any)
+        .signers([protoCapOwner])
+        .rpc();
+    });
+
+    // Helper to build validate+finalize composed TX
+    const composeSpend = async (protocol: PublicKey, amount: BN) => {
+      const [sessionPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("session"),
+          pcVault.toBuffer(),
+          protoCapAgent.publicKey.toBuffer(),
+          usdcMint.toBuffer(),
+        ],
+        program.programId,
+      );
+
+      const validateIx = await program.methods
+        .validateAndAuthorize({ swap: {} }, usdcMint, amount, protocol, null)
+        .accountsPartial({
+          agent: protoCapAgent.publicKey,
+          vault: pcVault,
+          policy: pcPolicy,
+          tracker: pcTracker,
+          session: sessionPda,
+          vaultTokenAccount: pcVaultUsdc,
+          tokenMintAccount: usdcMint,
+          protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
+          feeDestinationTokenAccount: null,
+          outputStablecoinAccount: null,
+          agentSpendOverlay: pcOverlay,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
+        })
+        .instruction();
+
+      const finalizeIx = await program.methods
+        .finalizeSession(true)
+        .accountsPartial({
+          payer: protoCapAgent.publicKey,
+          vault: pcVault,
+          session: sessionPda,
+          sessionRentRecipient: protoCapAgent.publicKey,
+          policy: pcPolicy,
+          tracker: pcTracker,
+          vaultTokenAccount: pcVaultUsdc,
+          agentSpendOverlay: pcOverlay,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
+          outputStablecoinAccount: null,
+        })
+        .instruction();
+
+      return sendVersionedTx(svm, [validateIx, finalizeIx], protoCapAgent);
+    };
+
+    it("happy path: spend under protocol cap succeeds", async () => {
+      // Spend 50 USDC on protocolA (cap: 100) — should succeed
+      const result = composeSpend(protocolA, new BN(50_000_000));
+      expect(result.error).to.be.undefined;
+    });
+
+    it("cap exceeded on one protocol rejects", async () => {
+      // Already spent 50 on protocolA. Spend 60 more → total 110 > 100 cap
+      try {
+        composeSpend(protocolA, new BN(60_000_000));
+        expect.fail("Should have thrown ProtocolCapExceeded");
+      } catch (err: any) {
+        expect(err.toString()).to.include("ProtocolCapExceeded");
+      }
+    });
+
+    it("other protocol still has room", async () => {
+      // ProtocolA is near cap, but protocolB has 200 USDC cap with 0 spent
+      const result = composeSpend(protocolB, new BN(150_000_000));
+      expect(result.error).to.be.undefined;
+    });
+
+    it("cap of 0 means unlimited per-protocol", async () => {
+      // Update protocolA cap to 0 (unlimited)
+      await program.methods
+        .updatePolicy(
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          true, // hasProtocolCaps
+          [new BN(0), new BN(200_000_000)], // protocolA: 0 (unlimited), protocolB: 200
+        )
+        .accounts({
+          owner: protoCapOwner.publicKey,
+          vault: pcVault,
+          policy: pcPolicy,
+        } as any)
+        .signers([protoCapOwner])
+        .rpc();
+
+      // Now spend any amount on protocolA — should succeed (cap=0 means unlimited)
+      const result = composeSpend(protocolA, new BN(200_000_000));
+      expect(result.error).to.be.undefined;
+
+      // Restore caps
+      await program.methods
+        .updatePolicy(
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          true,
+          [new BN(100_000_000), new BN(200_000_000)],
+        )
+        .accounts({
+          owner: protoCapOwner.publicKey,
+          vault: pcVault,
+          policy: pcPolicy,
+        } as any)
+        .signers([protoCapOwner])
+        .rpc();
+    });
+
+    it("window expiry resets per-protocol spend", async () => {
+      // Advance time by 24h+ (144 epochs × 600s = 86400s)
+      advanceTime(svm, 87000);
+
+      // After window expiry, protocolA spend resets to 0. Can spend up to cap again.
+      const result = composeSpend(protocolA, new BN(90_000_000));
+      expect(result.error).to.be.undefined;
+    });
+
+    it("caps disabled means no per-protocol checks", async () => {
+      // Disable per-protocol caps
+      await program.methods
+        .updatePolicy(
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          false, // hasProtocolCaps = false
+          null,
+        )
+        .accounts({
+          owner: protoCapOwner.publicKey,
+          vault: pcVault,
+          policy: pcPolicy,
+        } as any)
+        .signers([protoCapOwner])
+        .rpc();
+
+      // Even though we spent near cap on protocolA, with caps disabled it should succeed
+      const result = composeSpend(protocolA, new BN(200_000_000));
+      expect(result.error).to.be.undefined;
+
+      // Re-enable caps for next test
+      await program.methods
+        .updatePolicy(
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          true,
+          [new BN(100_000_000), new BN(200_000_000)],
+        )
+        .accounts({
+          owner: protoCapOwner.publicKey,
+          vault: pcVault,
+          policy: pcPolicy,
+        } as any)
+        .signers([protoCapOwner])
+        .rpc();
+    });
+
+    it("protocol_caps length mismatch rejects (ProtocolCapsMismatch)", async () => {
+      // Try to set protocol_caps with wrong length (1 cap for 2 protocols)
+      try {
+        await program.methods
+          .updatePolicy(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            [new BN(100_000_000)], // only 1 cap but 2 protocols
+          )
+          .accounts({
+            owner: protoCapOwner.publicKey,
+            vault: pcVault,
+            policy: pcPolicy,
+          } as any)
+          .signers([protoCapOwner])
+          .rpc();
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.toString()).to.include("ProtocolCapsMismatch");
+      }
+    });
+
+    it("protocol_caps with non-ALLOWLIST mode rejects", async () => {
+      // Try to initialize vault with ALL mode + protocol_caps → should fail
+      const badVaultId = new BN(901);
+      const [bv] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("vault"),
+          protoCapOwner.publicKey.toBuffer(),
+          badVaultId.toArrayLike(Buffer, "le", 8),
+        ],
+        program.programId,
+      );
+      const [bp] = PublicKey.findProgramAddressSync(
+        [Buffer.from("policy"), bv.toBuffer()],
+        program.programId,
+      );
+      const [bt] = PublicKey.findProgramAddressSync(
+        [Buffer.from("tracker"), bv.toBuffer()],
+        program.programId,
+      );
+      const [bo] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), bv.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
+
+      try {
+        await program.methods
+          .initializeVault(
+            badVaultId,
+            new BN(1_000_000_000),
+            new BN(500_000_000),
+            0, // ALL mode
+            [],
+            new BN(0) as any,
+            3,
+            0,
+            100,
+            new BN(0),
+            [],
+            [new BN(100_000_000)], // caps with ALL mode → mismatch
+          )
+          .accounts({
+            owner: protoCapOwner.publicKey,
+            vault: bv,
+            policy: bp,
+            tracker: bt,
+            agentSpendOverlay: bo,
+            feeDestination: protoCapFee.publicKey,
+            systemProgram: SystemProgram.programId,
+          } as any)
+          .signers([protoCapOwner])
+          .rpc();
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.toString()).to.include("ProtocolCapsMismatch");
       }
     });
   });

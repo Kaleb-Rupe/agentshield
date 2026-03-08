@@ -122,11 +122,6 @@ describe("jupiter-integration", () => {
     success: boolean = true,
     overrideVaultTokenAta?: PublicKey,
   ): Promise<VersionedTxResult> {
-    // Derive agent spend overlay PDA for this vault (shard 0)
-    const [overlay] = PublicKey.findProgramAddressSync(
-      [Buffer.from("agent_spend"), vault.toBuffer(), Buffer.from([0])],
-      program.programId,
-    );
     const effectiveVaultAta = overrideVaultTokenAta ?? vaultUsdcAta;
 
     const [session] = PublicKey.findProgramAddressSync(
@@ -144,6 +139,12 @@ describe("jupiter-integration", () => {
       units: CU_JUPITER_SWAP,
     });
 
+    // Derive overlay PDA for this vault
+    const [overlayForVault] = PublicKey.findProgramAddressSync(
+      [Buffer.from("agent_spend"), vault.toBuffer(), Buffer.from([0])],
+      program.programId,
+    );
+
     // 2. Validate and authorize
     const validateIx = await program.methods
       .validateAndAuthorize(
@@ -158,8 +159,8 @@ describe("jupiter-integration", () => {
         vault,
         policy,
         tracker,
-        agentSpendOverlay: overlay,
         session,
+        agentSpendOverlay: overlayForVault,
         vaultTokenAccount: effectiveVaultAta,
         tokenMintAccount: tokenMint,
         protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
@@ -184,7 +185,7 @@ describe("jupiter-integration", () => {
         sessionRentRecipient: agentKp.publicKey,
         policy,
         tracker,
-        agentSpendOverlay: overlay,
+        agentSpendOverlay: overlayForVault,
         vaultTokenAccount: effectiveVaultAta,
         outputStablecoinAccount: null,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -268,6 +269,7 @@ describe("jupiter-integration", () => {
         100, // maxSlippageBps
         new BN(0), // timelockDuration
         [], // allowedDestinations
+        [], // protocolCaps
       )
       .accountsPartial({
         owner: owner.publicKey,
@@ -547,6 +549,7 @@ describe("jupiter-integration", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accountsPartial({
           owner: owner.publicKey,
@@ -571,7 +574,11 @@ describe("jupiter-integration", () => {
       // Freeze it
       await program.methods
         .revokeAgent(agent.publicKey)
-        .accountsPartial({ owner: owner.publicKey, vault: frozenVault })
+        .accountsPartial({
+          owner: owner.publicKey,
+          vault: frozenVault,
+          agentSpendOverlay: frozenOverlay,
+        })
         .rpc();
 
       // Verify frozen immediately
@@ -671,6 +678,7 @@ describe("jupiter-integration", () => {
           100, // maxSlippageBps
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accountsPartial({
           owner: owner.publicKey,
