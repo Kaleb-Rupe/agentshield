@@ -20,7 +20,8 @@ import {
   nextVaultId,
   createFullVault,
   fundKeypair,
-  createTestMint,
+  ensureStablecoinMint,
+  TEST_USDC_KEYPAIR,
   getTokenBalance,
   calculateFees,
   expectError,
@@ -52,7 +53,7 @@ describe("devnet-transfers", () => {
     await fundKeypair(provider, agent.publicKey);
     await fundKeypair(provider, attacker.publicKey);
 
-    mint = await createTestMint(connection, payer, owner.publicKey, 6);
+    mint = await ensureStablecoinMint(connection, payer, TEST_USDC_KEYPAIR, owner.publicKey, 6);
 
     // Create destination ATAs
     const ataA = await getOrCreateAssociatedTokenAccount(

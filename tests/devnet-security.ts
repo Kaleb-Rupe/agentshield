@@ -18,7 +18,6 @@ import {
 import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  createMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
 } from "@solana/spl-token";
@@ -32,6 +31,9 @@ import {
   authorize,
   fundKeypair,
   expectError,
+  ensureStablecoinMint,
+  createNonStablecoinMint,
+  TEST_USDC_KEYPAIR,
   FullVaultResult,
 } from "./helpers/devnet-setup";
 
@@ -53,14 +55,8 @@ describe("devnet-security", () => {
     await fundKeypair(provider, agent.publicKey);
     await fundKeypair(provider, attacker.publicKey);
 
-    mint = await createMint(connection, payer, owner.publicKey, null, 6);
-    unregisteredMint = await createMint(
-      connection,
-      payer,
-      owner.publicKey,
-      null,
-      6,
-    );
+    mint = await ensureStablecoinMint(connection, payer, TEST_USDC_KEYPAIR, owner.publicKey, 6);
+    unregisteredMint = await createNonStablecoinMint(connection, payer, owner.publicKey, 6);
 
     vaultId = nextVaultId(4);
 

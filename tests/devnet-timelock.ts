@@ -21,7 +21,8 @@ import {
   createFullVault,
   authorizeAndFinalize,
   fundKeypair,
-  createTestMint,
+  ensureStablecoinMint,
+  TEST_USDC_KEYPAIR,
   sleep,
   expectError,
   FullVaultResult,
@@ -39,7 +40,7 @@ describe("devnet-timelock", () => {
 
   before(async () => {
     await fundKeypair(provider, agent.publicKey);
-    mint = await createTestMint(connection, payer, owner.publicKey, 6);
+    mint = await ensureStablecoinMint(connection, payer, TEST_USDC_KEYPAIR, owner.publicKey, 6);
   });
 
   /** Create a vault with timelock enabled */

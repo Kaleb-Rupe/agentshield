@@ -23,7 +23,6 @@ import {
 } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
-  createMint,
   mintTo,
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
@@ -40,6 +39,9 @@ import {
   buildFinalizeIx,
   fundKeypair,
   expectError,
+  ensureStablecoinMint,
+  TEST_USDC_KEYPAIR,
+  TEST_USDT_KEYPAIR,
   FullVaultResult,
   PROTOCOL_TREASURY,
 } from "./helpers/devnet-setup";
@@ -63,8 +65,8 @@ describe("devnet-sessions", () => {
     await fundKeypair(provider, agent.publicKey);
     await fundKeypair(provider, thirdParty.publicKey);
 
-    mintA = await createMint(connection, payer, owner.publicKey, null, 6);
-    mintB = await createMint(connection, payer, owner.publicKey, null, 6);
+    mintA = await ensureStablecoinMint(connection, payer, TEST_USDC_KEYPAIR, owner.publicKey, 6);
+    mintB = await ensureStablecoinMint(connection, payer, TEST_USDT_KEYPAIR, owner.publicKey, 6);
 
     vault = await createFullVault({
       program,

@@ -12,7 +12,6 @@ import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  createMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
 } from "@solana/spl-token";
@@ -29,6 +28,9 @@ import {
   authorizeAndFinalize,
   fundKeypair,
   expectError,
+  ensureStablecoinMint,
+  TEST_USDC_KEYPAIR,
+  TEST_USDT_KEYPAIR,
   FullVaultResult,
   PROTOCOL_TREASURY,
 } from "./helpers/devnet-setup";
@@ -41,15 +43,15 @@ describe("devnet-spending", () => {
   const feeDestination = Keypair.generate();
   const jupiterProgramId = Keypair.generate().publicKey;
 
-  let mintA: PublicKey; // 6 decimals (USDC-like stablecoin)
-  let mintB: PublicKey; // 9 decimals (SOL-like stablecoin)
+  let mintA: PublicKey; // 6 decimals (test USDC)
+  let mintB: PublicKey; // 6 decimals (test USDT)
 
   before(async () => {
     await fundKeypair(provider, agent.publicKey);
-    mintA = await createMint(connection, payer, owner.publicKey, null, 6);
-    mintB = await createMint(connection, payer, owner.publicKey, null, 9);
-    console.log("  MintA (6 dec):", mintA.toString());
-    console.log("  MintB (9 dec):", mintB.toString());
+    mintA = await ensureStablecoinMint(connection, payer, TEST_USDC_KEYPAIR, owner.publicKey, 6);
+    mintB = await ensureStablecoinMint(connection, payer, TEST_USDT_KEYPAIR, owner.publicKey, 6);
+    console.log("  MintA (USDC):", mintA.toString());
+    console.log("  MintB (USDT):", mintB.toString());
   });
 
   /** Helper to create a two-token vault and deposit both mints */
@@ -88,10 +90,10 @@ describe("devnet-spending", () => {
       mintB,
       ownerMintBAta,
       owner.publicKey,
-      500_000_000_000, // 500 tokens (9 dec)
+      500_000_000, // 500 tokens (6 dec USDT)
     );
     await program.methods
-      .depositFunds(new BN(500_000_000_000))
+      .depositFunds(new BN(500_000_000))
       .accounts({
         owner: owner.publicKey,
         vault: vault.vaultPda,
@@ -149,9 +151,7 @@ describe("devnet-spending", () => {
       protocolTreasuryAta: vault.protocolTreasuryAta,
     });
 
-    // Spend 100 mintB (9 dec stablecoin -> USD conversion)
-    // For 9-decimal stablecoin: amount / 10^(9-6) = USD
-    // 100 tokens = 100_000_000_000 (9 dec), USD = 100_000_000_000 / 1000 = 100_000_000
+    // Spend 100 USDT (6 dec stablecoin -> 1:1 USD)
     const sessionB = deriveSessionPda(
       vault.vaultPda,
       agent.publicKey,
@@ -168,7 +168,7 @@ describe("devnet-spending", () => {
       sessionPda: sessionB,
       vaultTokenAta: vault.mintBVaultAta,
       mint: mintB,
-      amount: new BN(100_000_000_000), // 100 tokens (9 dec) = 100 USD
+      amount: new BN(100_000_000), // 100 USDT (6 dec) = 100 USD
       protocol: jupiterProgramId,
       feeDestinationAta: null,
       protocolTreasuryAta: vault.mintBTreasuryAta,

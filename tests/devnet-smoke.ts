@@ -35,7 +35,8 @@ import {
   derivePDAs,
   deriveSessionPda,
   fundKeypair,
-  createTestMint,
+  ensureStablecoinMint,
+  TEST_USDC_KEYPAIR,
   nextVaultId,
 } from "./helpers/devnet-setup";
 
@@ -67,10 +68,11 @@ describe("devnet-smoke-test", () => {
     // Fund agent keypair from owner wallet (devnet faucet is rate-limited)
     await fundKeypair(provider, agent.publicKey);
 
-    // Create a test SPL token mint
-    usdcMint = await createTestMint(
+    // Create test USDC mint at deterministic address (matches Rust devnet constant)
+    usdcMint = await ensureStablecoinMint(
       connection,
       (owner as any).payer,
+      TEST_USDC_KEYPAIR,
       owner.publicKey,
       6,
     );
