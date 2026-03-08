@@ -127,6 +127,11 @@ describe("flash-trade-integration", () => {
       program.programId,
     );
 
+    const [overlay] = PublicKey.findProgramAddressSync(
+      [Buffer.from("agent_spend"), vault.toBuffer(), Buffer.from([0])],
+      program.programId,
+    );
+
     const computeIx = ComputeBudgetProgram.setComputeUnitLimit({
       units: CU_FLASH_TRADE,
     });
@@ -145,6 +150,7 @@ describe("flash-trade-integration", () => {
         policy,
         tracker,
         session,
+        agentSpendOverlay: overlay,
         vaultTokenAccount: effectiveVaultAta,
         tokenMintAccount: tokenMint,
         protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
@@ -167,6 +173,7 @@ describe("flash-trade-integration", () => {
         sessionRentRecipient: agentKp.publicKey,
         policy,
         tracker,
+        agentSpendOverlay: overlay,
         vaultTokenAccount: effectiveVaultAta,
         outputStablecoinAccount: null,
         tokenProgram: TOKEN_PROGRAM_ID,

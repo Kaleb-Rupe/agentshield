@@ -917,6 +917,7 @@ describe("phalnx", () => {
           vault: vaultPda,
           policy: policyPda,
           tracker: trackerPda,
+          agentSpendOverlay: overlayPda,
           session: sessionPda,
           vaultTokenAccount: vaultUsdcAta,
           tokenMintAccount: usdcMint,
@@ -938,6 +939,7 @@ describe("phalnx", () => {
           sessionRentRecipient: agent.publicKey,
           policy: policyPda,
           tracker: trackerPda,
+          agentSpendOverlay: overlayPda,
           vaultTokenAccount: vaultUsdcAta,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
@@ -1019,6 +1021,7 @@ describe("phalnx", () => {
             vault: vaultPda,
             policy: policyPda,
             tracker: trackerPda,
+            agentSpendOverlay: overlayPda,
             session: solSession,
             vaultTokenAccount: vaultSolAta,
             tokenMintAccount: solMint,
@@ -1054,6 +1057,7 @@ describe("phalnx", () => {
             vault: vaultPda,
             policy: policyPda,
             tracker: trackerPda,
+            agentSpendOverlay: overlayPda,
             session: sessionPda,
             vaultTokenAccount: vaultUsdcAta,
             tokenMintAccount: usdcMint,
@@ -1087,6 +1091,7 @@ describe("phalnx", () => {
             vault: vaultPda,
             policy: policyPda,
             tracker: trackerPda,
+            agentSpendOverlay: overlayPda,
             session: sessionPda,
             vaultTokenAccount: vaultUsdcAta,
             tokenMintAccount: usdcMint,
@@ -1143,6 +1148,7 @@ describe("phalnx", () => {
           vault: vaultPda,
           policy: policyPda,
           tracker: trackerPda,
+          agentSpendOverlay: overlayPda,
           session: sessionPda,
           vaultTokenAccount: vaultUsdcAta,
           tokenMintAccount: usdcMint,
@@ -1164,6 +1170,7 @@ describe("phalnx", () => {
           sessionRentRecipient: agent.publicKey,
           policy: policyPda,
           tracker: trackerPda,
+          agentSpendOverlay: overlayPda,
           vaultTokenAccount: vaultUsdcAta,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
@@ -1191,6 +1198,7 @@ describe("phalnx", () => {
             vault: vaultPda,
             policy: policyPda,
             tracker: trackerPda,
+            agentSpendOverlay: overlayPda,
             session: sessionPda,
             vaultTokenAccount: vaultUsdcAta,
             tokenMintAccount: usdcMint,
@@ -1259,6 +1267,7 @@ describe("phalnx", () => {
             vault: vaultPda,
             policy: policyPda,
             tracker: trackerPda,
+            agentSpendOverlay: overlayPda,
             session: fakeSession,
             vaultTokenAccount: vaultUsdcAta,
             tokenMintAccount: usdcMint,
@@ -1309,6 +1318,11 @@ describe("phalnx", () => {
         program.programId,
       );
 
+      const [frozenOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), frozenVault.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
+
       // Create vault ATA so Anchor account validation passes,
       // allowing the agent/status checks to fire.
       const frozenVaultUsdcAta = createAtaIdempotentHelper(
@@ -1333,6 +1347,7 @@ describe("phalnx", () => {
             vault: frozenVault,
             policy: frozenPolicy,
             tracker: frozenTracker,
+            agentSpendOverlay: frozenOverlay,
             session: frozenSession,
             vaultTokenAccount: frozenVaultUsdcAta,
             tokenMintAccount: usdcMint,
@@ -1521,6 +1536,7 @@ describe("phalnx", () => {
     let feeTrackerPda: PublicKey;
     let feeVaultUsdcAta: PublicKey;
     let feeSessionPda: PublicKey;
+    let feeOverlay: PublicKey;
 
     it("init vault with developer_fee_rate 30 → stored correctly", async () => {
       [feeVaultPda] = PublicKey.findProgramAddressSync(
@@ -1731,7 +1747,7 @@ describe("phalnx", () => {
         .rpc();
 
       // Register agent on fee vault
-      const [feeOverlay] = PublicKey.findProgramAddressSync(
+      [feeOverlay] = PublicKey.findProgramAddressSync(
         [Buffer.from("agent_spend"), feeVaultPda.toBuffer(), Buffer.from([0])],
         program.programId,
       );
@@ -1785,6 +1801,7 @@ describe("phalnx", () => {
           vault: feeVaultPda,
           policy: feePolicyPda,
           tracker: feeTrackerPda,
+          agentSpendOverlay: feeOverlay,
           session: feeSessionPda,
           vaultTokenAccount: feeVaultUsdcAta,
           tokenMintAccount: usdcMint,
@@ -1806,6 +1823,7 @@ describe("phalnx", () => {
           sessionRentRecipient: agent.publicKey,
           policy: feePolicyPda,
           tracker: feeTrackerPda,
+          agentSpendOverlay: feeOverlay,
           vaultTokenAccount: feeVaultUsdcAta,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
@@ -1888,6 +1906,7 @@ describe("phalnx", () => {
           vault: feeVaultPda,
           policy: feePolicyPda,
           tracker: feeTrackerPda,
+          agentSpendOverlay: feeOverlay,
           session: feeSessionPda,
           vaultTokenAccount: feeVaultUsdcAta,
           tokenMintAccount: usdcMint,
@@ -1909,6 +1928,7 @@ describe("phalnx", () => {
           sessionRentRecipient: agent.publicKey,
           policy: feePolicyPda,
           tracker: feeTrackerPda,
+          agentSpendOverlay: feeOverlay,
           vaultTokenAccount: feeVaultUsdcAta,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
@@ -1953,6 +1973,7 @@ describe("phalnx", () => {
           vault: feeVaultPda,
           policy: feePolicyPda,
           tracker: feeTrackerPda,
+          agentSpendOverlay: feeOverlay,
           session: feeSessionPda,
           vaultTokenAccount: feeVaultUsdcAta,
           tokenMintAccount: usdcMint,
@@ -1974,6 +1995,7 @@ describe("phalnx", () => {
           sessionRentRecipient: agent.publicKey,
           policy: feePolicyPda,
           tracker: feeTrackerPda,
+          agentSpendOverlay: feeOverlay,
           vaultTokenAccount: feeVaultUsdcAta, // H1: must provide for delegation revocation
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
@@ -2052,6 +2074,7 @@ describe("phalnx", () => {
     let lifecycleTrackerPda: PublicKey;
     let lifecycleSessionPda: PublicKey;
     let lifecycleVaultUsdcAta: PublicKey;
+    let lifecycleOverlay: PublicKey;
     const lifecycleAgent = Keypair.generate();
 
     before(async () => {
@@ -2083,7 +2106,7 @@ describe("phalnx", () => {
         ],
         program.programId,
       );
-      const [lifecycleOverlay] = PublicKey.findProgramAddressSync(
+      [lifecycleOverlay] = PublicKey.findProgramAddressSync(
         [Buffer.from("agent_spend"), lifecycleVaultPda.toBuffer(), Buffer.from([0])],
         program.programId,
       );
@@ -2155,6 +2178,7 @@ describe("phalnx", () => {
           vault: lifecycleVaultPda,
           policy: lifecyclePolicyPda,
           tracker: lifecycleTrackerPda,
+          agentSpendOverlay: lifecycleOverlay,
           session: lifecycleSessionPda,
           vaultTokenAccount: lifecycleVaultUsdcAta,
           tokenMintAccount: usdcMint,
@@ -2176,6 +2200,7 @@ describe("phalnx", () => {
           sessionRentRecipient: lifecycleAgent.publicKey,
           policy: lifecyclePolicyPda,
           tracker: lifecycleTrackerPda,
+          agentSpendOverlay: lifecycleOverlay,
           vaultTokenAccount: lifecycleVaultUsdcAta,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
@@ -2218,6 +2243,7 @@ describe("phalnx", () => {
           vault: lifecycleVaultPda,
           policy: lifecyclePolicyPda,
           tracker: lifecycleTrackerPda,
+          agentSpendOverlay: lifecycleOverlay,
           session: lifecycleSessionPda,
           vaultTokenAccount: lifecycleVaultUsdcAta,
           tokenMintAccount: usdcMint,
@@ -2239,6 +2265,7 @@ describe("phalnx", () => {
           sessionRentRecipient: unauthorizedUser.publicKey, // wrong recipient
           policy: lifecyclePolicyPda,
           tracker: lifecycleTrackerPda,
+          agentSpendOverlay: lifecycleOverlay,
           vaultTokenAccount: null,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
@@ -2271,6 +2298,7 @@ describe("phalnx", () => {
             vault: lifecycleVaultPda,
             policy: lifecyclePolicyPda,
             tracker: lifecycleTrackerPda,
+            agentSpendOverlay: lifecycleOverlay,
             session: lifecycleSessionPda,
             vaultTokenAccount: lifecycleVaultUsdcAta,
             tokenMintAccount: usdcMint,
@@ -2292,6 +2320,7 @@ describe("phalnx", () => {
             sessionRentRecipient: lifecycleAgent.publicKey,
             policy: lifecyclePolicyPda,
             tracker: lifecycleTrackerPda,
+            agentSpendOverlay: lifecycleOverlay,
             vaultTokenAccount: lifecycleVaultUsdcAta,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
@@ -2411,6 +2440,11 @@ describe("phalnx", () => {
         .accounts({ owner: owner.publicKey, vault: rv } as any)
         .rpc();
 
+      const [rvOverlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), rv.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
+
       // Now try to use the ORIGINAL agent (who was revoked)
       const [oldSession] = PublicKey.findProgramAddressSync(
         [
@@ -2436,6 +2470,7 @@ describe("phalnx", () => {
             vault: rv,
             policy: rp,
             tracker: rt,
+            agentSpendOverlay: rvOverlay,
             session: oldSession,
             vaultTokenAccount: vaultUsdcAta,
             tokenMintAccount: usdcMint,
@@ -2731,6 +2766,7 @@ describe("phalnx", () => {
             vault: cv,
             policy: cp,
             tracker: ct,
+            agentSpendOverlay: cvOverlay,
             session: cs,
             vaultTokenAccount: anchor.utils.token.associatedAddress({
               mint: usdcMint,
@@ -2770,6 +2806,7 @@ describe("phalnx", () => {
     let ringPolicyPda: PublicKey;
     let ringTrackerPda: PublicKey;
     let ringVaultUsdcAta: PublicKey;
+    let ringOverlay: PublicKey;
     const ringAgent = Keypair.generate();
 
     before(async () => {
@@ -2793,7 +2830,7 @@ describe("phalnx", () => {
       );
 
       // Large daily cap to allow many transactions
-      const [ringOverlay] = PublicKey.findProgramAddressSync(
+      [ringOverlay] = PublicKey.findProgramAddressSync(
         [Buffer.from("agent_spend"), ringVaultPda.toBuffer(), Buffer.from([0])],
         program.programId,
       );
@@ -2873,6 +2910,7 @@ describe("phalnx", () => {
             vault: ringVaultPda,
             policy: ringPolicyPda,
             tracker: ringTrackerPda,
+            agentSpendOverlay: ringOverlay,
             session: sessionPda,
             vaultTokenAccount: ringVaultUsdcAta,
             tokenMintAccount: usdcMint,
@@ -2894,6 +2932,7 @@ describe("phalnx", () => {
             sessionRentRecipient: ringAgent.publicKey,
             policy: ringPolicyPda,
             tracker: ringTrackerPda,
+            agentSpendOverlay: ringOverlay,
             vaultTokenAccount: ringVaultUsdcAta,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
@@ -2927,6 +2966,7 @@ describe("phalnx", () => {
     let feeEdgePolicyPda: PublicKey;
     let feeEdgeTrackerPda: PublicKey;
     let feeEdgeVaultUsdcAta: PublicKey;
+    let feeEdgeOverlay: PublicKey;
     const feeEdgeAgent = Keypair.generate();
 
     before(async () => {
@@ -2950,7 +2990,7 @@ describe("phalnx", () => {
       );
 
       // developer_fee_rate = 0 to isolate protocol fee
-      const [feeEdgeOverlay] = PublicKey.findProgramAddressSync(
+      [feeEdgeOverlay] = PublicKey.findProgramAddressSync(
         [Buffer.from("agent_spend"), feeEdgeVaultPda.toBuffer(), Buffer.from([0])],
         program.programId,
       );
@@ -3031,6 +3071,7 @@ describe("phalnx", () => {
           vault: feeEdgeVaultPda,
           policy: feeEdgePolicyPda,
           tracker: feeEdgeTrackerPda,
+          agentSpendOverlay: feeEdgeOverlay,
           session: sessionPda,
           vaultTokenAccount: feeEdgeVaultUsdcAta,
           tokenMintAccount: usdcMint,
@@ -3052,6 +3093,7 @@ describe("phalnx", () => {
           sessionRentRecipient: feeEdgeAgent.publicKey,
           policy: feeEdgePolicyPda,
           tracker: feeEdgeTrackerPda,
+          agentSpendOverlay: feeEdgeOverlay,
           vaultTokenAccount: feeEdgeVaultUsdcAta, // H1: must provide for delegation revocation
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
@@ -3093,6 +3135,7 @@ describe("phalnx", () => {
           vault: feeEdgeVaultPda,
           policy: feeEdgePolicyPda,
           tracker: feeEdgeTrackerPda,
+          agentSpendOverlay: feeEdgeOverlay,
           session: sessionPda,
           vaultTokenAccount: feeEdgeVaultUsdcAta,
           tokenMintAccount: usdcMint,
@@ -3114,6 +3157,7 @@ describe("phalnx", () => {
           sessionRentRecipient: feeEdgeAgent.publicKey,
           policy: feeEdgePolicyPda,
           tracker: feeEdgeTrackerPda,
+          agentSpendOverlay: feeEdgeOverlay,
           vaultTokenAccount: feeEdgeVaultUsdcAta, // H1: must provide for delegation revocation
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
@@ -3141,6 +3185,7 @@ describe("phalnx", () => {
           vault: feeEdgeVaultPda,
           policy: feeEdgePolicyPda,
           tracker: feeEdgeTrackerPda,
+          agentSpendOverlay: feeEdgeOverlay,
           session: sessionPda,
           vaultTokenAccount: feeEdgeVaultUsdcAta,
           tokenMintAccount: usdcMint,
@@ -3162,6 +3207,7 @@ describe("phalnx", () => {
           sessionRentRecipient: feeEdgeAgent.publicKey,
           policy: feeEdgePolicyPda,
           tracker: feeEdgeTrackerPda,
+          agentSpendOverlay: feeEdgeOverlay,
           vaultTokenAccount: feeEdgeVaultUsdcAta, // H1: must provide for delegation revocation
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
@@ -3703,6 +3749,7 @@ describe("phalnx", () => {
     let destVaultPda: PublicKey;
     let destPolicyPda: PublicKey;
     let destTrackerPda: PublicKey;
+    let destOverlay: PublicKey;
     const destAgent = Keypair.generate();
     const allowedDest = Keypair.generate();
     const blockedDest = Keypair.generate();
@@ -3733,7 +3780,7 @@ describe("phalnx", () => {
       );
 
       // Create vault with destination allowlist
-      const [destOverlay] = PublicKey.findProgramAddressSync(
+      [destOverlay] = PublicKey.findProgramAddressSync(
         [Buffer.from("agent_spend"), destVaultPda.toBuffer(), Buffer.from([0])],
         program.programId,
       );
@@ -3811,6 +3858,7 @@ describe("phalnx", () => {
           vault: destVaultPda,
           policy: destPolicyPda,
           tracker: destTrackerPda,
+          agentSpendOverlay: destOverlay,
           vaultTokenAccount: destVaultUsdcAta,
           tokenMintAccount: usdcMint,
           destinationTokenAccount: allowedDestAta,
@@ -3836,6 +3884,7 @@ describe("phalnx", () => {
             vault: destVaultPda,
             policy: destPolicyPda,
             tracker: destTrackerPda,
+            agentSpendOverlay: destOverlay,
             vaultTokenAccount: destVaultUsdcAta,
             tokenMintAccount: usdcMint,
             destinationTokenAccount: blockedDestAta,
@@ -3931,6 +3980,7 @@ describe("phalnx", () => {
           vault: anyVault,
           policy: anyPolicy,
           tracker: anyTracker,
+          agentSpendOverlay: anyOverlay,
           vaultTokenAccount: anyVaultAta,
           tokenMintAccount: usdcMint,
           destinationTokenAccount: blockedDestAta,
@@ -4015,6 +4065,7 @@ describe("phalnx", () => {
             vault: destVaultPda,
             policy: destPolicyPda,
             tracker: destTrackerPda,
+            agentSpendOverlay: destOverlay,
             vaultTokenAccount: destVaultUsdcAta,
             tokenMintAccount: usdcMint,
             destinationTokenAccount: allowedDestAta,
@@ -4035,6 +4086,7 @@ describe("phalnx", () => {
             vault: destVaultPda,
             policy: destPolicyPda,
             tracker: destTrackerPda,
+            agentSpendOverlay: destOverlay,
             vaultTokenAccount: destVaultUsdcAta,
             tokenMintAccount: usdcMint,
             destinationTokenAccount: allowedDestAta,
@@ -4060,6 +4112,7 @@ describe("phalnx", () => {
             vault: destVaultPda,
             policy: destPolicyPda,
             tracker: destTrackerPda,
+            agentSpendOverlay: destOverlay,
             vaultTokenAccount: destVaultUsdcAta,
             tokenMintAccount: usdcMint,
             destinationTokenAccount: allowedDestAta,
@@ -4180,6 +4233,7 @@ describe("phalnx", () => {
           vault: fv,
           policy: fp,
           tracker: ft,
+          agentSpendOverlay: fvOverlay2,
           vaultTokenAccount: fvAta,
           tokenMintAccount: usdcMint,
           destinationTokenAccount: allowedDestAta,
@@ -4334,6 +4388,7 @@ describe("phalnx", () => {
           vault: maVault,
           policy: maPolicy,
           tracker: maTracker,
+          agentSpendOverlay: maOverlay,
           session,
           vaultTokenAccount: maVaultUsdcAta,
           tokenMintAccount: usdcMint,
@@ -4356,6 +4411,7 @@ describe("phalnx", () => {
           sessionRentRecipient: agent.publicKey,
           policy: maPolicy,
           tracker: maTracker,
+          agentSpendOverlay: maOverlay,
           vaultTokenAccount: maVaultUsdcAta,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
@@ -4393,6 +4449,7 @@ describe("phalnx", () => {
           vault: maVault,
           policy: maPolicy,
           tracker: maTracker,
+          agentSpendOverlay: maOverlay,
           session,
           vaultTokenAccount: maVaultUsdcAta,
           tokenMintAccount: usdcMint,
@@ -4415,6 +4472,7 @@ describe("phalnx", () => {
           sessionRentRecipient: agent.publicKey,
           policy: maPolicy,
           tracker: maTracker,
+          agentSpendOverlay: maOverlay,
           vaultTokenAccount: maVaultUsdcAta,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,

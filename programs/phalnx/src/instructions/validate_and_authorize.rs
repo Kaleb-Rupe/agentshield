@@ -9,7 +9,7 @@ use crate::errors::PhalnxError;
 use crate::events::{ActionAuthorized, AgentSpendLimitChecked, FeesCollected};
 use crate::state::*;
 
-use super::integrations::{flash_trade, generic_constraints, jupiter, jupiter_lend};
+use super::integrations::{generic_constraints, jupiter};
 use super::utils::stablecoin_to_usd;
 
 use crate::state::PositionEffect;
@@ -375,13 +375,6 @@ pub fn handler(
                     // Slippage verification on DeFi instructions
                     if ix.program_id == JUPITER_PROGRAM {
                         jupiter::verify_jupiter_slippage(&ix.data, policy.max_slippage_bps)?;
-                    } else if ix.program_id == FLASH_TRADE_PROGRAM {
-                        flash_trade::verify_flash_trade_instruction(&ix.data)?;
-                    } else if ix.program_id == JUPITER_LEND_PROGRAM
-                        || ix.program_id == JUPITER_EARN_PROGRAM
-                        || ix.program_id == JUPITER_BORROW_PROGRAM
-                    {
-                        jupiter_lend::verify_jupiter_lend_instruction(&ix.data)?;
                     }
 
                     scan_idx = scan_idx.saturating_add(1);
