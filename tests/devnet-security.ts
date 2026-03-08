@@ -118,6 +118,7 @@ describe("devnet-security", () => {
         .accounts({
           owner: attacker.publicKey,
           vault: vault.vaultPda,
+          agentSpendOverlay: vault.overlayPda,
         } as any)
         .signers([attacker])
         .rpc();
@@ -475,7 +476,7 @@ describe("devnet-security", () => {
     // the error will be UnauthorizedAgent (agent removed) rather than VaultNotActive.
     await program.methods
       .revokeAgent(freshAgent.publicKey)
-      .accounts({ owner: owner.publicKey, vault: freshVault.vaultPda } as any)
+      .accounts({ owner: owner.publicKey, vault: freshVault.vaultPda, agentSpendOverlay: freshVault.overlayPda } as any)
       .rpc();
 
     const sessionPda = deriveSessionPda(
@@ -535,7 +536,7 @@ describe("devnet-security", () => {
     // Freeze — revoking the only agent freezes the vault
     await program.methods
       .revokeAgent(freshAgent.publicKey)
-      .accounts({ owner: owner.publicKey, vault: freshVault.vaultPda } as any)
+      .accounts({ owner: owner.publicKey, vault: freshVault.vaultPda, agentSpendOverlay: freshVault.overlayPda } as any)
       .rpc();
 
     // Deposit should succeed even when frozen
@@ -685,7 +686,7 @@ describe("devnet-security", () => {
     // Freeze vault by revoking the only agent
     await program.methods
       .revokeAgent(freshAgent.publicKey)
-      .accounts({ owner: owner.publicKey, vault: freshVault.vaultPda } as any)
+      .accounts({ owner: owner.publicKey, vault: freshVault.vaultPda, agentSpendOverlay: freshVault.overlayPda } as any)
       .rpc();
 
     // Try agent_transfer with stablecoin on frozen vault

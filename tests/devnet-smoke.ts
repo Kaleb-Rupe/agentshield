@@ -22,7 +22,6 @@ import {
 import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  createAssociatedTokenAccount,
   mintTo,
   getOrCreateAssociatedTokenAccount,
   getAccount,
@@ -78,13 +77,14 @@ describe("devnet-smoke-test", () => {
     );
     console.log("  Test mint:", usdcMint.toString());
 
-    // Create owner token account and mint tokens
-    ownerUsdcAta = await createAssociatedTokenAccount(
+    // Create owner token account (idempotent — safe across re-runs)
+    const ownerAtaAccount = await getOrCreateAssociatedTokenAccount(
       connection,
       (owner as any).payer,
       usdcMint,
       owner.publicKey,
     );
+    ownerUsdcAta = ownerAtaAccount.address;
     await mintTo(
       connection,
       (owner as any).payer,
@@ -339,6 +339,7 @@ describe("devnet-smoke-test", () => {
       .accounts({
         owner: owner.publicKey,
         vault: vaultPda,
+        agentSpendOverlay: overlayPda,
       } as any)
       .rpc();
 
