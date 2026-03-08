@@ -8,7 +8,11 @@ const SERVICE = "phalnx-mcp";
 
 type KeytarModule = {
   getPassword(service: string, account: string): Promise<string | null>;
-  setPassword(service: string, account: string, password: string): Promise<void>;
+  setPassword(
+    service: string,
+    account: string,
+    password: string,
+  ): Promise<void>;
   deletePassword(service: string, account: string): Promise<boolean>;
 };
 
@@ -38,7 +42,10 @@ export async function getCredential(account: string): Promise<string | null> {
 }
 
 /** Save a credential. Returns false if keytar unavailable (caller should inform user to set env var). */
-export async function saveCredential(account: string, value: string): Promise<boolean> {
+export async function saveCredential(
+  account: string,
+  value: string,
+): Promise<boolean> {
   try {
     const k = loadKeytar();
     if (!k) return false;

@@ -5,7 +5,9 @@ import { formatError } from "../errors";
 
 const dataConstraintSchema = z.object({
   offset: z.number().int().min(0).describe("Byte offset in instruction data"),
-  operator: z.enum(["eq", "ne", "gte", "lte", "gteSigned", "lteSigned", "bitmask"]).describe("Comparison operator"),
+  operator: z
+    .enum(["eq", "ne", "gte", "lte", "gteSigned", "lteSigned", "bitmask"])
+    .describe("Comparison operator"),
   value: z
     .array(z.number().int().min(0).max(255))
     .min(1)

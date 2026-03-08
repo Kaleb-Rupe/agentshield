@@ -144,6 +144,7 @@ describe("instruction-constraints", () => {
         100, // maxSlippageBps
         new BN(0), // no timelock
         [],
+        [], // protocolCaps
       )
       .accounts({
         owner: owner.publicKey,
@@ -547,6 +548,7 @@ describe("instruction-constraints", () => {
           100,
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -795,6 +797,7 @@ describe("instruction-constraints", () => {
           100,
           new BN(60), // 60s timelock
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -1977,6 +1980,7 @@ describe("instruction-constraints", () => {
           100,
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,
@@ -2283,6 +2287,7 @@ describe("instruction-constraints", () => {
           100,
           new BN(60),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: owner.publicKey,

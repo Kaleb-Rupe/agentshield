@@ -70,9 +70,7 @@ impl AgentSpendOverlay {
     /// Find the slot index for a given agent, or None if not present.
     pub fn find_agent_slot(&self, agent: &Pubkey) -> Option<usize> {
         let agent_bytes = agent.to_bytes();
-        self.entries
-            .iter()
-            .position(|e| e.agent == agent_bytes)
+        self.entries.iter().position(|e| e.agent == agent_bytes)
     }
 
     /// Claim an empty slot for a new agent. Returns the slot index, or None if full.
@@ -148,7 +146,9 @@ impl AgentSpendOverlay {
             return 0;
         }
 
-        let window_start_ts = clock.unix_timestamp.saturating_sub(OVERLAY_ROLLING_WINDOW_SECONDS);
+        let window_start_ts = clock
+            .unix_timestamp
+            .saturating_sub(OVERLAY_ROLLING_WINDOW_SECONDS);
         let mut total: u128 = 0;
 
         // Iterate backward from last_write_epoch (most recent data)

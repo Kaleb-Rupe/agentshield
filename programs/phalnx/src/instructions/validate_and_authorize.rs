@@ -140,7 +140,8 @@ pub fn handler(
         let constraints_pda = Pubkey::create_program_address(
             &[b"constraints", vault_key.as_ref(), &[constraints.bump]],
             &crate::ID,
-        ).map_err(|_| error!(PhalnxError::InvalidConstraintsPda))?;
+        )
+        .map_err(|_| error!(PhalnxError::InvalidConstraintsPda))?;
         require_keys_eq!(
             info.key(),
             constraints_pda,
@@ -321,8 +322,8 @@ pub fn handler(
     let current_idx_usize = current_idx as usize;
     let spl_token_id = ctx.accounts.token_program.key();
     let compute_budget_id = Pubkey::new_from_array([
-        3, 6, 70, 111, 229, 33, 23, 50, 255, 236, 173, 186, 114, 195, 155, 231, 188, 140, 229,
-        187, 197, 247, 18, 107, 44, 67, 155, 58, 64, 0, 0, 0,
+        3, 6, 70, 111, 229, 33, 23, 50, 255, 236, 173, 186, 114, 195, 155, 231, 188, 140, 229, 187,
+        197, 247, 18, 107, 44, 67, 155, 58, 64, 0, 0, 0,
     ]);
     let finalize_hash = FINALIZE_SESSION_DISCRIMINATOR;
 
@@ -353,9 +354,7 @@ pub fn handler(
                     // 1. Block ALL top-level SPL Token Transfer/TransferChecked/Approve.
                     // Legitimate DeFi interactions move tokens via CPI, never
                     // as top-level SPL Token instructions.
-                    if ix.program_id == spl_token_id
-                        && !ix.data.is_empty()
-                    {
+                    if ix.program_id == spl_token_id && !ix.data.is_empty() {
                         if ix.data[0] == 4 {
                             return Err(error!(PhalnxError::UnauthorizedTokenApproval));
                         }
@@ -365,9 +364,7 @@ pub fn handler(
                     }
 
                     // 1b. Block Token-2022 Transfer/Approve/TransferChecked/TransferCheckedWithFee
-                    if ix.program_id == TOKEN_2022_PROGRAM_ID
-                        && !ix.data.is_empty()
-                    {
+                    if ix.program_id == TOKEN_2022_PROGRAM_ID && !ix.data.is_empty() {
                         if ix.data[0] == 4 {
                             return Err(error!(PhalnxError::UnauthorizedTokenApproval));
                         }
@@ -463,9 +460,7 @@ pub fn handler(
                     }
 
                     // 1. Block top-level SPL Token Transfer/TransferChecked/Approve
-                    if ix.program_id == spl_token_id
-                        && !ix.data.is_empty()
-                    {
+                    if ix.program_id == spl_token_id && !ix.data.is_empty() {
                         if ix.data[0] == 4 {
                             return Err(error!(PhalnxError::UnauthorizedTokenApproval));
                         }
@@ -475,9 +470,7 @@ pub fn handler(
                     }
 
                     // 1b. Block Token-2022 Transfer/Approve/TransferChecked/TransferCheckedWithFee
-                    if ix.program_id == TOKEN_2022_PROGRAM_ID
-                        && !ix.data.is_empty()
-                    {
+                    if ix.program_id == TOKEN_2022_PROGRAM_ID && !ix.data.is_empty() {
                         if ix.data[0] == 4 {
                             return Err(error!(PhalnxError::UnauthorizedTokenApproval));
                         }
@@ -668,7 +661,8 @@ pub fn handler(
     session.authorized_token = token_mint;
     session.authorized_protocol = target_protocol;
     session.action_type = action_type;
-    session.expires_at_slot = SessionAuthority::calculate_expiry(clock.slot, policy.effective_session_expiry_slots());
+    session.expires_at_slot =
+        SessionAuthority::calculate_expiry(clock.slot, policy.effective_session_expiry_slots());
     session.delegation_token_account = ctx.accounts.vault_token_account.key();
     session.protocol_fee = protocol_fee;
     session.developer_fee = developer_fee;

@@ -45,31 +45,51 @@ export const provisionSchema = z.object({
 export type ProvisionInput = z.infer<typeof provisionSchema>;
 
 const PROVISION_TEMPLATE_ALIASES: Record<string, string> = {
-  safe: "conservative", cautious: "conservative", low: "conservative",
-  medium: "moderate", mid: "moderate", balanced: "moderate",
-  high: "aggressive", yolo: "aggressive", fast: "aggressive", max: "aggressive",
+  safe: "conservative",
+  cautious: "conservative",
+  low: "conservative",
+  medium: "moderate",
+  mid: "moderate",
+  balanced: "moderate",
+  high: "aggressive",
+  yolo: "aggressive",
+  fast: "aggressive",
+  max: "aggressive",
 };
 
 function provisionLevenshtein(a: string, b: string): number {
   const d = Array.from({ length: a.length + 1 }, (_, i) =>
-    Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+    Array.from({ length: b.length + 1 }, (_, j) =>
+      i === 0 ? j : j === 0 ? i : 0,
+    ),
   );
   for (let i = 1; i <= a.length; i++)
     for (let j = 1; j <= b.length; j++)
-      d[i][j] = a[i - 1] === b[j - 1] ? d[i - 1][j - 1]
-        : 1 + Math.min(d[i - 1][j], d[i][j - 1], d[i - 1][j - 1]);
+      d[i][j] =
+        a[i - 1] === b[j - 1]
+          ? d[i - 1][j - 1]
+          : 1 + Math.min(d[i - 1][j], d[i][j - 1], d[i - 1][j - 1]);
   return d[a.length][b.length];
 }
 
-function normalizeProvisionTemplate(input: string): { value: string; note?: string } {
+function normalizeProvisionTemplate(input: string): {
+  value: string;
+  note?: string;
+} {
   const lower = input.trim().toLowerCase();
   const VALID = ["conservative", "moderate", "aggressive"] as const;
   if ((VALID as readonly string[]).includes(lower)) return { value: lower };
-  if (PROVISION_TEMPLATE_ALIASES[lower]) return { value: PROVISION_TEMPLATE_ALIASES[lower] };
+  if (PROVISION_TEMPLATE_ALIASES[lower])
+    return { value: PROVISION_TEMPLATE_ALIASES[lower] };
   const nearest = VALID.reduce((best, opt) =>
-    provisionLevenshtein(lower, opt) < provisionLevenshtein(lower, best) ? opt : best
+    provisionLevenshtein(lower, opt) < provisionLevenshtein(lower, best)
+      ? opt
+      : best,
   );
-  return { value: nearest, note: `> Using '${nearest}' (closest match to '${input}')` };
+  return {
+    value: nearest,
+    note: `> Using '${nearest}' (closest match to '${input}')`,
+  };
 }
 
 /**
@@ -84,7 +104,8 @@ export async function provision(
   input: ProvisionInput,
 ): Promise<string> {
   const rawTemplate = input.template ?? "conservative";
-  const { value: templateName, note: templateNote } = normalizeProvisionTemplate(rawTemplate);
+  const { value: templateName, note: templateNote } =
+    normalizeProvisionTemplate(rawTemplate);
 
   const baseUrl = input.platformUrl.replace(/\/$/, "");
 

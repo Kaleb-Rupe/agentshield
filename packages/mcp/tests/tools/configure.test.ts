@@ -184,7 +184,9 @@ describe("shield_configure", () => {
     });
 
     expect(result).to.include("TEE Wallet Required for Mainnet");
-    expect(result).to.include("Local keypair wallets are not permitted on mainnet-beta");
+    expect(result).to.include(
+      "Local keypair wallets are not permitted on mainnet-beta",
+    );
 
     // No config file should be created
     const configPath = path.join(tmpHome, ".phalnx", "config.json");

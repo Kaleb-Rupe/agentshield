@@ -512,7 +512,11 @@ describe("jupiter-lend-integration", () => {
       );
       await program.methods
         .revokeAgent(agent.publicKey)
-        .accountsPartial({ owner: owner.publicKey, vault: frozenVault, agentSpendOverlay: frozenOverlayRevoke })
+        .accountsPartial({
+          owner: owner.publicKey,
+          vault: frozenVault,
+          agentSpendOverlay: frozenOverlayRevoke,
+        })
         .rpc();
     });
 

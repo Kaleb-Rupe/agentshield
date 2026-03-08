@@ -21,10 +21,10 @@ export function normalizeProjectName(name: string): string {
   return name
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9-\s]/g, "")  // remove invalid chars except spaces and hyphens
-    .replace(/\s+/g, "-")           // spaces to hyphens
-    .replace(/-+/g, "-")            // collapse multiple hyphens
-    .replace(/^-|-$/g, "");         // strip leading/trailing hyphens
+    .replace(/[^a-z0-9-\s]/g, "") // remove invalid chars except spaces and hyphens
+    .replace(/\s+/g, "-") // spaces to hyphens
+    .replace(/-+/g, "-") // collapse multiple hyphens
+    .replace(/^-|-$/g, ""); // strip leading/trailing hyphens
 }
 
 export function validateProjectName(name: string): string | undefined {

@@ -116,7 +116,9 @@ pub fn handler(
                 effective_mode == PROTOCOL_MODE_ALLOWLIST,
                 PhalnxError::ProtocolCapsMismatch
             );
-            let effective_protos_len = protocols.as_ref().map_or(policy.protocols.len(), |p| p.len());
+            let effective_protos_len = protocols
+                .as_ref()
+                .map_or(policy.protocols.len(), |p| p.len());
             let effective_caps_len = protocol_caps
                 .as_ref()
                 .map_or(policy.protocol_caps.len(), |c| c.len());

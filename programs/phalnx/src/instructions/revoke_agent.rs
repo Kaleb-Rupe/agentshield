@@ -1,5 +1,5 @@
-use anchor_lang::prelude::*;
 use anchor_lang::accounts::account_loader::AccountLoader;
+use anchor_lang::prelude::*;
 
 use crate::errors::PhalnxError;
 use crate::events::AgentRevoked;

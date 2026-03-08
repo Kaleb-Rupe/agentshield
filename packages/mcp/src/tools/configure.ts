@@ -53,19 +53,30 @@ const CONFIGURE_TEMPLATES = {
 type ConfigureTemplate = keyof typeof CONFIGURE_TEMPLATES;
 
 const TEMPLATE_ALIASES: Record<string, string> = {
-  safe: "conservative", cautious: "conservative", low: "conservative",
-  medium: "moderate", mid: "moderate", balanced: "moderate",
-  high: "aggressive", yolo: "aggressive", fast: "aggressive", max: "aggressive",
+  safe: "conservative",
+  cautious: "conservative",
+  low: "conservative",
+  medium: "moderate",
+  mid: "moderate",
+  balanced: "moderate",
+  high: "aggressive",
+  yolo: "aggressive",
+  fast: "aggressive",
+  max: "aggressive",
 };
 
 function levenshtein(a: string, b: string): number {
   const d = Array.from({ length: a.length + 1 }, (_, i) =>
-    Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+    Array.from({ length: b.length + 1 }, (_, j) =>
+      i === 0 ? j : j === 0 ? i : 0,
+    ),
   );
   for (let i = 1; i <= a.length; i++)
     for (let j = 1; j <= b.length; j++)
-      d[i][j] = a[i - 1] === b[j - 1] ? d[i - 1][j - 1]
-        : 1 + Math.min(d[i - 1][j], d[i][j - 1], d[i - 1][j - 1]);
+      d[i][j] =
+        a[i - 1] === b[j - 1]
+          ? d[i - 1][j - 1]
+          : 1 + Math.min(d[i - 1][j], d[i][j - 1], d[i - 1][j - 1]);
   return d[a.length][b.length];
 }
 
@@ -75,9 +86,12 @@ function normalizeTemplate(input: string): { value: string; note?: string } {
   if ((VALID as readonly string[]).includes(lower)) return { value: lower };
   if (TEMPLATE_ALIASES[lower]) return { value: TEMPLATE_ALIASES[lower] };
   const nearest = VALID.reduce((best, opt) =>
-    levenshtein(lower, opt) < levenshtein(lower, best) ? opt : best
+    levenshtein(lower, opt) < levenshtein(lower, best) ? opt : best,
   );
-  return { value: nearest, note: `> Using '${nearest}' (closest match to '${input}')` };
+  return {
+    value: nearest,
+    note: `> Using '${nearest}' (closest match to '${input}')`,
+  };
 }
 
 const ACTIONS_SERVER_URL = "https://agent-middleware.vercel.app";
@@ -92,7 +106,9 @@ export const configureSchema = z.object({
     .string()
     .optional()
     .default("conservative")
-    .describe("Policy template: conservative, moderate, or aggressive (default: conservative)"),
+    .describe(
+      "Policy template: conservative, moderate, or aggressive (default: conservative)",
+    ),
   dailySpendingCapUsd: z
     .number()
     .optional()
@@ -124,12 +140,30 @@ export const configureSchema = z.object({
     .string()
     .optional()
     .describe("Path to existing keypair JSON (generates new if omitted)"),
-  turnkeyOrganizationId: z.string().optional().describe("Turnkey organization ID (saved to OS keychain)"),
-  turnkeyApiKeyId: z.string().optional().describe("Turnkey API key ID (saved to OS keychain)"),
-  turnkeyApiPrivateKey: z.string().optional().describe("Turnkey API private key PEM (saved to OS keychain)"),
-  crossmintApiKey: z.string().optional().describe("Crossmint API key (saved to OS keychain)"),
-  privyAppId: z.string().optional().describe("Privy app ID (saved to OS keychain)"),
-  privyAppSecret: z.string().optional().describe("Privy app secret (saved to OS keychain)"),
+  turnkeyOrganizationId: z
+    .string()
+    .optional()
+    .describe("Turnkey organization ID (saved to OS keychain)"),
+  turnkeyApiKeyId: z
+    .string()
+    .optional()
+    .describe("Turnkey API key ID (saved to OS keychain)"),
+  turnkeyApiPrivateKey: z
+    .string()
+    .optional()
+    .describe("Turnkey API private key PEM (saved to OS keychain)"),
+  crossmintApiKey: z
+    .string()
+    .optional()
+    .describe("Crossmint API key (saved to OS keychain)"),
+  privyAppId: z
+    .string()
+    .optional()
+    .describe("Privy app ID (saved to OS keychain)"),
+  privyAppSecret: z
+    .string()
+    .optional()
+    .describe("Privy app secret (saved to OS keychain)"),
 });
 
 export type ConfigureInput = z.input<typeof configureSchema>;
@@ -144,7 +178,8 @@ export async function configure(
 ): Promise<string> {
   try {
     const rawTemplate = input.template ?? "conservative";
-    const { value: templateName, note: templateNote } = normalizeTemplate(rawTemplate);
+    const { value: templateName, note: templateNote } =
+      normalizeTemplate(rawTemplate);
     const network = input.network ?? "devnet";
     const template =
       CONFIGURE_TEMPLATES[templateName as ConfigureTemplate] ??
@@ -275,49 +310,61 @@ export async function configure(
         (await getCredential(KC.PRIVY_APP_SECRET)) ??
         process.env.PRIVY_APP_SECRET;
       if (privyAppId && privyAppSecret) {
-      // Local Privy creation — dev has their own API credentials
-      try {
-        let mod: any;
+        // Local Privy creation — dev has their own API credentials
         try {
-          mod = require("@phalnx/custody-privy");
-        } catch {
-          return (
-            "Error: @phalnx/custody-privy is not installed.\n" +
-            "Run: npm install @phalnx/custody-privy"
+          let mod: any;
+          try {
+            mod = require("@phalnx/custody-privy");
+          } catch {
+            return (
+              "Error: @phalnx/custody-privy is not installed.\n" +
+              "Run: npm install @phalnx/custody-privy"
+            );
+          }
+          if (input.privyAppId) {
+            const savedId = await saveCredential(
+              KC.PRIVY_APP_ID,
+              input.privyAppId,
+            );
+            if (!savedId)
+              lines.push(
+                "⚠️  keytar unavailable — set PRIVY_APP_ID env var for subsequent sessions.",
+              );
+          }
+          if (input.privyAppSecret) {
+            const savedSecret = await saveCredential(
+              KC.PRIVY_APP_SECRET,
+              input.privyAppSecret,
+            );
+            if (!savedSecret)
+              lines.push(
+                "⚠️  keytar unavailable — set PRIVY_APP_SECRET env var for subsequent sessions.",
+              );
+          }
+          const custodyWallet = await mod.privy({
+            appId: privyAppId,
+            appSecret: privyAppSecret,
+          });
+
+          config.layers.tee = {
+            enabled: true,
+            locator: custodyWallet.walletId,
+            publicKey: custodyWallet.publicKey.toBase58(),
+          };
+          config.wallet.type = "privy";
+          config.wallet.publicKey = custodyWallet.publicKey.toBase58();
+
+          lines.push("");
+          lines.push("### TEE Custody (Privy)");
+          lines.push(`- **TEE Public Key:** ${config.wallet.publicKey}`);
+          lines.push(`- **Wallet ID:** ${config.layers.tee.locator}`);
+          lines.push(
+            "- Your agent's private key is protected in a Privy AWS Nitro Enclave.",
           );
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return `Error creating Privy wallet: ${msg}\n💡 Check PRIVY_APP_ID and PRIVY_APP_SECRET are set correctly.`;
         }
-        if (input.privyAppId) {
-          const savedId = await saveCredential(KC.PRIVY_APP_ID, input.privyAppId);
-          if (!savedId) lines.push("⚠️  keytar unavailable — set PRIVY_APP_ID env var for subsequent sessions.");
-        }
-        if (input.privyAppSecret) {
-          const savedSecret = await saveCredential(KC.PRIVY_APP_SECRET, input.privyAppSecret);
-          if (!savedSecret) lines.push("⚠️  keytar unavailable — set PRIVY_APP_SECRET env var for subsequent sessions.");
-        }
-        const custodyWallet = await mod.privy({
-          appId: privyAppId,
-          appSecret: privyAppSecret,
-        });
-
-        config.layers.tee = {
-          enabled: true,
-          locator: custodyWallet.walletId,
-          publicKey: custodyWallet.publicKey.toBase58(),
-        };
-        config.wallet.type = "privy";
-        config.wallet.publicKey = custodyWallet.publicKey.toBase58();
-
-        lines.push("");
-        lines.push("### TEE Custody (Privy)");
-        lines.push(`- **TEE Public Key:** ${config.wallet.publicKey}`);
-        lines.push(`- **Wallet ID:** ${config.layers.tee.locator}`);
-        lines.push(
-          "- Your agent's private key is protected in a Privy AWS Nitro Enclave.",
-        );
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        return `Error creating Privy wallet: ${msg}\n💡 Check PRIVY_APP_ID and PRIVY_APP_SECRET are set correctly.`;
-      }
       }
     } else if (teeProvider === "turnkey") {
       const turnkeyOrgId =
@@ -333,54 +380,72 @@ export async function configure(
         (await getCredential(KC.TURNKEY_API_PRIVATE_KEY)) ??
         process.env.TURNKEY_API_PRIVATE_KEY;
       if (turnkeyOrgId && turnkeyApiKeyId && turnkeyApiPrivateKey) {
-      // Local Turnkey creation — dev has their own API credentials
-      try {
-        let mod: any;
+        // Local Turnkey creation — dev has their own API credentials
         try {
-          mod = require("@phalnx/custody-turnkey");
-        } catch {
-          return (
-            "Error: @phalnx/custody-turnkey is not installed.\n" +
-            "Run: npm install @phalnx/custody-turnkey"
+          let mod: any;
+          try {
+            mod = require("@phalnx/custody-turnkey");
+          } catch {
+            return (
+              "Error: @phalnx/custody-turnkey is not installed.\n" +
+              "Run: npm install @phalnx/custody-turnkey"
+            );
+          }
+          if (input.turnkeyOrganizationId) {
+            const s = await saveCredential(
+              KC.TURNKEY_ORG_ID,
+              input.turnkeyOrganizationId,
+            );
+            if (!s)
+              lines.push(
+                "⚠️  keytar unavailable — set TURNKEY_ORGANIZATION_ID env var for subsequent sessions.",
+              );
+          }
+          if (input.turnkeyApiKeyId) {
+            const s = await saveCredential(
+              KC.TURNKEY_API_KEY_ID,
+              input.turnkeyApiKeyId,
+            );
+            if (!s)
+              lines.push(
+                "⚠️  keytar unavailable — set TURNKEY_API_KEY_ID env var for subsequent sessions.",
+              );
+          }
+          if (input.turnkeyApiPrivateKey) {
+            const s = await saveCredential(
+              KC.TURNKEY_API_PRIVATE_KEY,
+              input.turnkeyApiPrivateKey,
+            );
+            if (!s)
+              lines.push(
+                "⚠️  keytar unavailable — set TURNKEY_API_PRIVATE_KEY env var for subsequent sessions.",
+              );
+          }
+          const custodyWallet = await mod.turnkey({
+            organizationId: turnkeyOrgId,
+            apiKeyId: turnkeyApiKeyId,
+            apiPrivateKey: turnkeyApiPrivateKey,
+          });
+
+          config.layers.tee = {
+            enabled: true,
+            locator: custodyWallet.walletId,
+            publicKey: custodyWallet.publicKey.toBase58(),
+          };
+          config.wallet.type = "turnkey";
+          config.wallet.publicKey = custodyWallet.publicKey.toBase58();
+
+          lines.push("");
+          lines.push("### TEE Custody (Turnkey)");
+          lines.push(`- **TEE Public Key:** ${config.wallet.publicKey}`);
+          lines.push(`- **Wallet ID:** ${config.layers.tee.locator}`);
+          lines.push(
+            "- Your agent's private key is protected in Turnkey's secure infrastructure.",
           );
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return `Error creating Turnkey wallet: ${msg}\n💡 Check TURNKEY_ORGANIZATION_ID, TURNKEY_API_KEY_ID, and TURNKEY_API_PRIVATE_KEY are set.`;
         }
-        if (input.turnkeyOrganizationId) {
-          const s = await saveCredential(KC.TURNKEY_ORG_ID, input.turnkeyOrganizationId);
-          if (!s) lines.push("⚠️  keytar unavailable — set TURNKEY_ORGANIZATION_ID env var for subsequent sessions.");
-        }
-        if (input.turnkeyApiKeyId) {
-          const s = await saveCredential(KC.TURNKEY_API_KEY_ID, input.turnkeyApiKeyId);
-          if (!s) lines.push("⚠️  keytar unavailable — set TURNKEY_API_KEY_ID env var for subsequent sessions.");
-        }
-        if (input.turnkeyApiPrivateKey) {
-          const s = await saveCredential(KC.TURNKEY_API_PRIVATE_KEY, input.turnkeyApiPrivateKey);
-          if (!s) lines.push("⚠️  keytar unavailable — set TURNKEY_API_PRIVATE_KEY env var for subsequent sessions.");
-        }
-        const custodyWallet = await mod.turnkey({
-          organizationId: turnkeyOrgId,
-          apiKeyId: turnkeyApiKeyId,
-          apiPrivateKey: turnkeyApiPrivateKey,
-        });
-
-        config.layers.tee = {
-          enabled: true,
-          locator: custodyWallet.walletId,
-          publicKey: custodyWallet.publicKey.toBase58(),
-        };
-        config.wallet.type = "turnkey";
-        config.wallet.publicKey = custodyWallet.publicKey.toBase58();
-
-        lines.push("");
-        lines.push("### TEE Custody (Turnkey)");
-        lines.push(`- **TEE Public Key:** ${config.wallet.publicKey}`);
-        lines.push(`- **Wallet ID:** ${config.layers.tee.locator}`);
-        lines.push(
-          "- Your agent's private key is protected in Turnkey's secure infrastructure.",
-        );
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        return `Error creating Turnkey wallet: ${msg}\n💡 Check TURNKEY_ORGANIZATION_ID, TURNKEY_API_KEY_ID, and TURNKEY_API_PRIVATE_KEY are set.`;
-      }
       }
     } else if (teeProvider === "crossmint" || teeProvider === undefined) {
       const crossmintApiKey =
@@ -388,50 +453,56 @@ export async function configure(
         (await getCredential(KC.CROSSMINT_API_KEY)) ??
         process.env.CROSSMINT_API_KEY;
       if (crossmintApiKey) {
-      // Local Crossmint creation — dev has their own API key
-      try {
-        let mod: any;
+        // Local Crossmint creation — dev has their own API key
         try {
-          mod = require("@phalnx/custody-crossmint");
-        } catch {
-          return (
-            "Error: @phalnx/custody-crossmint is not installed.\n" +
-            "Run: npm install @phalnx/custody-crossmint"
+          let mod: any;
+          try {
+            mod = require("@phalnx/custody-crossmint");
+          } catch {
+            return (
+              "Error: @phalnx/custody-crossmint is not installed.\n" +
+              "Run: npm install @phalnx/custody-crossmint"
+            );
+          }
+          if (input.crossmintApiKey) {
+            const saved = await saveCredential(
+              KC.CROSSMINT_API_KEY,
+              input.crossmintApiKey,
+            );
+            if (!saved)
+              lines.push(
+                "⚠️  keytar unavailable — set CROSSMINT_API_KEY env var for subsequent sessions.",
+              );
+          }
+          const baseUrl =
+            (network as string) === "mainnet-beta"
+              ? "https://crossmint.com"
+              : "https://staging.crossmint.com";
+          const custodyWallet = await mod.crossmint({
+            apiKey: crossmintApiKey,
+            baseUrl,
+            linkedUser: `userId:phalnx-${walletPublicKey}`,
+          });
+
+          config.layers.tee = {
+            enabled: true,
+            locator: `userId:phalnx-${walletPublicKey}`,
+            publicKey: custodyWallet.publicKey.toBase58(),
+          };
+          config.wallet.type = "crossmint";
+          config.wallet.publicKey = custodyWallet.publicKey.toBase58();
+
+          lines.push("");
+          lines.push("### TEE Custody (local Crossmint)");
+          lines.push(`- **TEE Public Key:** ${config.wallet.publicKey}`);
+          lines.push(`- **Locator:** ${config.layers.tee.locator}`);
+          lines.push(
+            "- Your agent's private key is protected in a hardware enclave.",
           );
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return `Error creating Crossmint wallet: ${msg}\n💡 Check CROSSMINT_API_KEY is set.`;
         }
-        if (input.crossmintApiKey) {
-          const saved = await saveCredential(KC.CROSSMINT_API_KEY, input.crossmintApiKey);
-          if (!saved) lines.push("⚠️  keytar unavailable — set CROSSMINT_API_KEY env var for subsequent sessions.");
-        }
-        const baseUrl =
-          (network as string) === "mainnet-beta"
-            ? "https://crossmint.com"
-            : "https://staging.crossmint.com";
-        const custodyWallet = await mod.crossmint({
-          apiKey: crossmintApiKey,
-          baseUrl,
-          linkedUser: `userId:phalnx-${walletPublicKey}`,
-        });
-
-        config.layers.tee = {
-          enabled: true,
-          locator: `userId:phalnx-${walletPublicKey}`,
-          publicKey: custodyWallet.publicKey.toBase58(),
-        };
-        config.wallet.type = "crossmint";
-        config.wallet.publicKey = custodyWallet.publicKey.toBase58();
-
-        lines.push("");
-        lines.push("### TEE Custody (local Crossmint)");
-        lines.push(`- **TEE Public Key:** ${config.wallet.publicKey}`);
-        lines.push(`- **Locator:** ${config.layers.tee.locator}`);
-        lines.push(
-          "- Your agent's private key is protected in a hardware enclave.",
-        );
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        return `Error creating Crossmint wallet: ${msg}\n💡 Check CROSSMINT_API_KEY is set.`;
-      }
       } else {
         // No credentials found — fall through to hosted API below
       }
@@ -529,7 +600,9 @@ export async function configure(
     lines.push("3. Fund your vault with SOL and tokens");
     lines.push("4. You're ready to trade with full on-chain protection!");
     lines.push("");
-    lines.push("**→ Next:** Click the vault link above, then run `shield_confirm_vault` to save your vault address.");
+    lines.push(
+      "**→ Next:** Click the vault link above, then run `shield_confirm_vault` to save your vault address.",
+    );
 
     const output = lines.join("\n");
     return templateNote ? `${templateNote}\n\n${output}` : output;

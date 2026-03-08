@@ -141,7 +141,9 @@ pub fn handler(ctx: Context<FinalizeSession>, success: bool) -> Result<()> {
         // H1: vault_token_account MUST be provided when session was delegated.
         // Without this, passing None silently skips revocation and the agent
         // retains SPL token delegation authority.
-        let vault_token = ctx.accounts.vault_token_account
+        let vault_token = ctx
+            .accounts
+            .vault_token_account
             .as_ref()
             .ok_or(error!(PhalnxError::InvalidTokenAccount))?;
         require!(
@@ -249,8 +251,7 @@ pub fn handler(ctx: Context<FinalizeSession>, success: bool) -> Result<()> {
         // Per-protocol cap check (when enabled)
         if let Some(proto_cap) = policy.get_protocol_cap(&session_authorized_protocol) {
             if proto_cap > 0 {
-                let proto_spend =
-                    tracker.get_protocol_spend(&clock, &session_authorized_protocol);
+                let proto_spend = tracker.get_protocol_spend(&clock, &session_authorized_protocol);
                 let new_proto_total = proto_spend
                     .checked_add(stablecoin_delta)
                     .ok_or(PhalnxError::Overflow)?;
@@ -266,7 +267,11 @@ pub fn handler(ctx: Context<FinalizeSession>, success: bool) -> Result<()> {
 
         // Record per-protocol spend
         if policy.has_protocol_caps {
-            tracker.record_protocol_spend(&clock, &session_authorized_protocol, stablecoin_delta)?;
+            tracker.record_protocol_spend(
+                &clock,
+                &session_authorized_protocol,
+                stablecoin_delta,
+            )?;
         }
 
         drop(tracker);

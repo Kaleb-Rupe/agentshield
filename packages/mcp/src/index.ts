@@ -187,7 +187,9 @@ async function main() {
         content: [
           {
             type: "text",
-            text: config?.localKeypairWarning ? LOCAL_KEYPAIR_WARNING + result : result,
+            text: config?.localKeypairWarning
+              ? LOCAL_KEYPAIR_WARNING + result
+              : result,
           },
         ],
       };

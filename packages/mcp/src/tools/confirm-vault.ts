@@ -90,7 +90,7 @@ export async function confirmVault(
     for (let attempt = 1; attempt <= 3; attempt++) {
       accountInfo = await connection.getAccountInfo(vaultPda);
       if (accountInfo) break;
-      if (attempt < 3) await new Promise(r => setTimeout(r, 2000));
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
     }
 
     if (!accountInfo) {

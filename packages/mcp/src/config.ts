@@ -419,7 +419,8 @@ export async function resolveClient(): Promise<{
       const appId =
         (await getCredential(KC.PRIVY_APP_ID)) ?? process.env.PRIVY_APP_ID;
       const appSecret =
-        (await getCredential(KC.PRIVY_APP_SECRET)) ?? process.env.PRIVY_APP_SECRET;
+        (await getCredential(KC.PRIVY_APP_SECRET)) ??
+        process.env.PRIVY_APP_SECRET;
       if (!appId || !appSecret) {
         throw new Error(
           "Privy wallet configured but credentials not found. " +
@@ -440,11 +441,14 @@ export async function resolveClient(): Promise<{
 
     if (fileConfig.wallet.type === "turnkey" && fileConfig.layers.tee.enabled) {
       const orgId =
-        (await getCredential(KC.TURNKEY_ORG_ID)) ?? process.env.TURNKEY_ORGANIZATION_ID;
+        (await getCredential(KC.TURNKEY_ORG_ID)) ??
+        process.env.TURNKEY_ORGANIZATION_ID;
       const apiKeyId =
-        (await getCredential(KC.TURNKEY_API_KEY_ID)) ?? process.env.TURNKEY_API_KEY_ID;
+        (await getCredential(KC.TURNKEY_API_KEY_ID)) ??
+        process.env.TURNKEY_API_KEY_ID;
       const apiPrivateKey =
-        (await getCredential(KC.TURNKEY_API_PRIVATE_KEY)) ?? process.env.TURNKEY_API_PRIVATE_KEY;
+        (await getCredential(KC.TURNKEY_API_PRIVATE_KEY)) ??
+        process.env.TURNKEY_API_PRIVATE_KEY;
       if (!orgId || !apiKeyId || !apiPrivateKey) {
         throw new Error(
           "Turnkey wallet configured but credentials not found. " +
