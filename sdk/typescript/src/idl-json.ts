@@ -77,6 +77,11 @@ export const IDL = {
           },
         },
         {
+          name: "agent_spend_overlay",
+          docs: ["Zero-copy AgentSpendOverlay \u2014 per-agent rolling spend"],
+          writable: true,
+        },
+        {
           name: "vault_token_account",
           docs: ["Vault's PDA-owned token account (source)"],
           writable: true,
@@ -650,6 +655,11 @@ export const IDL = {
           },
         },
         {
+          name: "agent_spend_overlay",
+          docs: ["Zero-copy AgentSpendOverlay \u2014 per-agent rolling spend"],
+          writable: true,
+        },
+        {
           name: "destination_vault",
           pda: {
             seeds: [
@@ -869,6 +879,10 @@ export const IDL = {
               },
             },
           },
+        },
+        {
+          name: "strict_mode",
+          type: "bool",
         },
       ],
     },
@@ -1103,6 +1117,11 @@ export const IDL = {
           },
         },
         {
+          name: "agent_spend_overlay",
+          docs: ["Zero-copy AgentSpendOverlay \u2014 per-agent rolling spend"],
+          writable: true,
+        },
+        {
           name: "vault_token_account",
           docs: ["Vault's PDA token account for the session's token"],
           writable: true,
@@ -1202,9 +1221,7 @@ export const IDL = {
         },
         {
           name: "agent_spend_overlay",
-          docs: [
-            "Agent spend overlay shard 0 \u2014 per-agent contribution tracking",
-          ],
+          docs: ["Agent spend overlay \u2014 per-agent contribution tracking"],
           writable: true,
         },
         {
@@ -1262,6 +1279,12 @@ export const IDL = {
           name: "allowed_destinations",
           type: {
             vec: "pubkey",
+          },
+        },
+        {
+          name: "protocol_caps",
+          type: {
+            vec: "u64",
           },
         },
       ],
@@ -1362,6 +1385,10 @@ export const IDL = {
               },
             },
           },
+        },
+        {
+          name: "strict_mode",
+          type: "bool",
         },
       ],
     },
@@ -1504,6 +1531,26 @@ export const IDL = {
           type: {
             option: {
               vec: "pubkey",
+            },
+          },
+        },
+        {
+          name: "session_expiry_slots",
+          type: {
+            option: "u64",
+          },
+        },
+        {
+          name: "has_protocol_caps",
+          type: {
+            option: "bool",
+          },
+        },
+        {
+          name: "protocol_caps",
+          type: {
+            option: {
+              vec: "u64",
             },
           },
         },
@@ -1705,9 +1752,7 @@ export const IDL = {
         },
         {
           name: "agent_spend_overlay",
-          docs: [
-            "Agent spend overlay (shard 0) \u2014 for claiming a per-agent tracking slot.",
-          ],
+          docs: ["Agent spend overlay \u2014 per-agent tracking slot."],
           writable: true,
         },
       ],
@@ -1759,6 +1804,11 @@ export const IDL = {
               },
             ],
           },
+        },
+        {
+          name: "agent_spend_overlay",
+          docs: ["Agent spend overlay \u2014 release slot on revocation."],
+          writable: true,
         },
       ],
       args: [
@@ -2086,6 +2136,10 @@ export const IDL = {
             },
           },
         },
+        {
+          name: "strict_mode",
+          type: "bool",
+        },
       ],
     },
     {
@@ -2210,6 +2264,26 @@ export const IDL = {
             },
           },
         },
+        {
+          name: "session_expiry_slots",
+          type: {
+            option: "u64",
+          },
+        },
+        {
+          name: "has_protocol_caps",
+          type: {
+            option: "bool",
+          },
+        },
+        {
+          name: "protocol_caps",
+          type: {
+            option: {
+              vec: "u64",
+            },
+          },
+        },
       ],
     },
     {
@@ -2280,6 +2354,11 @@ export const IDL = {
               },
             ],
           },
+        },
+        {
+          name: "agent_spend_overlay",
+          docs: ["Zero-copy AgentSpendOverlay \u2014 per-agent rolling spend"],
+          writable: true,
         },
         {
           name: "session",
@@ -2977,8 +3056,62 @@ export const IDL = {
       name: "AgentSpendLimitExceeded",
       msg: "Agent rolling 24h spend exceeds per-agent spending limit",
     },
+    {
+      code: 6064,
+      name: "OverlaySlotExhausted",
+      msg: "Per-agent overlay is full; cannot register agent with spending limit",
+    },
+    {
+      code: 6065,
+      name: "AgentSlotNotFound",
+      msg: "Agent has per-agent spending limit but no overlay tracking slot",
+    },
+    {
+      code: 6066,
+      name: "UnauthorizedTokenApproval",
+      msg: "Unauthorized SPL Token Approve between validate and finalize",
+    },
+    {
+      code: 6067,
+      name: "InvalidSessionExpiry",
+      msg: "Session expiry slots out of range (10-450)",
+    },
+    {
+      code: 6068,
+      name: "UnconstrainedProgramBlocked",
+      msg: "Program has no constraint entry and strict mode is enabled",
+    },
+    {
+      code: 6069,
+      name: "ProtocolCapExceeded",
+      msg: "Per-protocol daily spending cap would be exceeded",
+    },
+    {
+      code: 6070,
+      name: "ProtocolCapsMismatch",
+      msg: "protocol_caps length must match protocols length when has_protocol_caps is true",
+    },
   ],
   types: [
+    {
+      name: "AccountConstraint",
+      docs: [
+        "Account-index constraint: requires a specific pubkey at a specific account index.",
+      ],
+      type: {
+        kind: "struct",
+        fields: [
+          {
+            name: "index",
+            type: "u8",
+          },
+          {
+            name: "expected",
+            type: "pubkey",
+          },
+        ],
+      },
+    },
     {
       name: "ActionAuthorized",
       type: {
@@ -3110,10 +3243,11 @@ export const IDL = {
     {
       name: "AgentContributionEntry",
       docs: [
-        "Per-agent contribution entry within a shard.",
-        "Tracks each agent's individual spend contributions using the same",
-        "144-bucket epoch scheme as the global SpendTracker.",
-        "32 (agent) + 8 * 144 (contributions) = 1,184 bytes",
+        "Per-agent contribution entry within an overlay.",
+        "Tracks each agent's individual spend contributions using a 24-bucket",
+        "hourly epoch scheme with per-entry `last_write_epoch` for correct gap-zeroing.",
+        "",
+        "Layout: 32 (agent) + 8 (last_write_epoch) + 8 \u00d7 24 (contributions) = 232 bytes",
       ],
       serialization: "bytemuck",
       repr: {
@@ -3132,12 +3266,22 @@ export const IDL = {
             },
           },
           {
+            name: "last_write_epoch",
+            docs: [
+              "The epoch number of the most recent write to this entry.",
+              "Used to derive which buckets are stale via modular arithmetic.",
+              "epoch = unix_timestamp / OVERLAY_EPOCH_DURATION (3600)",
+            ],
+            type: "i64",
+          },
+          {
             name: "contributions",
             docs: [
-              "Per-epoch USD contributions from this agent (same indexing as SpendTracker buckets)",
+              "Per-epoch USD contributions from this agent.",
+              "Indexed by `epoch % OVERLAY_NUM_EPOCHS`.",
             ],
             type: {
-              array: ["u64", 144],
+              array: ["u64", 24],
             },
           },
         ],
@@ -3276,14 +3420,12 @@ export const IDL = {
       docs: [
         "Per-vault overlay PDA tracking per-agent spend contributions.",
         "",
-        'Seeds: `[b"agent_spend", vault.key().as_ref(), &[shard_index]]`',
+        'Seeds: `[b"agent_spend", vault.key().as_ref(), &[0u8]]`',
         "",
-        "One shard supports up to 7 agents. The shard index (0-based) is stored",
-        "in AgentVault.treasury_shard. Currently only shard 0 is used.",
+        "Supports up to 10 agents (matches MAX_AGENTS_PER_VAULT).",
         "",
         "Size calculation:",
-        "8 (discriminator) + 32 (vault) + 8 * 144 (sync_epochs) +",
-        "1,184 * 7 (entries) + 1 (bump) + 7 (padding) = 9,488 bytes",
+        "8 (discriminator) + 32 (vault) + 232 \u00d7 10 (entries) + 1 (bump) + 7 (padding) = 2,368 bytes",
       ],
       serialization: "bytemuck",
       repr: {
@@ -3298,20 +3440,9 @@ export const IDL = {
             type: "pubkey",
           },
           {
-            name: "sync_epochs",
-            docs: [
-              "Per-epoch sync timestamps \u2014 used to detect stale epochs across all entries.",
-              "When an epoch is stale (older than the current epoch), all agent contributions",
-              "for that epoch index are zeroed during the next access.",
-            ],
-            type: {
-              array: ["i64", 144],
-            },
-          },
-          {
             name: "entries",
             docs: [
-              "Agent contribution entries (up to ENTRIES_PER_SHARD agents per shard)",
+              "Agent contribution entries (up to MAX_OVERLAY_ENTRIES agents)",
             ],
             type: {
               array: [
@@ -3320,7 +3451,7 @@ export const IDL = {
                     name: "AgentContributionEntry",
                   },
                 },
-                7,
+                10,
               ],
             },
           },
@@ -3444,14 +3575,6 @@ export const IDL = {
             ],
             type: "u64",
           },
-          {
-            name: "treasury_shard",
-            docs: [
-              "Treasury shard index assigned at vault creation.",
-              "Reserved for future horizontal scaling of overlay PDAs.",
-            ],
-            type: "u8",
-          },
         ],
       },
     },
@@ -3470,6 +3593,16 @@ export const IDL = {
               vec: {
                 defined: {
                   name: "DataConstraint",
+                },
+              },
+            },
+          },
+          {
+            name: "account_constraints",
+            type: {
+              vec: {
+                defined: {
+                  name: "AccountConstraint",
                 },
               },
             },
@@ -3909,6 +4042,10 @@ export const IDL = {
             },
           },
           {
+            name: "strict_mode",
+            type: "bool",
+          },
+          {
             name: "bump",
             type: "u8",
           },
@@ -3945,6 +4082,10 @@ export const IDL = {
             type: "u8",
           },
           {
+            name: "strict_mode",
+            type: "bool",
+          },
+          {
             name: "timestamp",
             type: "i64",
           },
@@ -3963,6 +4104,10 @@ export const IDL = {
           {
             name: "entries_count",
             type: "u8",
+          },
+          {
+            name: "strict_mode",
+            type: "bool",
           },
           {
             name: "timestamp",
@@ -3997,6 +4142,13 @@ export const IDL = {
                 },
               },
             },
+          },
+          {
+            name: "strict_mode",
+            docs: [
+              "Whether to reject programs without matching constraint entries",
+            ],
+            type: "bool",
           },
           {
             name: "queued_at",
@@ -4110,6 +4262,26 @@ export const IDL = {
             type: {
               option: {
                 vec: "pubkey",
+              },
+            },
+          },
+          {
+            name: "session_expiry_slots",
+            type: {
+              option: "u64",
+            },
+          },
+          {
+            name: "has_protocol_caps",
+            type: {
+              option: "bool",
+            },
+          },
+          {
+            name: "protocol_caps",
+            type: {
+              option: {
+                vec: "u64",
               },
             },
           },
@@ -4273,9 +4445,29 @@ export const IDL = {
           {
             name: "has_protocol_caps",
             docs: [
-              "Whether per-protocol spend caps are configured (reserved, not enforced yet).",
+              "Whether per-protocol spend caps are configured.",
+              "Requires protocol_mode == ALLOWLIST and protocol_caps.len() == protocols.len().",
             ],
             type: "bool",
+          },
+          {
+            name: "protocol_caps",
+            docs: [
+              "Per-protocol daily spending caps in USD (6 decimals).",
+              "Index-aligned with `protocols`. Only enforced when `has_protocol_caps = true`.",
+              "A value of 0 means no per-protocol limit (global cap still applies).",
+            ],
+            type: {
+              vec: "u64",
+            },
+          },
+          {
+            name: "session_expiry_slots",
+            docs: [
+              "Configurable session expiry in slots. 0 = use default (SESSION_EXPIRY_SLOTS = 20).",
+              "Valid range when non-zero: 10-450 slots.",
+            ],
+            type: "u64",
           },
           {
             name: "bump",
@@ -4356,8 +4548,8 @@ export const IDL = {
     {
       name: "ProtocolSpendCounter",
       docs: [
-        "Reserved per-protocol spend counter for future per-protocol caps.",
-        "Zeroed at init \u2014 no enforcement logic yet.",
+        "Per-protocol spend counter using simple 24h window.",
+        "When current_epoch - window_start >= 144, the window is expired and resets to 0.",
         "48 bytes per entry (32 + 8 + 8).",
       ],
       serialization: "bytemuck",
@@ -4568,6 +4760,14 @@ export const IDL = {
                 10,
               ],
             },
+          },
+          {
+            name: "last_write_epoch",
+            docs: [
+              "Epoch of most recent record_spend() call. Enables early exit in get_rolling_24h_usd().",
+              "Zero-initialized \u2014 value 0 correctly triggers early exit (current_epoch >> 144).",
+            ],
+            type: "i64",
           },
           {
             name: "bump",

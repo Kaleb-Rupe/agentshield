@@ -134,6 +134,7 @@ describe("surfpool-integration", function () {
           100, // maxSlippageBps (1%)
           new BN(0), // timelockDuration
           [], // allowedDestinations
+          [], // protocolCaps
         )
         .accounts({
           owner: env.payer.publicKey,
@@ -312,6 +313,7 @@ describe("surfpool-integration", function () {
           100,
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: env.payer.publicKey,
@@ -575,6 +577,7 @@ describe("surfpool-integration", function () {
           100,
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: env.payer.publicKey,
@@ -859,6 +862,7 @@ describe("surfpool-integration", function () {
           100,
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: env.payer.publicKey,
@@ -1039,6 +1043,7 @@ describe("surfpool-integration", function () {
           100,
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: env.payer.publicKey,
@@ -1188,6 +1193,7 @@ describe("surfpool-integration", function () {
           100,
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: env.payer.publicKey,
@@ -1267,6 +1273,7 @@ describe("surfpool-integration", function () {
           100,
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: env.payer.publicKey,
@@ -1321,6 +1328,7 @@ describe("surfpool-integration", function () {
           100,
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: env.payer.publicKey,
@@ -1390,6 +1398,7 @@ describe("surfpool-integration", function () {
           100,
           new BN(0),
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: env.payer.publicKey,
@@ -1449,6 +1458,7 @@ describe("surfpool-integration", function () {
           100,
           new BN(60), // 60-second timelock
           [],
+          [], // protocolCaps
         )
         .accounts({
           owner: env.payer.publicKey,
@@ -1477,6 +1487,9 @@ describe("surfpool-integration", function () {
           null,
           null,
           null,
+          null, // sessionExpirySlots
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: env.payer.publicKey,
@@ -1531,6 +1544,9 @@ describe("surfpool-integration", function () {
           null,
           null,
           null,
+          null, // sessionExpirySlots
+          null, // hasProtocolCaps
+          null, // protocolCaps
         )
         .accounts({
           owner: env.payer.publicKey,
