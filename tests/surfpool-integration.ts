@@ -1487,6 +1487,7 @@ describe("surfpool-integration", function () {
           null,
           null,
           null,
+          null, // sessionExpirySlots
           null, // hasProtocolCaps
           null, // protocolCaps
         )
@@ -1543,6 +1544,7 @@ describe("surfpool-integration", function () {
           null,
           null,
           null,
+          null, // sessionExpirySlots
           null, // hasProtocolCaps
           null, // protocolCaps
         )
