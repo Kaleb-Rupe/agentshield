@@ -315,7 +315,10 @@ mod tests {
         ];
         let ix_data = vec![0xAA];
         // First entry fails (0xAA != 0xFF), second passes (0xAA == 0xAA) → Ok(true)
-        assert_eq!(verify_against_entries(&entries, &pk, &ix_data, &[]).unwrap(), true);
+        assert_eq!(
+            verify_against_entries(&entries, &pk, &ix_data, &[]).unwrap(),
+            true
+        );
     }
 
     #[test]
@@ -347,7 +350,10 @@ mod tests {
             account_constraints: vec![],
         }];
         let ix_data = vec![0xAA];
-        assert_eq!(verify_against_entries(&entries, &pk, &ix_data, &[]).unwrap(), true);
+        assert_eq!(
+            verify_against_entries(&entries, &pk, &ix_data, &[]).unwrap(),
+            true
+        );
     }
 
     #[test]
@@ -361,7 +367,10 @@ mod tests {
         }];
         let ix_data = vec![0xAA];
         // No entries for pk2 → Ok(false)
-        assert_eq!(verify_against_entries(&entries, &pk2, &ix_data, &[]).unwrap(), false);
+        assert_eq!(
+            verify_against_entries(&entries, &pk2, &ix_data, &[]).unwrap(),
+            false
+        );
     }
 
     #[test]
@@ -518,11 +527,10 @@ mod tests {
         // 100i64 >= 50i64 via GteSigned
         let ix_data = 100i64.to_le_bytes().to_vec();
         let bound = 50i64.to_le_bytes().to_vec();
-        assert!(verify_data_constraints(
-            &ix_data,
-            &[dc(0, ConstraintOperator::GteSigned, bound)]
-        )
-        .is_ok());
+        assert!(
+            verify_data_constraints(&ix_data, &[dc(0, ConstraintOperator::GteSigned, bound)])
+                .is_ok()
+        );
     }
 
     #[test]
@@ -530,11 +538,10 @@ mod tests {
         // -5i64 <= 10i64 via LteSigned
         let ix_data = (-5i64).to_le_bytes().to_vec();
         let bound = 10i64.to_le_bytes().to_vec();
-        assert!(verify_data_constraints(
-            &ix_data,
-            &[dc(0, ConstraintOperator::LteSigned, bound)]
-        )
-        .is_ok());
+        assert!(
+            verify_data_constraints(&ix_data, &[dc(0, ConstraintOperator::LteSigned, bound)])
+                .is_ok()
+        );
     }
 
     #[test]
@@ -542,11 +549,10 @@ mod tests {
         // GteSigned(-10): actual=100 passes (unsigned Gte would fail because unsigned(100) < unsigned(-10))
         let ix_data = 100i64.to_le_bytes().to_vec();
         let bound = (-10i64).to_le_bytes().to_vec();
-        assert!(verify_data_constraints(
-            &ix_data,
-            &[dc(0, ConstraintOperator::GteSigned, bound)]
-        )
-        .is_ok());
+        assert!(
+            verify_data_constraints(&ix_data, &[dc(0, ConstraintOperator::GteSigned, bound)])
+                .is_ok()
+        );
     }
 
     #[test]
@@ -554,11 +560,10 @@ mod tests {
         // LteSigned(10): actual=-1 passes (unsigned Lte would fail)
         let ix_data = (-1i64).to_le_bytes().to_vec();
         let bound = 10i64.to_le_bytes().to_vec();
-        assert!(verify_data_constraints(
-            &ix_data,
-            &[dc(0, ConstraintOperator::LteSigned, bound)]
-        )
-        .is_ok());
+        assert!(
+            verify_data_constraints(&ix_data, &[dc(0, ConstraintOperator::LteSigned, bound)])
+                .is_ok()
+        );
     }
 
     // ========== Bitmask tests ==========
