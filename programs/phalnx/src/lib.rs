@@ -132,9 +132,13 @@ pub mod phalnx {
     }
 
     /// Finalize a session after the DeFi action completes.
-    /// Revokes delegation and closes the SessionAuthority PDA.
-    pub fn finalize_session(ctx: Context<FinalizeSession>, success: bool) -> Result<()> {
-        instructions::finalize_session::handler(ctx, success)
+    /// Revokes delegation, closes SessionAuthority PDA, optionally refunds tx fee.
+    pub fn finalize_session(
+        ctx: Context<FinalizeSession>,
+        success: bool,
+        refund_lamports: Option<u64>,
+    ) -> Result<()> {
+        instructions::finalize_session::handler(ctx, success, refund_lamports)
     }
 
     /// Revoke a specific agent from the vault.

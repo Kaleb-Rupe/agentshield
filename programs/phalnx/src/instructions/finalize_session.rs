@@ -5,8 +5,8 @@ use anchor_spl::token::{self, Revoke, Token, TokenAccount};
 use anchor_lang::accounts::account_loader::AccountLoader;
 
 use crate::errors::PhalnxError;
-use crate::events::{AgentSpendLimitChecked, DelegationRevoked, SessionFinalized};
-use crate::state::{PositionEffect, *};
+use crate::events::{AgentSpendLimitChecked, DelegationRevoked, FeeRefunded, SessionFinalized};
+use crate::state::{PositionEffect, MAX_FEE_REFUND, *};
 
 #[derive(Accounts)]
 pub struct FinalizeSession<'info> {
@@ -76,7 +76,7 @@ pub struct FinalizeSession<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<FinalizeSession>, success: bool) -> Result<()> {
+pub fn handler(ctx: Context<FinalizeSession>, success: bool, refund_lamports: Option<u64>) -> Result<()> {
     // 0. Reject CPI calls — only top-level transaction instructions allowed.
     require!(
         get_stack_height()
@@ -324,6 +324,34 @@ pub fn handler(ctx: Context<FinalizeSession>, success: bool) -> Result<()> {
         is_expired,
         timestamp: clock.unix_timestamp,
     });
+
+    // Fee refund: reimburse agent's transaction fee from vault SOL.
+    // Only when the agent is finalizing their own session (not expired crank cleanup).
+    if let Some(requested) = refund_lamports {
+        let payer_key = ctx.accounts.payer.key();
+        if payer_key == session_agent && requested > 0 {
+            let capped = requested.min(MAX_FEE_REFUND);
+            let vault_info = ctx.accounts.vault.to_account_info();
+            let rent = Rent::get()?;
+            let floor = rent.minimum_balance(vault_info.data_len());
+            let available = vault_info.lamports().saturating_sub(floor);
+            let actual = capped.min(available);
+
+            if actual > 0 {
+                **vault_info.try_borrow_mut_lamports()? -= actual;
+                **ctx.accounts.payer.to_account_info().try_borrow_mut_lamports()? += actual;
+            }
+
+            emit!(FeeRefunded {
+                vault: vault_key,
+                agent: session_agent,
+                requested_lamports: requested,
+                actual_lamports: actual,
+                vault_sol_remaining: vault_info.lamports().saturating_sub(floor),
+                timestamp: clock.unix_timestamp,
+            });
+        }
+    }
 
     Ok(())
 }

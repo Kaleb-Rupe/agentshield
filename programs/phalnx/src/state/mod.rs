@@ -53,6 +53,11 @@ pub const MAX_ESCROW_DURATION: i64 = 2_592_000;
 /// to identify finalize_session instructions in the transaction.
 pub const FINALIZE_SESSION_DISCRIMINATOR: [u8; 8] = [34, 148, 144, 47, 37, 130, 206, 161];
 
+/// Maximum fee refund per transaction: 100,000 lamports = 0.0001 SOL.
+/// Covers typical composed tx fees (base 5K + priority ~30K) with headroom.
+/// At 100 tx/day max drain = 0.01 SOL/day (~$0.002).
+pub const MAX_FEE_REFUND: u64 = 100_000;
+
 // Build requires exactly one of: --features mainnet OR --features devnet
 #[cfg(not(any(feature = "mainnet", feature = "devnet")))]
 compile_error!("Build requires --features mainnet OR --features devnet");

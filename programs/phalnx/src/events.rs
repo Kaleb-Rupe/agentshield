@@ -235,3 +235,13 @@ pub struct EscrowRefunded {
     pub amount: u64,
     pub refunded_by: Pubkey,
 }
+
+#[event]
+pub struct FeeRefunded {
+    pub vault: Pubkey,
+    pub agent: Pubkey,
+    pub requested_lamports: u64,
+    pub actual_lamports: u64,
+    pub vault_sol_remaining: u64,
+    pub timestamp: i64,
+}
