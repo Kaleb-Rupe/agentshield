@@ -48,6 +48,18 @@ export {
 // Structured Errors
 export { PhalnxSDKError, parseOnChainError, precheckError } from "./errors";
 
+// Agent-First Error System
+export {
+  toAgentError,
+  agentErrorFromCode,
+  isAgentError,
+  getAllOnChainErrorCodes,
+  getAllSdkErrorCodes,
+  type ErrorCategory,
+  type RecoveryAction,
+  type AgentError,
+} from "./agent-errors";
+
 export {
   getVaultPDA,
   getPolicyPDA,
