@@ -112,7 +112,7 @@ export async function composePermittedTransaction(
     payerKey: params.agent,
     recentBlockhash: blockhash,
     instructions,
-  }).compileToV0Message();
+  }).compileToV0Message(params.addressLookupTables);
 
   return new VersionedTransaction(messageV0);
 }

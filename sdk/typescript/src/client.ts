@@ -700,7 +700,7 @@ export class PhalnxClient {
       payerKey: params.agent,
       recentBlockhash: blockhash,
       instructions,
-    }).compileToV0Message();
+    }).compileToV0Message(params.addressLookupTables);
 
     const tx = new VersionedTransaction(messageV0);
 
