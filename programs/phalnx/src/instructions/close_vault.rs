@@ -56,6 +56,14 @@ pub fn handler(ctx: Context<CloseVault>) -> Result<()> {
         PhalnxError::VaultAlreadyClosed
     );
     require!(vault.open_positions == 0, PhalnxError::OpenPositionsExist);
+    require!(
+        vault.active_escrow_count == 0,
+        PhalnxError::ActiveEscrowsExist
+    );
+    require!(
+        !ctx.accounts.policy.has_constraints,
+        PhalnxError::ConstraintsNotClosed
+    );
 
     let clock = Clock::get()?;
     emit!(VaultClosed {
