@@ -92,6 +92,18 @@ import { fundWallet } from "./tools/fund-wallet";
 import { discoverVault } from "./tools/discover-vault";
 import { confirmVault } from "./tools/confirm-vault";
 
+// V2 Intent-Based Tools
+import {
+  phalnxExecuteSchema,
+  phalnxExecute,
+  phalnxQuerySchema,
+  phalnxQuery,
+  phalnxSetupSchema,
+  phalnxSetup,
+  phalnxManageSchema,
+  phalnxManage,
+} from "./tools-v2";
+
 // Resources
 import { getPolicyResource } from "./resources/policy";
 import { getSpendingResource } from "./resources/spending";
@@ -203,6 +215,81 @@ async function main() {
     name: "phalnx",
     version: "0.1.0",
   });
+
+  // ── MCP Tool Mode (v2 | legacy | dual) ────────────────────────
+  const mcpMode = process.env.PHALNX_MCP_MODE ?? "dual";
+  const registerV2 = mcpMode === "v2" || mcpMode === "dual";
+  const registerLegacy = mcpMode === "legacy" || mcpMode === "dual";
+
+  // ── V2 Intent-Based Tools ─────────────────────────────────────
+  if (registerV2) {
+    registerTool(
+      server,
+      "phalnx_execute",
+      "Execute any DeFi action through a Phalnx vault. Handles swaps, perps, transfers, lending, escrow, and protocol passthrough. All actions are policy-checked and sandwiched in on-chain guardrails.",
+      {
+        action: (phalnxExecuteSchema.shape as any).action,
+        params: (phalnxExecuteSchema.shape as any).params,
+        vault: (phalnxExecuteSchema.shape as any).vault,
+      },
+      requireClient(async (input) =>
+        phalnxExecute(client!, config!, input, custodyWallet),
+      ),
+    );
+
+    registerTool(
+      server,
+      "phalnx_query",
+      "Query vault state, spending, policies, token prices, portfolio, positions, and protocol capabilities. Read-only — never modifies state.",
+      {
+        query: (phalnxQuerySchema.shape as any).query,
+        params: (phalnxQuerySchema.shape as any).params,
+      },
+      requireClient(async (input) =>
+        phalnxQuery(client!, config!, input, custodyWallet),
+      ),
+    );
+
+    registerTool(
+      server,
+      "phalnx_setup",
+      "Set up and configure Phalnx. Handles wallet generation, TEE provisioning, vault discovery, and initial configuration. Works even when not yet configured.",
+      {
+        step: (phalnxSetupSchema.shape as any).step,
+        params: (phalnxSetupSchema.shape as any).params,
+      },
+      async (input) => ({
+        content: [
+          {
+            type: "text" as const,
+            text: await phalnxSetup(client, config, input, custodyWallet),
+          },
+        ],
+      }),
+    );
+
+    registerTool(
+      server,
+      "phalnx_manage",
+      "Vault owner management: create vaults, deposit/withdraw, register agents, update policies, manage constraints, Squads multisig governance. Owner-only actions.",
+      {
+        action: (phalnxManageSchema.shape as any).action,
+        params: (phalnxManageSchema.shape as any).params,
+        vault: (phalnxManageSchema.shape as any).vault,
+      },
+      requireClient(async (input) =>
+        phalnxManage(client!, config!, input, custodyWallet),
+      ),
+    );
+
+    console.error(
+      `[phalnx-mcp] V2 tools registered (4 intent-based tools)`,
+    );
+  }
+
+  if (!registerLegacy) {
+    // Skip legacy tool registration — jump to resources
+  } else {
 
   // ── Setup & Onboarding Tools (always available) ───────────────
 
@@ -1553,6 +1640,8 @@ async function main() {
     },
     requireClient((input) => squadsStatus(client!, input)),
   );
+
+  } // end registerLegacy
 
   // ── MCP Resources ───────────────────────────────────────────
 
