@@ -149,6 +149,7 @@ export type PolicyConfigAccount = {
   timelockDuration: BN;
   allowedDestinations: PublicKey[];
   hasConstraints: boolean;
+  hasPendingPolicy: boolean;
   hasProtocolCaps: boolean;
   protocolCaps: BN[];
   sessionExpirySlots: BN;

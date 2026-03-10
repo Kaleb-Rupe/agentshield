@@ -6,7 +6,7 @@ export interface ErrorInfo {
 }
 
 /**
- * Maps all 73 Phalnx Anchor error codes (6000–6072) to
+ * Maps all 74 Phalnx Anchor error codes (6000–6073) to
  * human-readable messages with actionable suggestions for AI tools.
  */
 const ERROR_MAP: Record<number, ErrorInfo> = {
@@ -526,6 +526,14 @@ const ERROR_MAP: Record<number, ErrorInfo> = {
       "Instruction constraints must be closed before closing vault",
     suggestion:
       "Close instruction constraints using closeInstructionConstraints before closing the vault.",
+  },
+  6073: {
+    code: 6073,
+    name: "PendingPolicyExists",
+    message:
+      "Pending policy update must be applied or cancelled before closing vault",
+    suggestion:
+      "Apply the pending policy update using applyPendingPolicy, or cancel it using cancelPendingPolicy, before closing the vault. Alternatively, pass the PendingPolicyUpdate PDA in remainingAccounts to clean it up during close.",
   },
 };
 

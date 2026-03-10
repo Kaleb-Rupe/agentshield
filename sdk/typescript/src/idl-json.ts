@@ -346,6 +346,22 @@ export const IDL = {
           relations: ["pending_policy"],
         },
         {
+          name: "policy",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "const",
+                value: [112, 111, 108, 105, 99, 121],
+              },
+              {
+                kind: "account",
+                path: "vault",
+              },
+            ],
+          },
+        },
+        {
           name: "pending_policy",
           writable: true,
           pda: {
@@ -3123,6 +3139,11 @@ export const IDL = {
       name: "ConstraintsNotClosed",
       msg: "Instruction constraints must be closed before closing vault",
     },
+    {
+      code: 6073,
+      name: "PendingPolicyExists",
+      msg: "Pending policy update must be applied or cancelled before closing vault",
+    },
   ],
   types: [
     {
@@ -4478,6 +4499,14 @@ export const IDL = {
             docs: [
               "Whether instruction constraints PDA exists for this vault.",
               "Set true by create_instruction_constraints, false by close_instruction_constraints.",
+            ],
+            type: "bool",
+          },
+          {
+            name: "has_pending_policy",
+            docs: [
+              "Whether a pending policy update PDA exists for this vault.",
+              "Set true by queue_policy_update, false by apply/cancel_pending_policy.",
             ],
             type: "bool",
           },

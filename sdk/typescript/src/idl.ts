@@ -397,6 +397,22 @@ export type Phalnx = {
           relations: ["pendingPolicy"];
         },
         {
+          name: "policy";
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: "const";
+                value: [112, 111, 108, 105, 99, 121];
+              },
+              {
+                kind: "account";
+                path: "vault";
+              },
+            ];
+          };
+        },
+        {
           name: "pendingPolicy";
           writable: true;
           pda: {
@@ -3618,6 +3634,11 @@ export type Phalnx = {
       code: 6072;
       name: "constraintsNotClosed";
       msg: "Instruction constraints must be closed before closing vault";
+    },
+    {
+      code: 6073;
+      name: "pendingPolicyExists";
+      msg: "Pending policy update must be applied or cancelled before closing vault";
     },
   ];
   types: [

@@ -232,4 +232,8 @@ pub enum PhalnxError {
 
     #[msg("Instruction constraints must be closed before closing vault")]
     ConstraintsNotClosed,
+
+    // 6073
+    #[msg("Pending policy update must be applied or cancelled before closing vault")]
+    PendingPolicyExists,
 }

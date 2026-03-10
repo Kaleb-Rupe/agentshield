@@ -268,7 +268,10 @@ export function buildCloseVault(
   const [policy] = getPolicyPDA(vault, program.programId);
   const [tracker] = getTrackerPDA(vault, program.programId);
   const [agentSpendOverlay] = getAgentOverlayPDA(vault, program.programId);
+  const [pendingPolicy] = getPendingPolicyPDA(vault, program.programId);
 
+  // Always pass PendingPolicyUpdate PDA — on-chain guard requires it when
+  // has_pending_policy is true, and harmlessly ignores it when false.
   return program.methods.closeVault().accounts({
     owner,
     vault,
@@ -276,7 +279,13 @@ export function buildCloseVault(
     tracker,
     agentSpendOverlay,
     systemProgram: SystemProgram.programId,
-  } as any);
+  } as any).remainingAccounts([
+    {
+      pubkey: pendingPolicy,
+      isWritable: true,
+      isSigner: false,
+    },
+  ]);
 }
 
 export function buildQueuePolicyUpdate(
@@ -337,9 +346,12 @@ export function buildCancelPendingPolicy(
 ) {
   const [pendingPolicy] = getPendingPolicyPDA(vault, program.programId);
 
+  const [policy] = getPolicyPDA(vault, program.programId);
+
   return program.methods.cancelPendingPolicy().accounts({
     owner,
     vault,
+    policy,
     pendingPolicy,
   } as any);
 }
