@@ -86,7 +86,7 @@ pub fn handler(ctx: Context<CloseVault>) -> Result<()> {
             .ok_or(error!(PhalnxError::Overflow))?;
         **pending_info.try_borrow_mut_lamports()? = 0;
         pending_info.assign(&anchor_lang::system_program::ID);
-        pending_info.realloc(0, false)?;
+        pending_info.resize(0)?;
     }
 
     let clock = Clock::get()?;

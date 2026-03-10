@@ -1,7 +1,7 @@
 # Phalnx
 
 [![CI](https://github.com/Kaleb-Rupe/phalnx/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Kaleb-Rupe/phalnx/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-2046-brightgreen)
+![Tests](https://img.shields.io/badge/tests-1660-brightgreen)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 
 On-chain guardrails for AI agents on Solana. Your policies are enforced by Solana validators, not software promises.
@@ -194,7 +194,7 @@ anchor build --no-idl
 # Generate IDL separately (requires nightly Rust — anchor-syn 0.32.1 bug)
 RUSTUP_TOOLCHAIN=nightly anchor idl build -o target/idl/phalnx.json
 
-# Run on-chain tests (288 LiteSVM tests — no validator needed)
+# Run on-chain tests (325 LiteSVM tests — no validator needed)
 npx ts-mocha -p ./tsconfig.json -t 300000 \
   tests/phalnx.ts tests/jupiter-integration.ts \
   tests/flash-trade-integration.ts tests/security-exploits.ts \
@@ -212,25 +212,24 @@ cargo fmt --check --manifest-path programs/phalnx/Cargo.toml
 
 | Suite                                                | Tests   |
 | ---------------------------------------------------- | ------- |
-| Core vault management & permission engine            |      77 |
+| Core vault management & permission engine            |      87 |
 | Jupiter integration (composed swaps)                 |       8 |
 | Jupiter Lend integration (deposit/withdraw)          |       6 |
 | Flash Trade integration (leveraged perps)            |      29 |
-| Security exploit scenarios                           |     118 |
-| Instruction constraints                              |      20 |
-| Escrow integration                                   |      14 |
-| Rust unit tests (on-chain)                           |      75 |
-| Devnet integration tests (real network)              |      68 |
+| Security exploit scenarios                           |     142 |
+| Instruction constraints (generic enforcement)        |      39 |
+| Escrow integration (deposit/settle/refund)           |      14 |
+| Devnet integration tests (real network)              |      69 |
 | Surfpool integration tests (local Surfnet)           |      20 |
 | Core policy engine (`@phalnx/core`)                  |      66 |
-| SDK tests (`@phalnx/sdk`)                            |     192 |
+| SDK tests (`@phalnx/sdk`)                            |     639 |
 | Platform client tests (`@phalnx/platform`)           |      17 |
 | Crossmint custody adapter                            |      29 |
-| SAK plugin (`@phalnx/plugin-solana-agent-kit`)       |      29 |
+| SAK plugin (`@phalnx/plugin-solana-agent-kit`)       |      34 |
 | ElizaOS plugin (`@phalnx/plugin-elizaos`)            |      35 |
-| MCP server (`@phalnx/mcp`)                           |     312 |
-| Actions server (`@phalnx/actions-server`)            |      66 |
-| **Total**                                            | **~2,046** |
+| MCP server (`@phalnx/mcp`)                           |     343 |
+| Actions server (`@phalnx/actions-server`)            |      83 |
+| **Total**                                            | **1660** |
 
 ## Security
 

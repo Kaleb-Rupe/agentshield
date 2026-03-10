@@ -66,7 +66,7 @@ pub fn handler(ctx: Context<CloseInstructionConstraints>) -> Result<()> {
             **pending_info.try_borrow_mut_lamports()? = 0;
             // Zero the data to mark account as closed
             pending_info.assign(&anchor_lang::system_program::ID);
-            pending_info.realloc(0, false)?;
+            pending_info.resize(0)?;
         }
     }
 

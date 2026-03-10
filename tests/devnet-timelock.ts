@@ -219,6 +219,7 @@ describe("devnet-timelock", () => {
       .accounts({
         owner: owner.publicKey,
         vault: vault.vaultPda,
+        policy: vault.policyPda,
         pendingPolicy: vault.pendingPolicyPda,
       } as any)
       .rpc();
@@ -261,6 +262,7 @@ describe("devnet-timelock", () => {
       .accounts({
         owner: owner.publicKey,
         vault: vault.vaultPda,
+        policy: vault.policyPda,
         pendingPolicy: vault.pendingPolicyPda,
       } as any)
       .rpc();
