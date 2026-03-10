@@ -90,6 +90,12 @@ pub fn handler(ctx: Context<AgentTransfer>, amount: u64) -> Result<()> {
     // 1. Vault must be active
     require!(vault.is_active(), PhalnxError::VaultNotActive);
 
+    // 1a-pre. Agent must not be paused
+    require!(
+        !vault.is_agent_paused(&ctx.accounts.agent.key()),
+        PhalnxError::AgentPaused
+    );
+
     // 1a. Agent must have Transfer permission (single lookup replaces has_permission + get_agent)
     let agent_key = ctx.accounts.agent.key();
     let agent_entry = vault

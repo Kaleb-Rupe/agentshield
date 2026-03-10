@@ -67,8 +67,12 @@ pub fn handler(ctx: Context<RefundEscrow>) -> Result<()> {
     let source_vault = &ctx.accounts.source_vault;
     let clock = Clock::get()?;
 
-    // 1. If signer is agent (not owner), check RefundEscrow permission
+    // 1. If signer is agent (not owner), check pause status and RefundEscrow permission
     if source_vault.owner != ctx.accounts.source_signer.key() {
+        require!(
+            !source_vault.is_agent_paused(&ctx.accounts.source_signer.key()),
+            PhalnxError::AgentPaused
+        );
         require!(
             source_vault
                 .has_permission(&ctx.accounts.source_signer.key(), &ActionType::RefundEscrow),

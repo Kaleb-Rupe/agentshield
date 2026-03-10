@@ -113,6 +113,12 @@ pub fn handler(
     let policy = &ctx.accounts.policy;
     let clock = Clock::get()?;
 
+    // 0b. Agent must not be paused
+    require!(
+        !source_vault.is_agent_paused(&ctx.accounts.agent.key()),
+        PhalnxError::AgentPaused
+    );
+
     // 1. Permission check
     require!(
         source_vault.has_permission(&ctx.accounts.agent.key(), &ActionType::CreateEscrow),

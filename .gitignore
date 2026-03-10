@@ -42,9 +42,8 @@ certora/output/
 *.ll
 
 # Claude Code skills (local development tools)
-.claude/skills/
+.claude
 /MEMORY
-
 /Plans
 packages/mcp/Plans
 apps/actions-server/Plans
@@ -52,3 +51,6 @@ sdk/core/Plans
 sdk/custody/crossmint/Plans
 sdk/custody/turnkey/Plans
 programs/phalnx/Plans
+
+# Production audit
+PRODUCTION_AUDIT.md

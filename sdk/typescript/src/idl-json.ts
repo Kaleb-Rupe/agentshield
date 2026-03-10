@@ -78,7 +78,7 @@ export const IDL = {
         },
         {
           name: "agent_spend_overlay",
-          docs: ["Zero-copy AgentSpendOverlay \u2014 per-agent rolling spend"],
+          docs: ["Zero-copy AgentSpendOverlay — per-agent rolling spend"],
           writable: true,
         },
         {
@@ -360,6 +360,7 @@ export const IDL = {
               },
             ],
           },
+          relations: ["vault"],
         },
         {
           name: "pending_policy",
@@ -455,7 +456,7 @@ export const IDL = {
     },
     {
       name: "close_settled_escrow",
-      docs: ["Close a settled/refunded escrow PDA \u2014 owner reclaims rent."],
+      docs: ["Close a settled/refunded escrow PDA — owner reclaims rent."],
       discriminator: [169, 244, 164, 173, 181, 214, 139, 6],
       accounts: [
         {
@@ -575,7 +576,7 @@ export const IDL = {
         },
         {
           name: "tracker",
-          docs: ["Zero-copy SpendTracker \u2014 close returns rent to owner"],
+          docs: ["Zero-copy SpendTracker — close returns rent to owner"],
           writable: true,
           pda: {
             seeds: [
@@ -592,9 +593,7 @@ export const IDL = {
         },
         {
           name: "agent_spend_overlay",
-          docs: [
-            "Zero-copy AgentSpendOverlay \u2014 close returns rent to owner",
-          ],
+          docs: ["Zero-copy AgentSpendOverlay — close returns rent to owner"],
           writable: true,
         },
         {
@@ -672,7 +671,7 @@ export const IDL = {
         },
         {
           name: "agent_spend_overlay",
-          docs: ["Zero-copy AgentSpendOverlay \u2014 per-agent rolling spend"],
+          docs: ["Zero-copy AgentSpendOverlay — per-agent rolling spend"],
           writable: true,
         },
         {
@@ -728,7 +727,7 @@ export const IDL = {
         {
           name: "escrow_ata",
           docs: [
-            "Escrow-owned ATA \u2014 init_if_needed because escrow PDA is created in same ix",
+            "Escrow-owned ATA — init_if_needed because escrow PDA is created in same ix",
           ],
           writable: true,
           pda: {
@@ -1134,7 +1133,7 @@ export const IDL = {
         },
         {
           name: "agent_spend_overlay",
-          docs: ["Zero-copy AgentSpendOverlay \u2014 per-agent rolling spend"],
+          docs: ["Zero-copy AgentSpendOverlay — per-agent rolling spend"],
           writable: true,
         },
         {
@@ -1146,7 +1145,7 @@ export const IDL = {
         {
           name: "output_stablecoin_account",
           docs: [
-            "Vault's stablecoin ATA for non-stablecoin\u2192stablecoin swap verification.",
+            "Vault's stablecoin ATA for non-stablecoin→stablecoin swap verification.",
             "Required when session.output_mint != Pubkey::default().",
           ],
           writable: true,
@@ -1167,6 +1166,43 @@ export const IDL = {
           type: "bool",
         },
       ],
+    },
+    {
+      name: "freeze_vault",
+      docs: [
+        "Freeze the vault immediately. Preserves all agent entries.",
+        "Only the owner can call this. Use reactivate_vault to unfreeze.",
+      ],
+      discriminator: [144, 211, 63, 236, 97, 31, 170, 175],
+      accounts: [
+        {
+          name: "owner",
+          signer: true,
+          relations: ["vault"],
+        },
+        {
+          name: "vault",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "const",
+                value: [118, 97, 117, 108, 116],
+              },
+              {
+                kind: "account",
+                path: "owner",
+              },
+              {
+                kind: "account",
+                path: "vault.vault_id",
+                account: "AgentVault",
+              },
+            ],
+          },
+        },
+      ],
+      args: [],
     },
     {
       name: "initialize_vault",
@@ -1237,7 +1273,7 @@ export const IDL = {
         },
         {
           name: "agent_spend_overlay",
-          docs: ["Agent spend overlay \u2014 per-agent contribution tracking"],
+          docs: ["Agent spend overlay — per-agent contribution tracking"],
           writable: true,
         },
         {
@@ -1302,6 +1338,48 @@ export const IDL = {
           type: {
             vec: "u64",
           },
+        },
+      ],
+    },
+    {
+      name: "pause_agent",
+      docs: [
+        "Pause a specific agent. Blocks all agent actions while preserving config.",
+        "Only the owner can call this.",
+      ],
+      discriminator: [148, 32, 1, 26, 147, 122, 178, 140],
+      accounts: [
+        {
+          name: "owner",
+          signer: true,
+          relations: ["vault"],
+        },
+        {
+          name: "vault",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "const",
+                value: [118, 97, 117, 108, 116],
+              },
+              {
+                kind: "account",
+                path: "owner",
+              },
+              {
+                kind: "account",
+                path: "vault.vault_id",
+                account: "AgentVault",
+              },
+            ],
+          },
+        },
+      ],
+      args: [
+        {
+          name: "agent_to_pause",
+          type: "pubkey",
         },
       ],
     },
@@ -1442,6 +1520,7 @@ export const IDL = {
         },
         {
           name: "policy",
+          writable: true,
           pda: {
             seeds: [
               {
@@ -1624,7 +1703,7 @@ export const IDL = {
     {
       name: "refund_escrow",
       docs: [
-        "Refund an escrow \u2014 source vault's agent or owner reclaims funds after expiry.",
+        "Refund an escrow — source vault's agent or owner reclaims funds after expiry.",
         "Cap charge is NOT reversed (prevents cap-washing attacks).",
       ],
       discriminator: [107, 186, 89, 99, 26, 194, 23, 204],
@@ -1769,7 +1848,7 @@ export const IDL = {
         },
         {
           name: "agent_spend_overlay",
-          docs: ["Agent spend overlay \u2014 per-agent tracking slot."],
+          docs: ["Agent spend overlay — per-agent tracking slot."],
           writable: true,
         },
       ],
@@ -1824,7 +1903,7 @@ export const IDL = {
         },
         {
           name: "agent_spend_overlay",
-          docs: ["Agent spend overlay \u2014 release slot on revocation."],
+          docs: ["Agent spend overlay — release slot on revocation."],
           writable: true,
         },
       ],
@@ -1838,7 +1917,7 @@ export const IDL = {
     {
       name: "settle_escrow",
       docs: [
-        "Settle an escrow \u2014 destination vault's agent claims funds before expiry.",
+        "Settle an escrow — destination vault's agent claims funds before expiry.",
         "For conditional escrows, proof must match the SHA-256 condition hash.",
       ],
       discriminator: [22, 135, 160, 194, 23, 186, 124, 110],
@@ -2007,6 +2086,48 @@ export const IDL = {
         {
           name: "actual_positions",
           type: "u8",
+        },
+      ],
+    },
+    {
+      name: "unpause_agent",
+      docs: [
+        "Unpause a paused agent. Restores ability to execute actions.",
+        "Only the owner can call this.",
+      ],
+      discriminator: [46, 125, 165, 212, 241, 143, 190, 95],
+      accounts: [
+        {
+          name: "owner",
+          signer: true,
+          relations: ["vault"],
+        },
+        {
+          name: "vault",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "const",
+                value: [118, 97, 117, 108, 116],
+              },
+              {
+                kind: "account",
+                path: "owner",
+              },
+              {
+                kind: "account",
+                path: "vault.vault_id",
+                account: "AgentVault",
+              },
+            ],
+          },
+        },
+      ],
+      args: [
+        {
+          name: "agent_to_unpause",
+          type: "pubkey",
         },
       ],
     },
@@ -2395,13 +2516,13 @@ export const IDL = {
         },
         {
           name: "agent_spend_overlay",
-          docs: ["Zero-copy AgentSpendOverlay \u2014 per-agent rolling spend"],
+          docs: ["Zero-copy AgentSpendOverlay — per-agent rolling spend"],
           writable: true,
         },
         {
           name: "session",
           docs: [
-            "Ephemeral session PDA \u2014 `init` ensures no double-authorization.",
+            "Ephemeral session PDA — `init` ensures no double-authorization.",
             "Seeds include token_mint for per-token concurrent sessions.",
           ],
           writable: true,
@@ -2434,7 +2555,7 @@ export const IDL = {
         {
           name: "token_mint_account",
           docs: [
-            "The token mint being spent \u2014 constrained to match token_mint arg",
+            "The token mint being spent — constrained to match token_mint arg",
           ],
         },
         {
@@ -2665,6 +2786,10 @@ export const IDL = {
       discriminator: [85, 90, 59, 218, 126, 8, 179, 63],
     },
     {
+      name: "AgentPausedEvent",
+      discriminator: [39, 74, 148, 94, 198, 166, 121, 23],
+    },
+    {
       name: "AgentPermissionsUpdated",
       discriminator: [203, 110, 249, 149, 51, 17, 246, 63],
     },
@@ -2683,6 +2808,10 @@ export const IDL = {
     {
       name: "AgentTransferExecuted",
       discriminator: [88, 52, 117, 69, 112, 152, 167, 40],
+    },
+    {
+      name: "AgentUnpausedEvent",
+      discriminator: [218, 187, 253, 124, 79, 192, 42, 181],
     },
     {
       name: "ConstraintsChangeApplied",
@@ -2767,6 +2896,10 @@ export const IDL = {
     {
       name: "VaultCreated",
       discriminator: [117, 25, 120, 254, 75, 236, 78, 115],
+    },
+    {
+      name: "VaultFrozen",
+      discriminator: [13, 199, 172, 111, 88, 10, 151, 247],
     },
     {
       name: "VaultReactivated",
@@ -2912,7 +3045,7 @@ export const IDL = {
     {
       code: 6027,
       name: "TimelockActive",
-      msg: "Vault has timelock active \u2014 use queue_policy_update instead",
+      msg: "Vault has timelock active — use queue_policy_update instead",
     },
     {
       code: 6028,
@@ -3144,6 +3277,21 @@ export const IDL = {
       name: "PendingPolicyExists",
       msg: "Pending policy update must be applied or cancelled before closing vault",
     },
+    {
+      code: 6074,
+      name: "AgentPaused",
+      msg: "Agent is paused and cannot execute actions",
+    },
+    {
+      code: 6075,
+      name: "AgentAlreadyPaused",
+      msg: "Agent is already paused",
+    },
+    {
+      code: 6076,
+      name: "AgentNotPaused",
+      msg: "Agent is not paused",
+    },
   ],
   types: [
     {
@@ -3300,7 +3448,7 @@ export const IDL = {
         "Tracks each agent's individual spend contributions using a 24-bucket",
         "hourly epoch scheme with per-entry `last_write_epoch` for correct gap-zeroing.",
         "",
-        "Layout: 32 (agent) + 8 (last_write_epoch) + 8 \u00d7 24 (contributions) = 232 bytes",
+        "Layout: 32 (agent) + 8 (last_write_epoch) + 8 × 24 (contributions) = 232 bytes",
       ],
       serialization: "bytemuck",
       repr: {
@@ -3356,6 +3504,30 @@ export const IDL = {
           {
             name: "spending_limit_usd",
             type: "u64",
+          },
+          {
+            name: "paused",
+            type: "bool",
+          },
+        ],
+      },
+    },
+    {
+      name: "AgentPausedEvent",
+      type: {
+        kind: "struct",
+        fields: [
+          {
+            name: "vault",
+            type: "pubkey",
+          },
+          {
+            name: "agent",
+            type: "pubkey",
+          },
+          {
+            name: "timestamp",
+            type: "i64",
           },
         ],
       },
@@ -3478,7 +3650,7 @@ export const IDL = {
         "Supports up to 10 agents (matches MAX_AGENTS_PER_VAULT).",
         "",
         "Size calculation:",
-        "8 (discriminator) + 32 (vault) + 232 \u00d7 10 (entries) + 1 (bump) + 7 (padding) = 2,368 bytes",
+        "8 (discriminator) + 32 (vault) + 232 × 10 (entries) + 1 (bump) + 7 (padding) = 2,368 bytes",
       ],
       serialization: "bytemuck",
       repr: {
@@ -3548,6 +3720,26 @@ export const IDL = {
       },
     },
     {
+      name: "AgentUnpausedEvent",
+      type: {
+        kind: "struct",
+        fields: [
+          {
+            name: "vault",
+            type: "pubkey",
+          },
+          {
+            name: "agent",
+            type: "pubkey",
+          },
+          {
+            name: "timestamp",
+            type: "i64",
+          },
+        ],
+      },
+    },
+    {
       name: "AgentVault",
       type: {
         kind: "struct",
@@ -3580,7 +3772,7 @@ export const IDL = {
           {
             name: "fee_destination",
             docs: [
-              "Developer fee destination \u2014 IMMUTABLE after initialization.",
+              "Developer fee destination — IMMUTABLE after initialization.",
               "Prevents a compromised owner from redirecting fees.",
             ],
             type: "pubkey",
@@ -3791,7 +3983,7 @@ export const IDL = {
       name: "EpochBucket",
       docs: [
         "A single epoch bucket tracking aggregate USD spend.",
-        "16 bytes per bucket. USD-only \u2014 rate limiting stays client-side.",
+        "16 bytes per bucket. USD-only — rate limiting stays client-side.",
       ],
       serialization: "bytemuck",
       repr: {
@@ -4728,7 +4920,7 @@ export const IDL = {
           {
             name: "output_mint",
             docs: [
-              "Expected output stablecoin mint for non-stablecoin\u2192stablecoin swaps.",
+              "Expected output stablecoin mint for non-stablecoin→stablecoin swaps.",
               "Pubkey::default() when input is already a stablecoin (no snapshot needed).",
             ],
             type: "pubkey",
@@ -4833,7 +5025,7 @@ export const IDL = {
             name: "last_write_epoch",
             docs: [
               "Epoch of most recent record_spend() call. Enables early exit in get_rolling_24h_usd().",
-              "Zero-initialized \u2014 value 0 correctly triggers early exit (current_epoch >> 144).",
+              "Zero-initialized — value 0 correctly triggers early exit (current_epoch >> 144).",
             ],
             type: "i64",
           },
@@ -4888,6 +5080,30 @@ export const IDL = {
           {
             name: "vault_id",
             type: "u64",
+          },
+          {
+            name: "timestamp",
+            type: "i64",
+          },
+        ],
+      },
+    },
+    {
+      name: "VaultFrozen",
+      type: {
+        kind: "struct",
+        fields: [
+          {
+            name: "vault",
+            type: "pubkey",
+          },
+          {
+            name: "owner",
+            type: "pubkey",
+          },
+          {
+            name: "agents_preserved",
+            type: "u8",
           },
           {
             name: "timestamp",

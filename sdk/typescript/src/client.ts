@@ -16,6 +16,7 @@ import {
   EPOCH_DURATION,
   NUM_EPOCHS,
   hasPermission,
+  isStablecoinMint,
 } from "./types";
 import type {
   Phalnx,
@@ -73,6 +74,9 @@ import {
   buildFinalizeSession,
   buildRevokeAgent,
   buildReactivateVault,
+  buildFreezeVault,
+  buildPauseAgent,
+  buildUnpauseAgent,
   buildWithdrawFunds,
   buildCloseVault,
   buildQueuePolicyUpdate,
@@ -570,6 +574,21 @@ export class PhalnxClient {
       newAgent,
       newAgentPermissions,
     ).rpc();
+  }
+
+  async freezeVault(vault: PublicKey): Promise<string> {
+    const owner = this.provider.wallet.publicKey;
+    return buildFreezeVault(this.program, owner, vault).rpc();
+  }
+
+  async pauseAgent(vault: PublicKey, agent: PublicKey): Promise<string> {
+    const owner = this.provider.wallet.publicKey;
+    return buildPauseAgent(this.program, owner, vault, agent).rpc();
+  }
+
+  async unpauseAgent(vault: PublicKey, agent: PublicKey): Promise<string> {
+    const owner = this.provider.wallet.publicKey;
+    return buildUnpauseAgent(this.program, owner, vault, agent).rpc();
   }
 
   async updateAgentPermissions(
@@ -1751,6 +1770,73 @@ export class PhalnxClient {
   // --- Intent Execution (Direct agent path) ---
 
   /**
+   * Estimate USD amount for a spending intent.
+   * Returns the amount in USD (human units), or null if amount cannot be estimated
+   * (e.g., non-stablecoin swap input — on-chain doesn't cap-check these either).
+   */
+  private getIntentAmountUsd(intent: IntentAction): number | null {
+    const p = intent.params as Record<string, unknown>;
+    switch (intent.type) {
+      // Stablecoin-denominated amount fields
+      case "transfer":
+      case "deposit":
+      case "createEscrow":
+      case "driftDeposit":
+      case "kaminoDeposit":
+      case "kaminoRepay": {
+        const mint = p.mint as string | undefined;
+        if (!mint) return null;
+        const token = resolveToken(mint);
+        if (!token) return null;
+        if (!isStablecoinMint(token.mint)) return null;
+        const amount = parseFloat(p.amount as string);
+        return Number.isFinite(amount) && amount >= 0 ? amount : null;
+      }
+
+      // Swap: only estimate if input is stablecoin
+      case "swap":
+      case "swapAndOpenPosition":
+      case "driftSpotOrder": {
+        const inputMint = (p.inputMint ?? p.tokenMint) as string | undefined;
+        if (!inputMint) return null;
+        const token = resolveToken(inputMint);
+        if (!token) return null;
+        if (!isStablecoinMint(token.mint)) return null;
+        const amount = parseFloat(p.amount as string);
+        return Number.isFinite(amount) && amount >= 0 ? amount : null;
+      }
+
+      // Perps: collateral is USD-denominated
+      case "openPosition": {
+        const collateral = parseFloat(p.collateral as string);
+        return Number.isFinite(collateral) && collateral >= 0
+          ? collateral
+          : null;
+      }
+      case "increasePosition":
+      case "addCollateral": {
+        const collateralAmount = parseFloat(p.collateralAmount as string);
+        return Number.isFinite(collateralAmount) && collateralAmount >= 0
+          ? collateralAmount
+          : null;
+      }
+
+      // Limit orders: reserve amount is USD-denominated
+      case "placeLimitOrder": {
+        const reserveAmount = parseFloat(p.reserveAmount as string);
+        return Number.isFinite(reserveAmount) && reserveAmount >= 0
+          ? reserveAmount
+          : null;
+      }
+
+      // Drift perp orders: amount is notional, not directly USD — skip
+      case "driftPerpOrder":
+      default:
+        return null;
+    }
+  }
+
+  /**
    * Pre-flight policy check: validates an intent against on-chain vault state
    * before submitting a transaction.
    */
@@ -1785,7 +1871,8 @@ export class PhalnxClient {
     const agentPermissions = agentEntry
       ? BigInt(agentEntry.permissions.toString())
       : 0n;
-    const permPassed = hasPermission(agentPermissions, intent.type);
+    const baseActionKey = Object.keys(mapping.actionType)[0];
+    const permPassed = hasPermission(agentPermissions, baseActionKey);
 
     // Check spending cap (for spending actions only)
     let capDetails: PrecheckResult["details"]["spendingCap"] | undefined;
@@ -1804,11 +1891,16 @@ export class PhalnxClient {
       const capUsd = policyAccount.dailySpendingCapUsd.toNumber() / 1_000_000;
       const remaining = Math.max(0, capUsd - spent24hUsd);
 
+      const intentAmountUsd = this.getIntentAmountUsd(intent);
       capDetails = {
-        passed: remaining > 0,
+        passed:
+          intentAmountUsd !== null
+            ? intentAmountUsd <= remaining
+            : remaining > 0,
         spent24h: spent24hUsd,
         cap: capUsd,
         remaining,
+        intentAmount: intentAmountUsd ?? undefined,
       };
 
       if (capUsd > 0) {
@@ -1831,7 +1923,7 @@ export class PhalnxClient {
     ) {
       const intentBps = intent.params.slippageBps as number;
       const vaultMaxBps = policyAccount.maxSlippageBps;
-      const slipPassed = vaultMaxBps === 0 || intentBps <= vaultMaxBps;
+      const slipPassed = intentBps <= vaultMaxBps;
       slippageDetails = {
         passed: slipPassed,
         intentBps,
@@ -1864,7 +1956,7 @@ export class PhalnxClient {
       details: {
         permission: {
           passed: permPassed,
-          requiredBit: intent.type,
+          requiredBit: baseActionKey,
           agentHas: !!agentEntry,
         },
         spendingCap: capDetails,

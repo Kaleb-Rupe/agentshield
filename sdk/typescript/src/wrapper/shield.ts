@@ -76,7 +76,7 @@ export interface ShieldedWallet extends WalletLike {
   updatePolicies(policies: ShieldPolicies): void;
   /** Reset all spending state */
   resetState(): void;
-  /** Pause policy enforcement — transactions pass through without checks or spend recording */
+  /** Pause the wallet — blocks all signing with ShieldDeniedError until resume() is called */
   pause(): void;
   /** Resume policy enforcement after a pause */
   resume(): void;
@@ -155,7 +155,14 @@ export function shield(
       tx: T,
     ): Promise<T> {
       if (paused) {
-        return wallet.signTransaction(tx);
+        throw new ShieldDeniedError([
+          {
+            rule: "rate_limit",
+            message:
+              "Wallet is paused — all signing is blocked until resume() is called",
+            suggestion: "Call resume() to re-enable signing",
+          },
+        ]);
       }
 
       // Resolve ALTs for VersionedTransactions when connection is available
@@ -198,10 +205,14 @@ export function shield(
       txs: T[],
     ): Promise<T[]> {
       if (paused) {
-        if (wallet.signAllTransactions) {
-          return wallet.signAllTransactions(txs);
-        }
-        return Promise.all(txs.map((tx) => wallet.signTransaction(tx)));
+        throw new ShieldDeniedError([
+          {
+            rule: "rate_limit",
+            message:
+              "Wallet is paused — all signing is blocked until resume() is called",
+            suggestion: "Call resume() to re-enable signing",
+          },
+        ]);
       }
 
       // Resolve ALTs for any VersionedTransactions in the batch,

@@ -162,6 +162,12 @@ pub fn handler(
     // 1. Vault must be active
     require!(vault.is_active(), PhalnxError::VaultNotActive);
 
+    // 1a-pre. Agent must not be paused
+    require!(
+        !vault.is_agent_paused(&ctx.accounts.agent.key()),
+        PhalnxError::AgentPaused
+    );
+
     // 1a. Agent must have permission for this action type
     require!(
         vault.has_permission(&ctx.accounts.agent.key(), &action_type),

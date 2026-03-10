@@ -723,7 +723,7 @@ describe("wrapper — shieldWallet() & harden()", () => {
       expect(protected_.publicKey.equals(wallet.publicKey)).to.be.true;
     });
 
-    it("pause() allows transaction that would normally be blocked", async () => {
+    it("pause() blocks all signing with ShieldDeniedError", async () => {
       const wallet = createMockWallet();
       const protected_ = shield(wallet, {
         maxSpend: "100 USDC/day",
@@ -731,15 +731,22 @@ describe("wrapper — shieldWallet() & harden()", () => {
 
       protected_.pause();
 
-      // This 200 USDC tx would normally be blocked by the 100 USDC cap
       const tx = buildSplTransferTx(
         wallet.publicKey,
         USDC_MINT,
         BigInt(200_000_000),
         6,
       );
-      await protected_.signTransaction(tx);
-      expect(wallet.signCount).to.equal(1);
+      try {
+        await protected_.signTransaction(tx);
+        expect.fail("Should have thrown ShieldDeniedError");
+      } catch (err) {
+        expect(err).to.be.instanceOf(ShieldDeniedError);
+        expect((err as ShieldDeniedError).violations[0].rule).to.equal(
+          "rate_limit",
+        );
+      }
+      expect(wallet.signCount).to.equal(0);
     });
 
     it("resume() re-enables enforcement after pause", async () => {
@@ -778,7 +785,7 @@ describe("wrapper — shieldWallet() & harden()", () => {
       expect(protected_.isPaused).to.be.false;
     });
 
-    it("spending is NOT tracked while paused", async () => {
+    it("signing while paused throws ShieldDeniedError, nothing is tracked", async () => {
       const wallet = createMockWallet();
       const protected_ = shield(wallet, {
         maxSpend: "500 USDC/day",
@@ -787,18 +794,24 @@ describe("wrapper — shieldWallet() & harden()", () => {
 
       protected_.pause();
 
-      // Sign a 300 USDC tx while paused — should not be tracked
+      // Attempting to sign while paused must throw
       const tx1 = buildSplTransferTx(
         wallet.publicKey,
         USDC_MINT,
         BigInt(300_000_000),
         6,
       );
-      await protected_.signTransaction(tx1);
+      try {
+        await protected_.signTransaction(tx1);
+        expect.fail("Should have thrown ShieldDeniedError");
+      } catch (err) {
+        expect(err).to.be.instanceOf(ShieldDeniedError);
+      }
+      expect(wallet.signCount).to.equal(0);
 
       protected_.resume();
 
-      // Now try 300 USDC — should pass since paused spend wasn't tracked
+      // After resume, full cap is available (nothing was tracked while paused)
       const tx2 = buildSplTransferTx(
         wallet.publicKey,
         USDC_MINT,
@@ -806,7 +819,7 @@ describe("wrapper — shieldWallet() & harden()", () => {
         6,
       );
       await protected_.signTransaction(tx2);
-      expect(wallet.signCount).to.equal(2);
+      expect(wallet.signCount).to.equal(1);
     });
 
     it("getSpendingSummary() returns correct token spend and rate limit", async () => {

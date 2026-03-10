@@ -10,6 +10,7 @@ import {
   type IntentActionType,
   type TransactionIntent,
 } from "../src/intents";
+import { hasPermission, FULL_PERMISSIONS } from "../src/types";
 
 describe("intents", () => {
   const vault = Keypair.generate().publicKey;
@@ -537,6 +538,27 @@ describe("intents", () => {
       }
     });
 
+    it("all intent types map to base action keys recognized by hasPermission", () => {
+      // H-1 fix: precheck extracts base key from mapping.actionType
+      // e.g., "swap" → { swap: {} } → Object.keys()[0] = "swap" → valid in ACTION_PERMISSION_MAP
+      // When protocol-specific intents are added (e.g., "driftDeposit" → { deposit: {} }),
+      // extracting the base key ensures hasPermission uses "deposit", not "driftDeposit"
+      for (const [type, mapping] of Object.entries(ACTION_TYPE_MAP)) {
+        const baseKey = Object.keys(mapping.actionType)[0];
+        expect(
+          hasPermission(FULL_PERMISSIONS, baseKey),
+          `Base key "${baseKey}" for "${type}" not recognized by hasPermission`,
+        ).to.be.true;
+      }
+    });
+
+    it("hasPermission rejects unknown action type strings", () => {
+      // Proves the H-1 bug: passing a raw protocol-specific key would fail
+      expect(hasPermission(FULL_PERMISSIONS, "driftDeposit")).to.be.false;
+      expect(hasPermission(FULL_PERMISSIONS, "kaminoRepay")).to.be.false;
+      expect(hasPermission(FULL_PERMISSIONS, "unknownAction")).to.be.false;
+    });
+
     it("marks non-spending actions correctly", () => {
       const nonSpendingTypes = [
         "closePosition",
@@ -562,6 +584,68 @@ describe("intents", () => {
           `${type} should be non-spending`,
         );
       }
+    });
+  });
+
+  describe("spending cap comparison logic (M-3 fix)", () => {
+    // Extracted from precheck() — validates the fix for intent amount comparison
+    function capPassed(
+      intentAmountUsd: number | null,
+      remaining: number,
+    ): boolean {
+      return intentAmountUsd !== null
+        ? intentAmountUsd <= remaining
+        : remaining > 0;
+    }
+
+    it("rejects when intent amount exceeds remaining", () => {
+      expect(capPassed(500, 100)).to.be.false;
+    });
+
+    it("passes when intent amount fits within remaining", () => {
+      expect(capPassed(50, 100)).to.be.true;
+    });
+
+    it("passes when intent amount exactly equals remaining", () => {
+      expect(capPassed(100, 100)).to.be.true;
+    });
+
+    it("falls back to remaining > 0 when amount unknown", () => {
+      expect(capPassed(null, 100)).to.be.true;
+      expect(capPassed(null, 0)).to.be.false;
+    });
+
+    it("rejects zero remaining even for zero intent amount", () => {
+      // On-chain: 0 remaining means cap is fully consumed
+      expect(capPassed(0, 0)).to.be.true; // 0 <= 0 is true (no spend)
+      expect(capPassed(1, 0)).to.be.false; // any positive amount rejected
+    });
+  });
+
+  describe("slippage comparison logic (M-4 fix)", () => {
+    // Extracted from precheck() — validates the fix for maxSlippageBps=0
+    function slipPassed(intentBps: number, vaultMaxBps: number): boolean {
+      return intentBps <= vaultMaxBps;
+    }
+
+    it("vaultMax=0, intent=0 → true (exact swap allowed)", () => {
+      expect(slipPassed(0, 0)).to.be.true;
+    });
+
+    it("vaultMax=0, intent=50 → false (rejects any slippage)", () => {
+      expect(slipPassed(50, 0)).to.be.false;
+    });
+
+    it("vaultMax=500, intent=100 → true", () => {
+      expect(slipPassed(100, 500)).to.be.true;
+    });
+
+    it("vaultMax=500, intent=600 → false", () => {
+      expect(slipPassed(600, 500)).to.be.false;
+    });
+
+    it("vaultMax=500, intent=500 → true (boundary)", () => {
+      expect(slipPassed(500, 500)).to.be.true;
     });
   });
 

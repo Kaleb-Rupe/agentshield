@@ -78,6 +78,14 @@ pub fn handler(ctx: Context<SettleEscrow>, proof: Vec<u8>) -> Result<()> {
     let escrow = &ctx.accounts.escrow;
     let clock = Clock::get()?;
 
+    // 0b. Destination agent must not be paused
+    require!(
+        !ctx.accounts
+            .destination_vault
+            .is_agent_paused(&ctx.accounts.destination_agent.key()),
+        PhalnxError::AgentPaused
+    );
+
     // 1. Permission check
     require!(
         ctx.accounts.destination_vault.has_permission(

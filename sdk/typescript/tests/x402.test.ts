@@ -799,10 +799,10 @@ describe("x402 — shieldedFetch()", () => {
       }
     });
 
-    it("paused hardened wallet still processes x402 payments", async () => {
-      // Pausing only affects signTransaction policy enforcement, not x402.
-      // The x402 path uses evaluateX402Payment independently, so payments
-      // proceed even when the wallet is paused.
+    it("paused hardened wallet blocks x402 payments with ShieldDeniedError", async () => {
+      // H-2 fix: pause() blocks ALL signing, including x402 payments.
+      // The x402 path calls wallet.signTransaction() which now throws
+      // ShieldDeniedError when paused.
       const header = buildPaymentRequiredHeader();
       mockFetch402Then200(header);
       const wallet = createMockWallet();
@@ -810,10 +810,14 @@ describe("x402 — shieldedFetch()", () => {
       (shielded as any).isHardened = true;
       shielded.pause();
       expect(shielded.isPaused).to.be.true;
-      const res = await shieldedFetch(shielded, "https://example.com/paid", {
-        connection: mockConnection,
-      });
-      expect(res.status).to.equal(200);
+      try {
+        await shieldedFetch(shielded, "https://example.com/paid", {
+          connection: mockConnection,
+        });
+        expect.fail("Should have thrown ShieldDeniedError");
+      } catch (err) {
+        expect(err).to.be.instanceOf(ShieldDeniedError);
+      }
     });
 
     it("createShieldedFetchForWallet works with hardened wallets", async () => {
