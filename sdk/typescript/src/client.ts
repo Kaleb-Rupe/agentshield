@@ -15,6 +15,7 @@ import {
   EPOCH_DURATION,
   NUM_EPOCHS,
   hasPermission,
+  isStablecoinMint,
 } from "./types";
 import type {
   Phalnx,
@@ -1524,6 +1525,61 @@ export class PhalnxClient {
   // --- Intent Execution (Direct agent path) ---
 
   /**
+   * Estimate USD amount for a spending intent.
+   * Returns the amount in USD (human units), or null if amount cannot be estimated
+   * (e.g., non-stablecoin swap input — on-chain doesn't cap-check these either).
+   */
+  private getIntentAmountUsd(intent: IntentAction): number | null {
+    const p = intent.params as Record<string, unknown>;
+    switch (intent.type) {
+      // Stablecoin-denominated amount fields
+      case "transfer":
+      case "deposit":
+      case "createEscrow": {
+        const mint = p.mint as string | undefined;
+        if (!mint) return null;
+        const token = resolveToken(mint);
+        if (!token) return null;
+        if (!isStablecoinMint(token.mint)) return null;
+        const amount = parseFloat(p.amount as string);
+        return Number.isFinite(amount) ? amount : null;
+      }
+
+      // Swap: only estimate if input is stablecoin
+      case "swap":
+      case "swapAndOpenPosition": {
+        const inputMint = p.inputMint as string | undefined;
+        if (!inputMint) return null;
+        const token = resolveToken(inputMint);
+        if (!token) return null;
+        if (!isStablecoinMint(token.mint)) return null;
+        const amount = parseFloat(p.amount as string);
+        return Number.isFinite(amount) ? amount : null;
+      }
+
+      // Perps: collateral is USD-denominated
+      case "openPosition": {
+        const collateral = parseFloat(p.collateral as string);
+        return Number.isFinite(collateral) ? collateral : null;
+      }
+      case "increasePosition":
+      case "addCollateral": {
+        const collateralAmount = parseFloat(p.collateralAmount as string);
+        return Number.isFinite(collateralAmount) ? collateralAmount : null;
+      }
+
+      // Limit orders: reserve amount is USD-denominated
+      case "placeLimitOrder": {
+        const reserveAmount = parseFloat(p.reserveAmount as string);
+        return Number.isFinite(reserveAmount) ? reserveAmount : null;
+      }
+
+      default:
+        return null;
+    }
+  }
+
+  /**
    * Pre-flight policy check: validates an intent against on-chain vault state
    * before submitting a transaction.
    */
@@ -1578,11 +1634,16 @@ export class PhalnxClient {
       const capUsd = policyAccount.dailySpendingCapUsd.toNumber() / 1_000_000;
       const remaining = Math.max(0, capUsd - spent24hUsd);
 
+      const intentAmountUsd = this.getIntentAmountUsd(intent);
       capDetails = {
-        passed: remaining > 0,
+        passed:
+          intentAmountUsd !== null
+            ? intentAmountUsd <= remaining
+            : remaining > 0,
         spent24h: spent24hUsd,
         cap: capUsd,
         remaining,
+        intentAmount: intentAmountUsd ?? undefined,
       };
 
       if (capUsd > 0) {

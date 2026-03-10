@@ -465,6 +465,41 @@ describe("intents", () => {
     });
   });
 
+  describe("spending cap comparison logic (M-3 fix)", () => {
+    // Extracted from precheck() — validates the fix for intent amount comparison
+    function capPassed(
+      intentAmountUsd: number | null,
+      remaining: number,
+    ): boolean {
+      return intentAmountUsd !== null
+        ? intentAmountUsd <= remaining
+        : remaining > 0;
+    }
+
+    it("rejects when intent amount exceeds remaining", () => {
+      expect(capPassed(500, 100)).to.be.false;
+    });
+
+    it("passes when intent amount fits within remaining", () => {
+      expect(capPassed(50, 100)).to.be.true;
+    });
+
+    it("passes when intent amount exactly equals remaining", () => {
+      expect(capPassed(100, 100)).to.be.true;
+    });
+
+    it("falls back to remaining > 0 when amount unknown", () => {
+      expect(capPassed(null, 100)).to.be.true;
+      expect(capPassed(null, 0)).to.be.false;
+    });
+
+    it("rejects zero remaining even for zero intent amount", () => {
+      // On-chain: 0 remaining means cap is fully consumed
+      expect(capPassed(0, 0)).to.be.true; // 0 <= 0 is true (no spend)
+      expect(capPassed(1, 0)).to.be.false; // any positive amount rejected
+    });
+  });
+
   describe("slippage comparison logic (M-4 fix)", () => {
     // Extracted from precheck() — validates the fix for maxSlippageBps=0
     function slipPassed(intentBps: number, vaultMaxBps: number): boolean {

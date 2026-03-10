@@ -263,6 +263,7 @@ export interface PrecheckResult {
       spent24h: number;
       cap: number;
       remaining: number;
+      intentAmount?: number;
     };
     protocol: { passed: boolean; inAllowlist: boolean };
     slippage?: {
