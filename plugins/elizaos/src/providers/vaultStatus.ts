@@ -23,7 +23,7 @@ export const shieldStatusProvider = {
 
       const text = [
         `Phalnx: ${publicKey.toBase58()}`,
-        `Enforcement: ${paused ? "PAUSED" : "ACTIVE"}`,
+        `Client Enforcement: ${paused ? "PAUSED" : "ACTIVE"}`,
         `Spending: ${tokenLines.join(", ") || "no limits configured"}`,
         `Rate limit: ${summary.rateLimit.count}/${summary.rateLimit.limit}`,
       ].join("\n");

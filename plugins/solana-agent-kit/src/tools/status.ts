@@ -14,7 +14,8 @@ export async function status(
 
   const lines = [
     `=== Phalnx Status ===`,
-    `Paused: ${summary.isPaused}`,
+    `Client Paused: ${summary.isPaused}`,
+    `(On-chain pause status: check vault with shield_check_vault)`,
     ``,
     `--- Spending Limits ---`,
   ];
