@@ -91,9 +91,7 @@ impl AgentVault {
     }
 
     pub fn is_agent_paused(&self, signer: &Pubkey) -> bool {
-        self.get_agent(signer)
-            .map(|a| a.paused)
-            .unwrap_or(false)
+        self.get_agent(signer).map(|a| a.paused).unwrap_or(false)
     }
 }
 
