@@ -52,7 +52,7 @@ export {
   // Types
   ACTION_PERMISSION_MAP,
 } from "./types.js";
-export type { PositionEffect } from "./types.js";
+export type { Network, PositionEffect } from "./types.js";
 
 // ─── PDA Resolution ───────────────────────────────────────────────────────────
 export {
@@ -176,6 +176,10 @@ export type {
   TurnkeyAttestationBundle,
 } from "./tee/index.js";
 
+// ─── Custody Adapter ────────────────────────────────────────────────────────
+export { custodyAdapterToTransactionSigner } from "./custody-adapter.js";
+export type { CustodyAdapter } from "./custody-adapter.js";
+
 // ─── Agent Errors ─────────────────────────────────────────────────────────────
 export {
   ON_CHAIN_ERROR_MAP,
@@ -283,6 +287,7 @@ export {
   ShieldDeniedError,
   evaluateInstructions,
   shield,
+  createShieldedSigner,
 } from "./shield.js";
 export type {
   PolicyViolation,
@@ -290,6 +295,7 @@ export type {
   SpendingSummary as ShieldSpendingSummary,
   ShieldOptions,
   ShieldedContext,
+  ShieldedSignerOptions,
 } from "./shield.js";
 
 // ─── Intent Engine ──────────────────────────────────────────────────────────

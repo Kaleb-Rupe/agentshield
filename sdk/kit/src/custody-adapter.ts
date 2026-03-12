@@ -1,0 +1,82 @@
+/**
+ * CustodyAdapter — Kit-native interface for custody providers.
+ *
+ * Bridges third-party custody adapters (Turnkey, Fireblocks, Crossmint, etc.)
+ * to @solana/kit's TransactionSigner interface.
+ *
+ * This is the standardized 3-method contract that Phase 8 custody packages
+ * will implement. The bridge function converts any CustodyAdapter into a
+ * TransactionPartialSigner usable anywhere Kit expects a signer.
+ */
+
+import type { Address, TransactionSigner } from "@solana/kit";
+import type { AttestationResult } from "./tee/types.js";
+
+// ─── Interface ──────────────────────────────────────────────────────────────
+
+/**
+ * Standardized interface for custody providers.
+ *
+ * Implementors:
+ * - `@phalnx/custody-turnkey` (Phase 8.4a) — TEE + Ed25519
+ * - `@phalnx/custody-crossmint` (Phase 8.4b) — API-verified TEE
+ * - `@phalnx/custody-privy` (Phase 8.4c) — Embedded wallets
+ *
+ * 3-method contract:
+ * - getPublicKey(): Address of the custody-managed signing key
+ * - sign(): Raw Ed25519 signature over arbitrary bytes
+ * - attestation() (optional): TEE attestation proof
+ */
+export interface CustodyAdapter {
+  /** Get the public key (address) of the custody-managed signing key. */
+  getPublicKey(): Address;
+
+  /**
+   * Sign arbitrary bytes. Returns a 64-byte Ed25519 signature.
+   * The adapter handles key access (TEE, MPC, HSM, etc.) internally.
+   */
+  sign(bytes: Uint8Array): Promise<Uint8Array>;
+
+  /**
+   * Optional: Retrieve TEE attestation proof for the custody key.
+   * Returns null if the provider doesn't support attestation.
+   */
+  attestation?(): Promise<AttestationResult | null>;
+}
+
+// ─── Bridge ─────────────────────────────────────────────────────────────────
+
+/**
+ * Bridge a CustodyAdapter to Kit's TransactionSigner interface.
+ *
+ * Returns a TransactionPartialSigner — custody adapters do pure signing
+ * (no transaction modification).
+ *
+ * Usage:
+ * ```ts
+ * const adapter: CustodyAdapter = new TurnkeyCustodyAdapter(config);
+ * const signer = custodyAdapterToTransactionSigner(adapter);
+ * // signer is now usable anywhere Kit expects a TransactionSigner
+ * ```
+ */
+export function custodyAdapterToTransactionSigner(
+  adapter: CustodyAdapter,
+): TransactionSigner {
+  const address = adapter.getPublicKey();
+
+  return {
+    address,
+    async signTransactions<T extends { messageBytes: Uint8Array }>(
+      transactions: readonly T[],
+    ): Promise<readonly Record<string, Uint8Array>[]> {
+      const results: Record<string, Uint8Array>[] = [];
+
+      for (const tx of transactions) {
+        const sig = await adapter.sign(tx.messageBytes);
+        results.push({ [address]: sig });
+      }
+
+      return results;
+    },
+  } as TransactionSigner;
+}

@@ -11,7 +11,13 @@
  *   - Address (string) instead of PublicKey throughout
  */
 
-import type { Address } from "@solana/kit";
+import type {
+  Address,
+  Rpc,
+  SolanaRpcApi,
+  TransactionSigner,
+} from "@solana/kit";
+import { getBase64EncodedWireTransaction } from "@solana/kit";
 import { analyzeInstructions, type InspectableInstruction, type InstructionAnalysis } from "./inspector.js";
 import {
   resolvePolicies,
@@ -19,6 +25,11 @@ import {
   type ResolvedPolicies,
   type SpendLimit,
 } from "./policies.js";
+import { simulateBeforeSend } from "./simulation.js";
+import { PHALNX_PROGRAM_ADDRESS } from "./generated/programs/phalnx.js";
+import { VALIDATE_AND_AUTHORIZE_DISCRIMINATOR } from "./generated/instructions/validateAndAuthorize.js";
+import { FINALIZE_SESSION_DISCRIMINATOR } from "./generated/instructions/finalizeSession.js";
+import { ACTION_TYPE_MAP, type IntentAction } from "./intents.js";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -407,4 +418,269 @@ export function shield(
       return state;
     },
   };
+}
+
+// ─── Shielded Signer (Pre-Sign Gate) ──────────────────────────────────────
+
+/**
+ * Options for the 5-property pre-sign gate.
+ */
+export interface ShieldedSignerOptions {
+  /** Property 3: RPC for fail-closed simulation. */
+  rpc?: Rpc<SolanaRpcApi>;
+  /** Property 1: Intent context for intent-TX correspondence check. */
+  intentContext?: {
+    intent: IntentAction;
+    expectedOutputMints?: Address[];
+  };
+  /** Property 5: Session binding context. */
+  sessionContext?: {
+    sessionPda: Address;
+    expirySlot: bigint;
+  };
+  /** Skip simulation (testing only). */
+  skipSimulation?: boolean;
+  /** Property 2: Velocity ceiling thresholds. */
+  velocityThresholds?: {
+    maxTxPerHour?: number;
+    maxUsdPerHour?: bigint;
+  };
+}
+
+/**
+ * Create a TransactionSigner that enforces a 5-property pre-sign gate.
+ *
+ * Intercepts every signing call and runs:
+ *   1. Intent-TX correspondence (SOFT — logs warning)
+ *   2. Velocity ceiling (HARD — throws)
+ *   3. Simulation liveness (HARD — throws)
+ *   4. Instruction allowlist via ShieldedContext (HARD — throws)
+ *   5. Session binding (SOFT — logs warning)
+ *
+ * On pass, delegates to the baseSigner. On HARD fail, throws ShieldDeniedError.
+ *
+ * @param baseSigner - The underlying TransactionSigner to delegate to
+ * @param shieldCtx - ShieldedContext providing policy evaluation and state
+ * @param options - Optional configuration for each property
+ */
+export function createShieldedSigner(
+  baseSigner: TransactionSigner,
+  shieldCtx: ShieldedContext,
+  options?: ShieldedSignerOptions,
+): TransactionSigner {
+  return {
+    address: baseSigner.address,
+    async modifyAndSignTransactions(
+      txs: readonly any[],
+    ): Promise<readonly any[]> {
+      for (const tx of txs) {
+        const instructions = extractInstructionsFromCompiled(tx);
+
+        // Property 1: Intent-TX correspondence (SOFT)
+        if (options?.intentContext) {
+          checkIntentCorrespondence(instructions, options.intentContext);
+        }
+
+        // Property 2: Velocity ceiling (HARD)
+        if (options?.velocityThresholds) {
+          checkVelocityCeiling(shieldCtx.state, instructions, baseSigner.address, options.velocityThresholds);
+        }
+
+        // Property 3: Simulation liveness (HARD)
+        if (options?.rpc && !options?.skipSimulation) {
+          let wireBase64: ReturnType<typeof getBase64EncodedWireTransaction>;
+          try {
+            wireBase64 = getBase64EncodedWireTransaction(tx);
+          } catch (encodeErr) {
+            // Fail-closed: if we can't encode the TX, block signing
+            throw new ShieldDeniedError([
+              {
+                rule: "simulation",
+                message: `Cannot encode transaction for simulation: ${encodeErr instanceof Error ? encodeErr.message : "unknown error"}`,
+                suggestion: "Ensure the transaction is properly formed",
+              },
+            ]);
+          }
+          const result = await simulateBeforeSend(options.rpc, wireBase64);
+          if (!result.success) {
+            throw new ShieldDeniedError([
+              {
+                rule: "simulation",
+                message: `Simulation failed: ${result.error?.message ?? "unknown error"}`,
+                suggestion: result.error?.suggestion ?? "Check transaction validity",
+              },
+            ]);
+          }
+        }
+
+        // Property 4: Instruction allowlist (HARD)
+        const checkResult = shieldCtx.check(instructions, baseSigner.address);
+        if (!checkResult.allowed) {
+          throw new ShieldDeniedError(checkResult.violations);
+        }
+
+        // Property 5: Session binding (SOFT)
+        if (options?.sessionContext) {
+          checkSessionBinding(tx, PHALNX_PROGRAM_ADDRESS);
+        }
+
+        // All checks passed — record spend and transaction in shared state
+        const analysis = analyzeInstructions(instructions, baseSigner.address);
+        for (const transfer of analysis.tokenTransfers) {
+          if (transfer.authority === baseSigner.address) {
+            shieldCtx.state.recordSpend(transfer.mint ?? "", transfer.amount);
+          }
+        }
+        shieldCtx.state.recordTransaction();
+      }
+
+      // Delegate to base signer
+      const signer = baseSigner as any;
+      if (signer.modifyAndSignTransactions) {
+        return signer.modifyAndSignTransactions(txs);
+      } else if (signer.signTransactions) {
+        const sigs = await signer.signTransactions(txs);
+        return txs.map((tx: any, i: number) => ({
+          ...tx,
+          signatures: { ...tx.signatures, ...sigs[i] },
+        }));
+      }
+      throw new Error(
+        "Unsupported signer type: must implement signTransactions or modifyAndSignTransactions",
+      );
+    },
+  } as TransactionSigner;
+}
+
+// ─── Internal Helpers (not exported) ────────────────────────────────────────
+
+/**
+ * Extract InspectableInstruction[] from a compiled transaction object.
+ * Resolves program addresses from staticAccounts[programAddressIndex].
+ */
+function extractInstructionsFromCompiled(tx: any): InspectableInstruction[] {
+  const msg = tx.compiledMessage;
+  if (!msg?.staticAccounts?.length || !msg?.instructions?.length) {
+    return [];
+  }
+  return msg.instructions.map((ix: any) => ({
+    programAddress: msg.staticAccounts[ix.programAddressIndex] as Address,
+    accounts: (ix.accountIndices ?? []).map((i: number) => ({
+      address: msg.staticAccounts[i] as Address,
+    })),
+    data: ix.data ? new Uint8Array(ix.data) : new Uint8Array(),
+  }));
+}
+
+/**
+ * Property 2: Check velocity ceilings. HARD — throws ShieldDeniedError.
+ */
+function checkVelocityCeiling(
+  state: ShieldState,
+  instructions: InspectableInstruction[],
+  signerAddress: Address,
+  thresholds: NonNullable<ShieldedSignerOptions["velocityThresholds"]>,
+): void {
+  if (thresholds.maxTxPerHour !== undefined) {
+    const count = state.getTransactionCountInWindow(3_600_000);
+    if (count >= thresholds.maxTxPerHour) {
+      throw new ShieldDeniedError([
+        {
+          rule: "velocity_ceiling",
+          message: `Transaction rate ${count}/${thresholds.maxTxPerHour} per hour exceeded`,
+          suggestion: "Wait before sending more transactions",
+        },
+      ]);
+    }
+  }
+
+  if (thresholds.maxUsdPerHour !== undefined) {
+    const analysis = analyzeInstructions(instructions, signerAddress);
+    const currentSpend = state.getSpendInWindow("", 3_600_000);
+    const projectedSpend = currentSpend + analysis.estimatedValue;
+    if (projectedSpend > thresholds.maxUsdPerHour) {
+      throw new ShieldDeniedError([
+        {
+          rule: "velocity_ceiling",
+          message: `Hourly USD spend ${projectedSpend} exceeds ceiling ${thresholds.maxUsdPerHour}`,
+          suggestion: "Reduce transaction amounts or wait for the window to reset",
+        },
+      ]);
+    }
+  }
+}
+
+/**
+ * Property 5: Check session binding (validate+finalize sandwich). SOFT — warns.
+ */
+function checkSessionBinding(tx: any, programAddress: Address): void {
+  const msg = tx.compiledMessage;
+  if (!msg?.staticAccounts?.length || !msg?.instructions?.length) {
+    console.warn("[ShieldedSigner] Cannot verify session binding: no compiled message");
+    return;
+  }
+
+  const phalnxIxs = msg.instructions.filter(
+    (ix: any) => msg.staticAccounts[ix.programAddressIndex] === programAddress,
+  );
+
+  if (phalnxIxs.length === 0) {
+    console.warn("[ShieldedSigner] No Phalnx instructions found in transaction");
+    return;
+  }
+
+  const firstData = phalnxIxs[0].data;
+  const lastData = phalnxIxs[phalnxIxs.length - 1].data;
+
+  const hasValidate =
+    firstData &&
+    firstData.length >= 8 &&
+    matchesDiscriminator(firstData, VALIDATE_AND_AUTHORIZE_DISCRIMINATOR);
+  const hasFinalize =
+    lastData &&
+    lastData.length >= 8 &&
+    matchesDiscriminator(lastData, FINALIZE_SESSION_DISCRIMINATOR);
+
+  if (!hasValidate || !hasFinalize) {
+    console.warn(
+      `[ShieldedSigner] Session binding incomplete: validate=${!!hasValidate}, finalize=${!!hasFinalize}`,
+    );
+  }
+}
+
+/**
+ * Property 1: Check intent-TX correspondence. SOFT — warns.
+ */
+function checkIntentCorrespondence(
+  instructions: InspectableInstruction[],
+  intentContext: NonNullable<ShieldedSignerOptions["intentContext"]>,
+): void {
+  const entry = ACTION_TYPE_MAP[intentContext.intent.type];
+  if (!entry) return;
+
+  // For spending intents, verify at least one non-system program is present
+  if (entry.isSpending) {
+    const hasNonSystem = instructions.some(
+      (ix) => !SYSTEM_PROGRAMS.has(ix.programAddress),
+    );
+    if (!hasNonSystem) {
+      console.warn(
+        `[ShieldedSigner] Intent '${intentContext.intent.type}' (spending) but no protocol programs found`,
+      );
+    }
+  }
+}
+
+/**
+ * Compare first N bytes of data against a discriminator.
+ */
+function matchesDiscriminator(
+  data: Uint8Array | { readonly [index: number]: number; readonly length: number },
+  disc: Uint8Array | { readonly [index: number]: number; readonly length: number },
+): boolean {
+  if (data.length < disc.length) return false;
+  for (let i = 0; i < disc.length; i++) {
+    if (data[i] !== disc[i]) return false;
+  }
+  return true;
 }
