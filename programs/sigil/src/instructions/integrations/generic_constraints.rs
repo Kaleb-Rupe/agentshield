@@ -383,14 +383,12 @@ mod tests {
                 program_id: pk1,
                 data_constraints: vec![],
                 account_constraints: vec![],
-                is_spending: 1,
                 discriminator_format: DiscriminatorFormat::Anchor8,
             },
             ConstraintEntry {
                 program_id: pk2,
                 data_constraints: vec![],
                 account_constraints: vec![],
-                is_spending: 1,
                 discriminator_format: DiscriminatorFormat::Anchor8,
             },
         ];
@@ -407,14 +405,12 @@ mod tests {
                 program_id: pk,
                 data_constraints: vec![dc(0, ConstraintOperator::Eq, vec![0xFF])],
                 account_constraints: vec![],
-                is_spending: 1,
                 discriminator_format: DiscriminatorFormat::Anchor8,
             },
             ConstraintEntry {
                 program_id: pk,
                 data_constraints: vec![dc(0, ConstraintOperator::Eq, vec![0xAA])],
                 account_constraints: vec![],
-                is_spending: 1,
                 discriminator_format: DiscriminatorFormat::Anchor8,
             },
         ];
@@ -434,14 +430,12 @@ mod tests {
                 program_id: pk,
                 data_constraints: vec![dc(0, ConstraintOperator::Eq, vec![0xFF])],
                 account_constraints: vec![],
-                is_spending: 1,
                 discriminator_format: DiscriminatorFormat::Anchor8,
             },
             ConstraintEntry {
                 program_id: pk,
                 data_constraints: vec![dc(0, ConstraintOperator::Eq, vec![0xEE])],
                 account_constraints: vec![],
-                is_spending: 1,
                 discriminator_format: DiscriminatorFormat::Anchor8,
             },
         ];
@@ -457,7 +451,6 @@ mod tests {
             program_id: pk,
             data_constraints: vec![dc(0, ConstraintOperator::Eq, vec![0xAA])],
             account_constraints: vec![],
-            is_spending: 1,
             discriminator_format: DiscriminatorFormat::Anchor8,
         }];
         let ix_data = vec![0xAA];
@@ -475,7 +468,6 @@ mod tests {
             program_id: pk1,
             data_constraints: vec![dc(0, ConstraintOperator::Eq, vec![0xAA])],
             account_constraints: vec![],
-            is_spending: 1,
             discriminator_format: DiscriminatorFormat::Anchor8,
         }];
         let ix_data = vec![0xAA];

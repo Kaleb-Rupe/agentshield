@@ -268,7 +268,9 @@ pub enum VaultStatus {
 // PositionEffect enum REMOVED — position counter system deleted wholesale per council
 // decision (9-1 vote, 2026-04-19). See Plans/we-need-to-plan-serialized-summit.md.
 //
-// ActionType enum REMOVED — spending classification now derives from matched
-// ConstraintEntryZC field (is_spending). See RFC-ACTIONTYPE-ELIMINATION.md.
+// ActionType enum REMOVED — spending classification now derives from
+// `amount > 0` at runtime (validate_and_authorize.rs). The previously-stored
+// `is_spending` field on ConstraintEntryZC was deleted (M2 Option A) because
+// the runtime never read it. See RFC-ACTIONTYPE-ELIMINATION.md.
 // Agent permissions use the 2-bit capability field (CAPABILITY_OBSERVER / CAPABILITY_OPERATOR)
 // instead of the old 21-bit bitmask.
