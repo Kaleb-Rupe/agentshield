@@ -257,7 +257,19 @@ pub enum SigilError {
     #[msg("Sysvar instruction scan exceeded the per-tx safety bound")]
     SysvarScanBoundExceeded,
 
+<<<<<<< HEAD
     // --- C4 audit fix: async-fulfillment programs ---
     #[msg("Async-fulfillment program is not permitted in V1 (Jupiter Perps, Drift, Drift JIT). Spending cannot be measured because keeper submits the actual transfer in a separate transaction after finalize_session returns.")]
     AsyncFulfillmentNotPermitted,
+=======
+    // --- Orphan constraints PDA cleanup (F3-H1 audit fix) ---
+    #[msg("Cannot clean an active constraints PDA; use queue+apply_close_constraints")]
+    ConstraintsAlreadyPopulated,
+
+    #[msg("PDA at constraints seeds is not program-owned")]
+    OrphanPdaWrongOwner,
+
+    #[msg("PDA is fully populated; not an orphan")]
+    OrphanPdaPopulated,
+>>>>>>> 6052e3c (feat(sigil): cleanup_orphan_constraints_pda instruction (F3-H1 audit fix))
 }

@@ -5888,8 +5888,23 @@ export type Sigil = {
     },
     {
       "code": 6078,
+<<<<<<< HEAD
       "name": "asyncFulfillmentNotPermitted",
       "msg": "Async-fulfillment program is not permitted in V1 (Jupiter Perps, Drift, Drift JIT). Spending cannot be measured because keeper submits the actual transfer in a separate transaction after finalize_session returns."
+=======
+      "name": "constraintsAlreadyPopulated",
+      "msg": "Cannot clean an active constraints PDA; use queue+apply_close_constraints"
+    },
+    {
+      "code": 6079,
+      "name": "orphanPdaWrongOwner",
+      "msg": "PDA at constraints seeds is not program-owned"
+    },
+    {
+      "code": 6080,
+      "name": "orphanPdaPopulated",
+      "msg": "PDA is fully populated; not an orphan"
+>>>>>>> 6052e3c (feat(sigil): cleanup_orphan_constraints_pda instruction (F3-H1 audit fix))
     }
   ],
   "types": [

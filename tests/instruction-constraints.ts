@@ -3892,4 +3892,397 @@ describe("instruction-constraints", () => {
       });
     });
   });
+
+  // =======================================================================
+  // F3-H1 audit fix: cleanup_orphan_constraints_pda
+  // =======================================================================
+  // A partial allocate+extend chain (Tx2 ran out of CU before populate)
+  // leaves an orphaned PDA: program-owned, vault-key-bytes-written, but
+  // discriminator slot still zero. Without cleanup the vault is wedged —
+  // owner has paid rent for a PDA that no other instruction can close.
+  describe("cleanup_orphan_constraints_pda (F3-H1)", () => {
+    const ALLOC_CONSTRAINTS_DISC_LOCAL = createHash("sha256")
+      .update("global:allocate_constraints_pda")
+      .digest()
+      .subarray(0, 8);
+
+    const EXTEND_PDA_DISC_LOCAL = createHash("sha256")
+      .update("global:extend_pda")
+      .digest()
+      .subarray(0, 8);
+
+    function buildAllocateIxLocal(
+      vault: PublicKey,
+      policy: PublicKey,
+      constraintsPda: PublicKey,
+    ): TransactionInstruction {
+      return new TransactionInstruction({
+        programId: program.programId,
+        keys: [
+          { pubkey: owner.publicKey, isSigner: true, isWritable: true },
+          { pubkey: vault, isSigner: false, isWritable: false },
+          { pubkey: policy, isSigner: false, isWritable: false },
+          { pubkey: constraintsPda, isSigner: false, isWritable: true },
+          {
+            pubkey: SystemProgram.programId,
+            isSigner: false,
+            isWritable: false,
+          },
+        ],
+        data: ALLOC_CONSTRAINTS_DISC_LOCAL,
+      });
+    }
+
+    function buildExtendIxLocal(
+      vault: PublicKey,
+      pda: PublicKey,
+      targetSize: number,
+    ): TransactionInstruction {
+      const data = Buffer.alloc(12);
+      EXTEND_PDA_DISC_LOCAL.copy(data, 0);
+      data.writeUInt32LE(targetSize, 8);
+      return new TransactionInstruction({
+        programId: program.programId,
+        keys: [
+          { pubkey: owner.publicKey, isSigner: true, isWritable: true },
+          { pubkey: vault, isSigner: false, isWritable: false },
+          { pubkey: pda, isSigner: false, isWritable: true },
+          {
+            pubkey: SystemProgram.programId,
+            isSigner: false,
+            isWritable: false,
+          },
+        ],
+        data,
+      });
+    }
+
+    /** Derive PDAs + initialize a fresh vault for each test. */
+    async function setupFreshVaultC(vaultIdNum: number) {
+      const id = new BN(vaultIdNum);
+      const [vault] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("vault"),
+          owner.publicKey.toBuffer(),
+          id.toArrayLike(Buffer, "le", 8),
+        ],
+        program.programId,
+      );
+      const [policy] = PublicKey.findProgramAddressSync(
+        [Buffer.from("policy"), vault.toBuffer()],
+        program.programId,
+      );
+      const [tracker] = PublicKey.findProgramAddressSync(
+        [Buffer.from("tracker"), vault.toBuffer()],
+        program.programId,
+      );
+      const [overlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), vault.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
+      const [constraints] = PublicKey.findProgramAddressSync(
+        [Buffer.from("constraints"), vault.toBuffer()],
+        program.programId,
+      );
+      const [pendingClose] = PublicKey.findProgramAddressSync(
+        [Buffer.from("pending_close_constraints"), vault.toBuffer()],
+        program.programId,
+      );
+
+      await program.methods
+        .initializeVault(
+          id,
+          new BN(500_000_000),
+          new BN(100_000_000),
+          0,
+          [],
+          0,
+          100,
+          new BN(1800),
+          [],
+          [],
+        )
+        .accounts({
+          owner: owner.publicKey,
+          vault,
+          policy,
+          tracker,
+          agentSpendOverlay: overlay,
+          feeDestination: feeDestination.publicKey,
+          systemProgram: SystemProgram.programId,
+        } as any)
+        .rpc();
+
+      return { vault, policy, tracker, overlay, constraints, pendingClose };
+    }
+
+    /**
+     * Simulate a partial allocate+extend that died before populate.
+     * Result: program-owned PDA at `partialSize` bytes, vault key written
+     * at offset 8..40, discriminator slot still zero.
+     */
+    function plantOrphanPda(
+      vault: PublicKey,
+      orphan: PublicKey,
+      partialSize: number,
+    ): void {
+      // 1) Allocate at MAX_CPI_SIZE = 10,240 (writes vault key at 8..40)
+      const allocIx = buildAllocateIxLocal(
+        vault,
+        PublicKey.findProgramAddressSync(
+          [Buffer.from("policy"), vault.toBuffer()],
+          program.programId,
+        )[0],
+        orphan,
+      );
+      sendVersionedTx(svm, [allocIx], owner.payer);
+
+      // 2) Optionally extend partway (simulate the chain reaching e.g. 20,480)
+      if (partialSize > 10_240) {
+        const extendIx = buildExtendIxLocal(vault, orphan, partialSize);
+        sendVersionedTx(svm, [extendIx], owner.payer);
+      }
+      // 3) Stop here — no populate. Discriminator slot stays [0u8; 8].
+    }
+
+    async function callCleanup(
+      vault: PublicKey,
+      policy: PublicKey,
+      orphan: PublicKey,
+      signer: Keypair = owner.payer as any,
+    ): Promise<void> {
+      await program.methods
+        .cleanupOrphanConstraintsPda()
+        .accounts({
+          owner: signer.publicKey,
+          vault,
+          policy,
+          orphanPda: orphan,
+        } as any)
+        .signers(signer === (owner.payer as any) ? [] : [signer])
+        .rpc();
+    }
+
+    it("happy path: cleans synthetic orphan PDA, returns rent to owner", async () => {
+      const f = await setupFreshVaultC(11_001);
+
+      // Plant an orphan at 20,480 bytes (one extend completed, populate failed)
+      plantOrphanPda(f.vault, f.constraints, 20_480);
+
+      // Sanity: the orphan exists, is program-owned, has discriminator zero
+      const before = svm.getAccount(f.constraints);
+      expect(before).to.not.be.null;
+      expect(before!.data.length).to.equal(20_480);
+      expect(before!.owner.toBase58()).to.equal(program.programId.toBase58());
+      const beforeRent = before!.lamports;
+      expect(beforeRent).to.be.greaterThan(0);
+      // Discriminator zero
+      for (let i = 0; i < 8; i++) {
+        expect(before!.data[i]).to.equal(0);
+      }
+      // Vault bytes at offset 8..40
+      expect(Buffer.from(before!.data.slice(8, 40)).toString("hex")).to.equal(
+        f.vault.toBuffer().toString("hex"),
+      );
+
+      const ownerBefore = svm.getAccount(owner.publicKey)!.lamports;
+      await callCleanup(f.vault, f.policy, f.constraints);
+
+      // Orphan was manually closed: lamports drained, reassigned to system
+      // program, data resized to 0. Either LiteSVM has dropped the account
+      // record entirely OR it remains at lamports==0 with length==0. Both
+      // satisfy the post-condition (no stale vault bytes are readable).
+      const after = svm.getAccount(f.constraints);
+      if (after) {
+        expect(after.lamports).to.equal(0);
+        expect(after.data.length).to.equal(0);
+      }
+
+      // Owner got the rent back (minus tx fee)
+      const ownerAfter = svm.getAccount(owner.publicKey)!.lamports;
+      // Owner balance should have grown by approximately beforeRent (minus tx fee).
+      // Use a generous delta floor: rent recovery should be >= beforeRent - 100_000 lamports.
+      expect(ownerAfter - ownerBefore).to.be.greaterThan(
+        Number(beforeRent) - 100_000,
+      );
+
+      // After cleanup, allocate_constraints_pda can re-run from scratch
+      // (verified more thoroughly in the F3-H1 recovery scenario test below).
+    });
+
+    it("rejects cleanup when has_constraints=true → ConstraintsAlreadyPopulated", async () => {
+      const f = await setupFreshVaultC(11_002);
+
+      // Set up real, populated constraints (NOT an orphan).
+      // is_spending: 2 (NonSpending) — required since 0 is rejected at runtime.
+      createConstraintsAccount(
+        program,
+        svm,
+        owner.payer,
+        f.vault,
+        f.policy,
+        [
+          {
+            programId: jupiterProgramId,
+            dataConstraints: [
+              {
+                offset: 0,
+                operator: { eq: {} },
+                value: Buffer.from([0xaa, 0, 0, 0, 0, 0, 0, 0]),
+              },
+            ],
+            accountConstraints: [],
+            discriminatorFormat: { anchor8: {} },
+            isSpending: 2,
+          },
+        ],
+        false,
+      );
+
+      // policy.has_constraints is now true; cleanup must reject
+      try {
+        await callCleanup(f.vault, f.policy, f.constraints);
+        expect.fail("Should have rejected populated constraints PDA");
+      } catch (err: any) {
+        expectSigilError(err, {
+          name: "ConstraintsAlreadyPopulated",
+          code: 6078,
+        });
+      }
+
+      // Tear down so test independence is preserved
+      await queueAndApplyCloseConstraints(
+        f.vault,
+        f.policy,
+        f.constraints,
+        f.pendingClose,
+      );
+    });
+
+    it("rejects cleanup when caller is not vault owner → UnauthorizedOwner", async () => {
+      const f = await setupFreshVaultC(11_003);
+      plantOrphanPda(f.vault, f.constraints, 10_240);
+
+      // Spin up a different signer — has_one = owner on vault must reject this
+      const attacker = Keypair.generate();
+      airdropSol(svm, attacker.publicKey, 5 * LAMPORTS_PER_SOL);
+
+      try {
+        await program.methods
+          .cleanupOrphanConstraintsPda()
+          .accounts({
+            owner: attacker.publicKey,
+            vault: f.vault,
+            policy: f.policy,
+            orphanPda: f.constraints,
+          } as any)
+          .signers([attacker])
+          .rpc();
+        expect.fail("Should have rejected non-owner caller");
+      } catch (err: any) {
+        // Anchor's seeds derivation uses owner.key().as_ref() — non-owner
+        // produces a different vault PDA, surfacing as ConstraintSeeds (2006)
+        // before has_one fires. Either error path proves the access guard.
+        const errStr = err.toString();
+        const passed =
+          errStr.includes("UnauthorizedOwner") ||
+          errStr.includes("6002") ||
+          errStr.includes("ConstraintSeeds") ||
+          errStr.includes("2006");
+        expect(
+          passed,
+          `Expected access-control error, got: ${errStr}`,
+        ).to.equal(true);
+      }
+    });
+
+    it("rejects cleanup when discriminator non-zero → OrphanPdaPopulated", async () => {
+      const f = await setupFreshVaultC(11_004);
+      plantOrphanPda(f.vault, f.constraints, 10_240);
+
+      // Forge: write a non-zero byte into the discriminator slot.
+      // This simulates either (a) a fully-populated PDA where
+      // policy.has_constraints somehow drifted to false, or (b) an attacker
+      // racing to populate after we've started cleanup. Either way the guard
+      // must hold.
+      const acct = svm.getAccount(f.constraints)!;
+      const data = Buffer.from(acct.data);
+      data[0] = 0x42; // non-zero discriminator byte
+      svm.setAccount(f.constraints, {
+        lamports: acct.lamports,
+        data,
+        owner: acct.owner,
+        executable: false,
+      });
+
+      try {
+        await callCleanup(f.vault, f.policy, f.constraints);
+        expect.fail("Should have rejected populated PDA");
+      } catch (err: any) {
+        expectSigilError(err, { name: "OrphanPdaPopulated", code: 6080 });
+      }
+    });
+
+    it("F3-H1 recovery: after cleanup, owner can re-create constraints from scratch", async () => {
+      const f = await setupFreshVaultC(11_005);
+
+      // Step 1: simulate the F3-H1 attack — partial allocate+extend, no populate
+      plantOrphanPda(f.vault, f.constraints, 20_480);
+
+      const orphanedRent = svm.getAccount(f.constraints)!.lamports;
+      expect(orphanedRent).to.be.greaterThan(0);
+
+      // Step 2: cleanup the orphan
+      await callCleanup(f.vault, f.policy, f.constraints);
+
+      // Step 3: orphan lamports are zero → re-allocation is possible
+      const afterCleanup = svm.getAccount(f.constraints);
+      if (afterCleanup) {
+        expect(afterCleanup.lamports).to.equal(0);
+      }
+
+      // Step 4: re-create constraints from scratch via the normal path —
+      // this exercises allocate + extend chain + populate end-to-end on
+      // the previously-orphaned PDA address.
+      // is_spending: 2 (NonSpending) — required since 0 is rejected at runtime.
+      createConstraintsAccount(
+        program,
+        svm,
+        owner.payer,
+        f.vault,
+        f.policy,
+        [
+          {
+            programId: jupiterProgramId,
+            dataConstraints: [
+              {
+                offset: 0,
+                operator: { eq: {} },
+                value: Buffer.from([0xcc, 0xdd, 0, 0, 0, 0, 0, 0]),
+              },
+            ],
+            accountConstraints: [],
+            discriminatorFormat: { anchor8: {} },
+            isSpending: 2,
+          },
+        ],
+        false,
+      );
+
+      // Step 5: verify the constraints PDA is healthy and policy flags correct
+      const ca = await fetchConstraints(program, f.constraints);
+      expect(ca.vault.toString()).to.equal(f.vault.toString());
+      expect(ca.entries.length).to.equal(1);
+      const policy = await program.account.policyConfig.fetch(f.policy);
+      expect(policy.hasConstraints).to.equal(true);
+
+      // Cleanup so the test suite stays clean
+      await queueAndApplyCloseConstraints(
+        f.vault,
+        f.policy,
+        f.constraints,
+        f.pendingClose,
+      );
+    });
+  });
 });

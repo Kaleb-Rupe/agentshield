@@ -14,7 +14,11 @@
  */
 
 // ────────────────────────────────────────────────────────────────
+<<<<<<< HEAD
 // Sigil program errors (6000-6078)
+=======
+// Sigil program errors (6000-6080)
+>>>>>>> 6052e3c (feat(sigil): cleanup_orphan_constraints_pda instruction (F3-H1 audit fix))
 // ────────────────────────────────────────────────────────────────
 
 export const SIGIL_ERRORS = {
@@ -96,7 +100,13 @@ export const SIGIL_ERRORS = {
   QueuedUpdateExpired: 6075,
   AccountWritabilityMismatch: 6076,
   SysvarScanBoundExceeded: 6077,
+<<<<<<< HEAD
   AsyncFulfillmentNotPermitted: 6078,
+=======
+  ConstraintsAlreadyPopulated: 6078,
+  OrphanPdaWrongOwner: 6079,
+  OrphanPdaPopulated: 6080,
+>>>>>>> 6052e3c (feat(sigil): cleanup_orphan_constraints_pda instruction (F3-H1 audit fix))
 } as const;
 
 /**
