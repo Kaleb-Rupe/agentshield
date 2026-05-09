@@ -510,8 +510,17 @@ pub fn handler(ctx: Context<FinalizeSession>) -> Result<()> {
             SigilError::PostAssertionFailed
         );
 
-        // PDA address already verified at line 514-519 via find_program_address.
-        // Account substitution is impossible — the PDA derivation check is the defense.
+        // F-1 audit fix: verify Anchor discriminator before bytemuck cast.
+        // Cashio/Crema lesson — owner + PDA derivation are insufficient when
+        // multiple zero-copy types share byte layout. PDA derivation, owner,
+        // length, and vault checks remain; the discriminator is the 4th
+        // defense-in-depth check that prevents type-punning if a future
+        // #[account(zero_copy)] type adopts a similar layout under crate::ID.
+        require!(
+            assertions_data[..8]
+                == *<PostExecutionAssertions as anchor_lang::Discriminator>::DISCRIMINATOR,
+            SigilError::PostAssertionFailed,
+        );
 
         let assertions: &PostExecutionAssertions =
             bytemuck::from_bytes(&assertions_data[8..8 + struct_size]);

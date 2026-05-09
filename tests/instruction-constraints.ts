@@ -3576,4 +3576,320 @@ describe("instruction-constraints", () => {
       );
     });
   });
+
+  // =======================================================================
+  // F-1: Anchor discriminator check (Cashio/Crema type-confusion defense)
+  // =======================================================================
+  // Third-pass adversarial review (Grok drain history, F-1 MED) flagged that
+  // validate_and_authorize.rs loaded the InstructionConstraints PDA via
+  // bytemuck::from_bytes after only owner+length+PDA-derivation+vault checks.
+  // No discriminator check meant a future #[account(zero_copy)] type owned by
+  // crate::ID with the same byte layout could be type-punned through this
+  // load. The fix adds the 4th defense-in-depth check: verify that the first
+  // 8 bytes of account data match InstructionConstraints::DISCRIMINATOR
+  // before the bytemuck cast.
+  describe("F-1: PDA discriminator type-confusion defense", () => {
+    let f1Vault: PublicKey;
+    let f1Policy: PublicKey;
+    let f1Tracker: PublicKey;
+    let f1Overlay: PublicKey;
+    let f1Constraints: PublicKey;
+    let f1VaultAta: PublicKey;
+    const f1Agent = Keypair.generate();
+    const f1VaultId = new BN(490);
+
+    before(async () => {
+      airdropSol(svm, f1Agent.publicKey, 10 * LAMPORTS_PER_SOL);
+
+      [f1Vault] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("vault"),
+          owner.publicKey.toBuffer(),
+          f1VaultId.toArrayLike(Buffer, "le", 8),
+        ],
+        program.programId,
+      );
+      [f1Policy] = PublicKey.findProgramAddressSync(
+        [Buffer.from("policy"), f1Vault.toBuffer()],
+        program.programId,
+      );
+      [f1Tracker] = PublicKey.findProgramAddressSync(
+        [Buffer.from("tracker"), f1Vault.toBuffer()],
+        program.programId,
+      );
+      [f1Overlay] = PublicKey.findProgramAddressSync(
+        [Buffer.from("agent_spend"), f1Vault.toBuffer(), Buffer.from([0])],
+        program.programId,
+      );
+      [f1Constraints] = PublicKey.findProgramAddressSync(
+        [Buffer.from("constraints"), f1Vault.toBuffer()],
+        program.programId,
+      );
+
+      await program.methods
+        .initializeVault(
+          f1VaultId,
+          new BN(500_000_000),
+          new BN(100_000_000),
+          0,
+          [],
+          0,
+          100,
+          new BN(1800),
+          [],
+          [],
+        )
+        .accounts({
+          owner: owner.publicKey,
+          vault: f1Vault,
+          policy: f1Policy,
+          tracker: f1Tracker,
+          agentSpendOverlay: f1Overlay,
+          feeDestination: feeDestination.publicKey,
+          systemProgram: SystemProgram.programId,
+        } as any)
+        .rpc();
+
+      await program.methods
+        .registerAgent(f1Agent.publicKey, FULL_CAPABILITY, new BN(0))
+        .accounts({
+          owner: owner.publicKey,
+          vault: f1Vault,
+          agentSpendOverlay: f1Overlay,
+        } as any)
+        .rpc();
+
+      f1VaultAta = createAtaIdempotentHelper(
+        svm,
+        owner.payer,
+        usdcMint,
+        f1Vault,
+        true,
+      );
+      await program.methods
+        .depositFunds(new BN(500_000_000))
+        .accounts({
+          owner: owner.publicKey,
+          vault: f1Vault,
+          mint: usdcMint,
+          ownerTokenAccount: ownerUsdcAta,
+          vaultTokenAccount: f1VaultAta,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        } as any)
+        .rpc();
+
+      // Create a legit constraints PDA (must succeed before corruption)
+      createConstraintsAccount(
+        program,
+        svm,
+        owner.payer,
+        f1Vault,
+        f1Policy,
+        [
+          {
+            programId: jupiterProgramId,
+            dataConstraints: [
+              {
+                offset: 0,
+                operator: { eq: {} },
+                value: Buffer.from([0x01, 0x02, 0, 0, 0, 0, 0, 0]),
+              },
+            ],
+            accountConstraints: [],
+            isSpending: 1,
+            discriminatorFormat: { anchor8: {} },
+          },
+        ] as any,
+        false,
+      );
+    });
+
+    // Local helpers — F-1 vault uses different PDAs than the file-scope ones
+    function buildF1FinalizeIx(agentKey: PublicKey, mint: PublicKey) {
+      const [sessionPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("session"),
+          f1Vault.toBuffer(),
+          agentKey.toBuffer(),
+          mint.toBuffer(),
+        ],
+        program.programId,
+      );
+      return program.methods
+        .finalizeSession()
+        .accountsPartial({
+          payer: agentKey,
+          vault: f1Vault,
+          session: sessionPda,
+          sessionRentRecipient: agentKey,
+          policy: f1Policy,
+          tracker: f1Tracker,
+          agentSpendOverlay: f1Overlay,
+          vaultTokenAccount: f1VaultAta,
+          outputStablecoinAccount: null,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+    }
+
+    async function buildF1ValidateIx(
+      amount: BN,
+      remainingAccounts: {
+        pubkey: PublicKey;
+        isSigner: boolean;
+        isWritable: boolean;
+      }[],
+    ) {
+      const [sessionPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("session"),
+          f1Vault.toBuffer(),
+          f1Agent.publicKey.toBuffer(),
+          usdcMint.toBuffer(),
+        ],
+        program.programId,
+      );
+      const policyAccount = await program.account.policyConfig.fetch(f1Policy);
+      const policyVer = (policyAccount as any).policyVersion ?? new BN(0);
+      return program.methods
+        .validateAndAuthorize(usdcMint, amount, jupiterProgramId, policyVer)
+        .accounts({
+          agent: f1Agent.publicKey,
+          vault: f1Vault,
+          policy: f1Policy,
+          tracker: f1Tracker,
+          session: sessionPda,
+          agentSpendOverlay: f1Overlay,
+          vaultTokenAccount: f1VaultAta,
+          tokenMintAccount: usdcMint,
+          protocolTreasuryTokenAccount: protocolTreasuryUsdcAta,
+          feeDestinationTokenAccount: null,
+          outputStablecoinAccount: null,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
+        } as any)
+        .remainingAccounts(remainingAccounts)
+        .instruction();
+    }
+
+    it("legitimately-created constraints PDA validates successfully (sanity)", async () => {
+      // This is the positive path: an unmodified constraints PDA passes the
+      // discriminator check and the bytemuck load completes normally. If this
+      // breaks, the discriminator-equality test in the program is broken
+      // against legit accounts.
+      const validateIx = await buildF1ValidateIx(new BN(10_000_000), [
+        { pubkey: f1Constraints, isSigner: false, isWritable: false },
+      ]);
+      const finalizeIx = buildF1FinalizeIx(f1Agent.publicKey, usdcMint);
+      sendVersionedTx(svm, [validateIx, await finalizeIx], f1Agent);
+    });
+
+    it("constraints PDA with wrong discriminator → InvalidConstraintsPda", async () => {
+      // Read the constraints PDA, flip the first 8 bytes (Anchor discriminator)
+      // to a non-matching value while keeping the vault key intact at offset 8.
+      // Owner check passes (still program-owned), PDA-derivation passes (same
+      // address), length passes (unchanged), vault check passes (vault key is
+      // at offset 8, not first 8 bytes). The ONLY thing that should reject this
+      // is the new discriminator check.
+      const original = svm.getAccount(f1Constraints);
+      expect(original).to.not.be.null;
+      const data = Buffer.from(original!.data);
+
+      // Save the legit discriminator and flip every byte (XOR 0xFF — guaranteed
+      // to differ from any valid discriminator)
+      const legitDisc = Buffer.from(data.slice(0, 8));
+      for (let i = 0; i < 8; i++) {
+        data[i] = data[i] ^ 0xff;
+      }
+
+      svm.setAccount(f1Constraints, {
+        lamports: original!.lamports,
+        data,
+        owner: original!.owner,
+        executable: false,
+      });
+
+      // Sanity: vault bytes at offset 8 are STILL intact, so the vault-match
+      // check would pass if the discriminator check were absent
+      expect(data.slice(8, 40).toString("hex")).to.equal(
+        f1Vault.toBuffer().toString("hex"),
+      );
+
+      const validateIx = await buildF1ValidateIx(new BN(10_000_000), [
+        { pubkey: f1Constraints, isSigner: false, isWritable: false },
+      ]);
+      const finalizeIx = buildF1FinalizeIx(f1Agent.publicKey, usdcMint);
+
+      try {
+        sendVersionedTx(svm, [validateIx, await finalizeIx], f1Agent);
+        expect.fail(
+          "Should have thrown InvalidConstraintsPda — discriminator was corrupted",
+        );
+      } catch (err: any) {
+        if (err.message?.includes("Should have thrown")) throw err;
+        expectSigilError(err, { name: "InvalidConstraintsPda", code: 6047 });
+      }
+
+      // Restore for any subsequent tests in this describe
+      data.set(legitDisc, 0);
+      svm.setAccount(f1Constraints, {
+        lamports: original!.lamports,
+        data,
+        owner: original!.owner,
+        executable: false,
+      });
+    });
+
+    it("constraints PDA with all-zero discriminator → InvalidConstraintsPda", async () => {
+      // Specific edge case: an account that was allocated but never populated
+      // (discriminator slot is all zeros from create_instruction_constraints
+      // pre-write check). The program's pre-write code uses this as a guard
+      // against double-init; the runtime check here makes sure such an
+      // account can't be substituted at validate time.
+      const original = svm.getAccount(f1Constraints);
+      expect(original).to.not.be.null;
+      const data = Buffer.from(original!.data);
+      const legitDisc = Buffer.from(data.slice(0, 8));
+
+      // Zero out the discriminator
+      for (let i = 0; i < 8; i++) {
+        data[i] = 0;
+      }
+
+      svm.setAccount(f1Constraints, {
+        lamports: original!.lamports,
+        data,
+        owner: original!.owner,
+        executable: false,
+      });
+
+      const validateIx = await buildF1ValidateIx(new BN(10_000_000), [
+        { pubkey: f1Constraints, isSigner: false, isWritable: false },
+      ]);
+      const finalizeIx = buildF1FinalizeIx(f1Agent.publicKey, usdcMint);
+
+      try {
+        sendVersionedTx(svm, [validateIx, await finalizeIx], f1Agent);
+        expect.fail(
+          "Should have thrown InvalidConstraintsPda — zero discriminator",
+        );
+      } catch (err: any) {
+        if (err.message?.includes("Should have thrown")) throw err;
+        expectSigilError(err, { name: "InvalidConstraintsPda", code: 6047 });
+      }
+
+      // Restore for cleanliness
+      data.set(legitDisc, 0);
+      svm.setAccount(f1Constraints, {
+        lamports: original!.lamports,
+        data,
+        owner: original!.owner,
+        executable: false,
+      });
+    });
+  });
 });

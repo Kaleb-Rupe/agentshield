@@ -32,7 +32,7 @@
     },
     {
       "name": "Instruction constraints (generic enforcement)",
-      "count": 62,
+      "count": 65,
       "onChain": true,
       "claudePattern": "tests/instruction-constraints.ts` (ts-mocha + LiteSVM, %d tests)"
     },

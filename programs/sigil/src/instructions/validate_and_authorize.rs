@@ -150,6 +150,18 @@ pub fn handler(
             data.len() >= 8 + struct_size,
             SigilError::InvalidConstraintsPda
         );
+        // F-1 audit fix: verify Anchor discriminator before bytemuck cast.
+        // Cashio/Crema lesson — owner + PDA derivation alone are insufficient
+        // when multiple zero-copy types share byte layout. Without this check,
+        // a future Sigil instruction that introduces a different
+        // #[account(zero_copy)] type owned by crate::ID with the same byte
+        // layout as InstructionConstraints could be type-punned through this
+        // load. The discriminator is the 4th defense-in-depth check
+        // (alongside owner / length / PDA-derivation / vault).
+        require!(
+            data[..8] == *<InstructionConstraints as anchor_lang::Discriminator>::DISCRIMINATOR,
+            SigilError::InvalidConstraintsPda,
+        );
         // SAFETY: InstructionConstraints is #[account(zero_copy)] = #[repr(C)] + Pod.
         // The 8-byte Anchor discriminator precedes the struct data.
         let constraints: &InstructionConstraints = bytemuck::from_bytes(&data[8..8 + struct_size]);
@@ -642,6 +654,13 @@ pub fn handler(
             require!(
                 assertions_data.len() >= 8 + struct_size,
                 SigilError::PostAssertionFailed
+            );
+            // F-1 audit fix: verify Anchor discriminator before bytemuck cast.
+            // Same Cashio/Crema lesson as the InstructionConstraints load above.
+            require!(
+                assertions_data[..8]
+                    == *<PostExecutionAssertions as anchor_lang::Discriminator>::DISCRIMINATOR,
+                SigilError::PostAssertionFailed,
             );
             let assertions: &PostExecutionAssertions =
                 bytemuck::from_bytes(&assertions_data[8..8 + struct_size]);
