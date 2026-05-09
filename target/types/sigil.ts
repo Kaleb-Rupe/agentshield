@@ -6569,13 +6569,6 @@ export type Sigil = {
             }
           },
           {
-            "name": "isSpending",
-            "docs": [
-              "Spending classification: 1=Spending, 2=NonSpending. Required (0 rejected)."
-            ],
-            "type": "u8"
-          },
-          {
             "name": "discriminatorFormat",
             "docs": [
               "Discriminator format for this entry's target program. Controls the",
@@ -6596,15 +6589,16 @@ export type Sigil = {
       "docs": [
         "BYTE LAYOUT REGISTRY — Canonical assignment of padding bytes.",
         "",
-        "Layout (post position-counter removal, council decision 2026-04-19):",
+        "Layout (post is_spending removal, M2 Option A — runtime never read it):",
         "",
-        "byte 554: is_spending",
+        "byte 554: _reserved_was_is_spending  (was: is_spending; deleted M2 Option A)",
         "byte 555: discriminator_format",
         "bytes 556-559: _padding[4]  (reserved for future use)",
         "",
         "Total: 32+320+200+1+1+1+1+4 = 560 (unchanged).",
-        "Position_effect (formerly byte 555) was deleted with the entire position",
-        "counter system. The freed byte is absorbed by _padding to preserve the",
+        "is_spending (formerly byte 554) was deleted because the runtime never reads",
+        "it — `validate_and_authorize.rs:134` derives spending from `amount > 0`.",
+        "The freed byte is held as `_reserved_was_is_spending` to preserve the",
         "560-byte total — shrinking the struct would corrupt every existing",
         "on-chain InstructionConstraints PDA (35,888-byte zero-copy account)."
       ],
@@ -6659,11 +6653,13 @@ export type Sigil = {
             "type": "u8"
           },
           {
-            "name": "isSpending",
+            "name": "reservedWasIsSpending",
             "docs": [
-              "Spending classification: 0=Unset (treated as spending), 1=Spending, 2=NonSpending.",
-              "Set by vault owner at constraint creation time. The constraint engine returns",
-              "this value when it matches an entry — replaces ActionType.is_spending()."
+              "Reserved byte — formerly `is_spending` (deleted M2 Option A: runtime",
+              "never read it; spending is derived from `amount > 0`). Held as",
+              "padding to preserve the 560-byte ConstraintEntryZC invariant; existing",
+              "on-chain PDAs zero-init this byte. Do not repurpose without a",
+              "migration plan — old PDAs will read 0/1/2 here from prior writes."
             ],
             "type": "u8"
           },
