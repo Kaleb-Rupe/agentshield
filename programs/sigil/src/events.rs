@@ -236,6 +236,10 @@ pub struct VaultFrozen {
     pub vault: Pubkey,
     pub owner: Pubkey,
     pub agents_preserved: u8,
+    /// Number of active session SPL delegations revoked during freeze (F2-H1 fix).
+    /// Caller passes (session_pda, vault_token_account) pairs in remaining_accounts;
+    /// each pair whose session_pda matches the expected derivation is revoked.
+    pub sessions_revoked: u32,
     pub timestamp: i64,
 }
 

@@ -2775,7 +2775,10 @@
       "name": "freeze_vault",
       "docs": [
         "Freeze the vault immediately. Preserves all agent entries.",
-        "Only the owner can call this. Use reactivate_vault to unfreeze."
+        "Only the owner can call this. Use reactivate_vault to unfreeze.",
+        "F2-H1 fix: pairs of (session_pda, vault_token_account) in remaining_accounts",
+        "are revoked so a runaway agent cannot continue spending against an",
+        "in-flight session window."
       ],
       "discriminator": [
         144,
@@ -2821,6 +2824,10 @@
               }
             ]
           }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
@@ -8575,6 +8582,15 @@
           {
             "name": "agents_preserved",
             "type": "u8"
+          },
+          {
+            "name": "sessions_revoked",
+            "docs": [
+              "Number of active session SPL delegations revoked during freeze (F2-H1 fix).",
+              "Caller passes (session_pda, vault_token_account) pairs in remaining_accounts;",
+              "each pair whose session_pda matches the expected derivation is revoked."
+            ],
+            "type": "u32"
           },
           {
             "name": "timestamp",

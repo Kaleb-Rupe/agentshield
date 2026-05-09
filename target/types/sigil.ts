@@ -2781,7 +2781,10 @@ export type Sigil = {
       "name": "freezeVault",
       "docs": [
         "Freeze the vault immediately. Preserves all agent entries.",
-        "Only the owner can call this. Use reactivate_vault to unfreeze."
+        "Only the owner can call this. Use reactivate_vault to unfreeze.",
+        "F2-H1 fix: pairs of (session_pda, vault_token_account) in remaining_accounts",
+        "are revoked so a runaway agent cannot continue spending against an",
+        "in-flight session window."
       ],
       "discriminator": [
         144,
@@ -2827,6 +2830,10 @@ export type Sigil = {
               }
             ]
           }
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": []
@@ -8581,6 +8588,15 @@ export type Sigil = {
           {
             "name": "agentsPreserved",
             "type": "u8"
+          },
+          {
+            "name": "sessionsRevoked",
+            "docs": [
+              "Number of active session SPL delegations revoked during freeze (F2-H1 fix).",
+              "Caller passes (session_pda, vault_token_account) pairs in remaining_accounts;",
+              "each pair whose session_pda matches the expected derivation is revoked."
+            ],
+            "type": "u32"
           },
           {
             "name": "timestamp",
