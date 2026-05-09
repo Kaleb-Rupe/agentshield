@@ -106,13 +106,8 @@ impl PolicyConfig {
     /// developer_fee_rate (2) + max_slippage_bps (2) + timelock_duration (8) +
     /// allowed_destinations vec (4 + 32 * MAX) + has_constraints (1) +
     /// has_pending_policy (1) + has_protocol_caps (1) +
-<<<<<<< HEAD
     /// protocol_caps vec (4 + 8 * MAX) + session_expiry_seconds (8) + bump (1) +
-    /// policy_version (8) + has_post_assertions (1)
-=======
-    /// protocol_caps vec (4 + 8 * MAX) + session_expiry_slots (8) + bump (1) +
     /// policy_version (8) + has_post_assertions (1) + destination_mode (1)
->>>>>>> eb0a5dd (fix(sigil): explicit destination_mode (default Restricted) — F-4 audit fix)
     pub const SIZE: usize = 8
         + 32
         + 8
