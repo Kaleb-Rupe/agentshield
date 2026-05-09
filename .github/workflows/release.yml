@@ -116,7 +116,11 @@ jobs:
       - name: Build all packages
         run: pnpm -r run build
 
+<<<<<<< HEAD
       - name: Run Kit SDK tests (1696 tests)
+=======
+      - name: Run Kit SDK tests (1688 tests)
+>>>>>>> 88ce9d6 (chore: sync test counts (post-Wave-2 rebase))
         working-directory: sdk/kit
         run: pnpm test
 
