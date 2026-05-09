@@ -5,11 +5,7 @@
  * Every error includes a category, retryability flag, and
  * recovery actions that tell the agent exactly what to do next.
  *
-<<<<<<< HEAD
- * Maps all 79 on-chain error codes (6000-6078) plus 34 SDK
-=======
- * Maps all 81 on-chain error codes (6000-6080) plus 34 SDK
->>>>>>> 6052e3c (feat(sigil): cleanup_orphan_constraints_pda instruction (F3-H1 audit fix))
+ * Maps all 82 on-chain error codes (6000-6081) plus 34 SDK
  * error codes (7000-7033) to AgentError with machine-readable metadata.
  *
  * Zero dependency on @solana/web3.js or @coral-xyz/anchor.
@@ -61,11 +57,7 @@ export interface AgentError {
 }
 
 // ---------------------------------------------------------------------------
-<<<<<<< HEAD
-// On-chain error code mapping (6000-6078)
-=======
-// On-chain error code mapping (6000-6080)
->>>>>>> 6052e3c (feat(sigil): cleanup_orphan_constraints_pda instruction (F3-H1 audit fix))
+// On-chain error code mapping (6000-6081)
 // ---------------------------------------------------------------------------
 
 interface ErrorMapping {
@@ -1225,7 +1217,6 @@ export const ON_CHAIN_ERROR_MAP: Record<number, ErrorMapping> = {
     ],
   },
 
-<<<<<<< HEAD
   // C4 audit fix: async-fulfillment program deny
   6078: {
     name: "AsyncFulfillmentNotPermitted",
@@ -1238,9 +1229,12 @@ export const ON_CHAIN_ERROR_MAP: Record<number, ErrorMapping> = {
         action: "use_supported_protocol",
         description:
           "Use a synchronous protocol (Jupiter swap, Jupiter Lend, etc.). V1.1 will add a sanctioned async-friendly path with settlement-tracked counters or post-execution attestation.",
-=======
+      },
+    ],
+  },
+
   // Orphan constraints PDA cleanup (F3-H1 audit fix)
-  6078: {
+  6079: {
     name: "ConstraintsAlreadyPopulated",
     message:
       "Cannot clean an active constraints PDA via cleanup_orphan_constraints_pda — use queue_close_constraints + apply_close_constraints instead.",
@@ -1254,7 +1248,7 @@ export const ON_CHAIN_ERROR_MAP: Record<number, ErrorMapping> = {
       },
     ],
   },
-  6079: {
+  6080: {
     name: "OrphanPdaWrongOwner",
     message: "PDA at the constraints seeds is not owned by the Sigil program.",
     category: "INPUT_VALIDATION",
@@ -1267,7 +1261,7 @@ export const ON_CHAIN_ERROR_MAP: Record<number, ErrorMapping> = {
       },
     ],
   },
-  6080: {
+  6081: {
     name: "OrphanPdaPopulated",
     message:
       "PDA is fully populated (carries the Anchor discriminator) — not an orphan; cannot be cleaned.",
@@ -1278,7 +1272,6 @@ export const ON_CHAIN_ERROR_MAP: Record<number, ErrorMapping> = {
         action: "use_close_path",
         description:
           "Route fully-populated constraints PDAs through queue_close_constraints + apply_close_constraints.",
->>>>>>> 6052e3c (feat(sigil): cleanup_orphan_constraints_pda instruction (F3-H1 audit fix))
       },
     ],
   },
@@ -1803,11 +1796,7 @@ const SDK_ERRORS: Record<string, ErrorMapping> = {
  * Convert any error into a structured AgentError.
  *
  * Handles:
-<<<<<<< HEAD
- * - On-chain Anchor errors (code 6000-6078)
-=======
- * - On-chain Anchor errors (code 6000-6080)
->>>>>>> 6052e3c (feat(sigil): cleanup_orphan_constraints_pda instruction (F3-H1 audit fix))
+ * - On-chain Anchor errors (code 6000-6081)
  * - SDK errors (code 7000-7033)
  * - Network/RPC errors (from message patterns)
  * - Unknown errors (wrapped as FATAL)
@@ -2160,11 +2149,7 @@ function extractErrorCode(error: unknown): number | null {
   const e = error as Record<string, unknown>;
 
   // Direct code property
-<<<<<<< HEAD
-  if (typeof e.code === "number" && e.code >= 6000 && e.code <= 6078)
-=======
-  if (typeof e.code === "number" && e.code >= 6000 && e.code <= 6080)
->>>>>>> 6052e3c (feat(sigil): cleanup_orphan_constraints_pda instruction (F3-H1 audit fix))
+  if (typeof e.code === "number" && e.code >= 6000 && e.code <= 6081)
     return e.code;
 
   // Anchor error structure
@@ -2181,11 +2166,7 @@ function extractErrorCode(error: unknown): number | null {
     const match = e.message.match(/custom program error: 0x([0-9a-fA-F]+)/);
     if (match) {
       const code = parseInt(match[1], 16);
-<<<<<<< HEAD
-      if (code >= 6000 && code <= 6078) return code;
-=======
-      if (code >= 6000 && code <= 6080) return code;
->>>>>>> 6052e3c (feat(sigil): cleanup_orphan_constraints_pda instruction (F3-H1 audit fix))
+      if (code >= 6000 && code <= 6081) return code;
     }
   }
 
@@ -2426,11 +2407,7 @@ export class SigilSdkError extends Error implements AgentError {
  * Returns a SigilSdkError (extends Error) so instanceof Error checks still work.
  *
  * Processing order:
-<<<<<<< HEAD
- * 1. Try on-chain error extraction via toAgentError() (numeric codes 6000-6078)
-=======
- * 1. Try on-chain error extraction via toAgentError() (numeric codes 6000-6080)
->>>>>>> 6052e3c (feat(sigil): cleanup_orphan_constraints_pda instruction (F3-H1 audit fix))
+ * 1. Try on-chain error extraction via toAgentError() (numeric codes 6000-6081)
  * 2. Pattern-match SDK error messages (11 patterns from seal.ts throw sites)
  * 3. Fallback to UNKNOWN/FATAL
  */

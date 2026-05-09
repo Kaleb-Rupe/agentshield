@@ -1362,6 +1362,118 @@ export type Sigil = {
       "args": []
     },
     {
+      "name": "cleanupOrphanConstraintsPda",
+      "docs": [
+        "Cleanup an orphan InstructionConstraints PDA from a partial",
+        "allocate+extend chain that never reached create_instruction_constraints.",
+        "Owner-only. Drains rent back to owner. F3-H1 audit fix."
+      ],
+      "discriminator": [
+        69,
+        181,
+        93,
+        235,
+        116,
+        229,
+        116,
+        4
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "vault.vault_id",
+                "account": "agentVault"
+              }
+            ]
+          },
+          "relations": [
+            "policy"
+          ]
+        },
+        {
+          "name": "policy",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "orphanPda",
+          "docs": [
+            "by this program, and discriminator zero (orphan from incomplete",
+            "allocate+extend+populate chain)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  115,
+                  116,
+                  114,
+                  97,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "closePostAssertions",
       "docs": [
         "Close post-execution assertions for a vault. Returns rent to owner."
@@ -5326,6 +5438,19 @@ export type Sigil = {
       ]
     },
     {
+      "name": "orphanConstraintsPdaCleaned",
+      "discriminator": [
+        161,
+        234,
+        147,
+        131,
+        31,
+        163,
+        145,
+        25
+      ]
+    },
+    {
       "name": "pdaAllocated",
       "discriminator": [
         27,
@@ -5888,23 +6013,23 @@ export type Sigil = {
     },
     {
       "code": 6078,
-<<<<<<< HEAD
       "name": "asyncFulfillmentNotPermitted",
       "msg": "Async-fulfillment program is not permitted in V1 (Jupiter Perps, Drift, Drift JIT). Spending cannot be measured because keeper submits the actual transfer in a separate transaction after finalize_session returns."
-=======
+    },
+    {
+      "code": 6079,
       "name": "constraintsAlreadyPopulated",
       "msg": "Cannot clean an active constraints PDA; use queue+apply_close_constraints"
     },
     {
-      "code": 6079,
+      "code": 6080,
       "name": "orphanPdaWrongOwner",
       "msg": "PDA at constraints seeds is not program-owned"
     },
     {
-      "code": 6080,
+      "code": 6081,
       "name": "orphanPdaPopulated",
       "msg": "PDA is fully populated; not an orphan"
->>>>>>> 6052e3c (feat(sigil): cleanup_orphan_constraints_pda instruction (F3-H1 audit fix))
     }
   ],
   "types": [
@@ -7340,6 +7465,26 @@ export type Sigil = {
               "Enables off-chain monitors to detect format changes/downgrades."
             ],
             "type": "bytes"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "orphanConstraintsPdaCleaned",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "rentRecovered",
+            "type": "u64"
           },
           {
             "name": "timestamp",

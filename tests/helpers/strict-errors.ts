@@ -112,13 +112,10 @@ export const SIGIL_ERRORS = {
   QueuedUpdateExpired: 6075,
   AccountWritabilityMismatch: 6076,
   SysvarScanBoundExceeded: 6077,
-<<<<<<< HEAD
   AsyncFulfillmentNotPermitted: 6078,
-=======
-  ConstraintsAlreadyPopulated: 6078,
-  OrphanPdaWrongOwner: 6079,
-  OrphanPdaPopulated: 6080,
->>>>>>> 6052e3c (feat(sigil): cleanup_orphan_constraints_pda instruction (F3-H1 audit fix))
+  ConstraintsAlreadyPopulated: 6079,
+  OrphanPdaWrongOwner: 6080,
+  OrphanPdaPopulated: 6081,
 } as const;
 
 export type SigilErrorName = keyof typeof SIGIL_ERRORS;

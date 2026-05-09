@@ -172,6 +172,12 @@ export const SIGIL_ERROR__ACCOUNT_WRITABILITY_MISMATCH = 0x17bc; // 6076
 export const SIGIL_ERROR__SYSVAR_SCAN_BOUND_EXCEEDED = 0x17bd; // 6077
 /** AsyncFulfillmentNotPermitted: Async-fulfillment program is not permitted in V1 (Jupiter Perps, Drift, Drift JIT). Spending cannot be measured because keeper submits the actual transfer in a separate transaction after finalize_session returns. */
 export const SIGIL_ERROR__ASYNC_FULFILLMENT_NOT_PERMITTED = 0x17be; // 6078
+/** ConstraintsAlreadyPopulated: Cannot clean an active constraints PDA; use queue+apply_close_constraints */
+export const SIGIL_ERROR__CONSTRAINTS_ALREADY_POPULATED = 0x17bf; // 6079
+/** OrphanPdaWrongOwner: PDA at constraints seeds is not program-owned */
+export const SIGIL_ERROR__ORPHAN_PDA_WRONG_OWNER = 0x17c0; // 6080
+/** OrphanPdaPopulated: PDA is fully populated; not an orphan */
+export const SIGIL_ERROR__ORPHAN_PDA_POPULATED = 0x17c1; // 6081
 
 export type SigilError =
   | typeof SIGIL_ERROR__ACCOUNT_WRITABILITY_MISMATCH
@@ -186,6 +192,7 @@ export type SigilError =
   | typeof SIGIL_ERROR__AGENT_SPEND_LIMIT_EXCEEDED
   | typeof SIGIL_ERROR__ASYNC_FULFILLMENT_NOT_PERMITTED
   | typeof SIGIL_ERROR__BLOCKED_SPL_OPCODE
+  | typeof SIGIL_ERROR__CONSTRAINTS_ALREADY_POPULATED
   | typeof SIGIL_ERROR__CONSTRAINTS_NOT_CLOSED
   | typeof SIGIL_ERROR__CONSTRAINTS_VAULT_MISMATCH
   | typeof SIGIL_ERROR__CONSTRAINT_VIOLATED
@@ -219,6 +226,8 @@ export type SigilError =
   | typeof SIGIL_ERROR__NO_AGENT_REGISTERED
   | typeof SIGIL_ERROR__NON_TRACKED_SWAP_MUST_RETURN_STABLECOIN
   | typeof SIGIL_ERROR__NO_TIMELOCK_CONFIGURED
+  | typeof SIGIL_ERROR__ORPHAN_PDA_POPULATED
+  | typeof SIGIL_ERROR__ORPHAN_PDA_WRONG_OWNER
   | typeof SIGIL_ERROR__OVERFLOW
   | typeof SIGIL_ERROR__OVERLAY_SLOT_EXHAUSTED
   | typeof SIGIL_ERROR__PENDING_POLICY_EXISTS
@@ -269,6 +278,7 @@ if (process.env.NODE_ENV !== "production") {
     [SIGIL_ERROR__AGENT_SPEND_LIMIT_EXCEEDED]: `Agent rolling 24h spend exceeds per-agent spending limit`,
     [SIGIL_ERROR__ASYNC_FULFILLMENT_NOT_PERMITTED]: `Async-fulfillment program is not permitted in V1 (Jupiter Perps, Drift, Drift JIT). Spending cannot be measured because keeper submits the actual transfer in a separate transaction after finalize_session returns.`,
     [SIGIL_ERROR__BLOCKED_SPL_OPCODE]: `SPL opcode is blocked at runtime and cannot be used in constraints`,
+    [SIGIL_ERROR__CONSTRAINTS_ALREADY_POPULATED]: `Cannot clean an active constraints PDA; use queue+apply_close_constraints`,
     [SIGIL_ERROR__CONSTRAINTS_NOT_CLOSED]: `Instruction constraints must be closed before closing vault`,
     [SIGIL_ERROR__CONSTRAINTS_VAULT_MISMATCH]: `Zero-copy constraints account has wrong vault`,
     [SIGIL_ERROR__CONSTRAINT_VIOLATED]: `Instruction constraint violated`,
@@ -302,6 +312,8 @@ if (process.env.NODE_ENV !== "production") {
     [SIGIL_ERROR__NO_AGENT_REGISTERED]: `No agent registered for this vault`,
     [SIGIL_ERROR__NON_TRACKED_SWAP_MUST_RETURN_STABLECOIN]: `Non-stablecoin swap must return stablecoin (balance did not increase)`,
     [SIGIL_ERROR__NO_TIMELOCK_CONFIGURED]: `No timelock configured on this vault`,
+    [SIGIL_ERROR__ORPHAN_PDA_POPULATED]: `PDA is fully populated; not an orphan`,
+    [SIGIL_ERROR__ORPHAN_PDA_WRONG_OWNER]: `PDA at constraints seeds is not program-owned`,
     [SIGIL_ERROR__OVERFLOW]: `Arithmetic overflow`,
     [SIGIL_ERROR__OVERLAY_SLOT_EXHAUSTED]: `Per-agent overlay is full; cannot register agent with spending limit`,
     [SIGIL_ERROR__PENDING_POLICY_EXISTS]: `Pending policy update must be applied or cancelled before closing vault`,
