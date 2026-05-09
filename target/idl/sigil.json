@@ -5874,6 +5874,11 @@
       "code": 6076,
       "name": "AccountWritabilityMismatch",
       "msg": "Account writability flag does not match constraint requirement"
+    },
+    {
+      "code": 6077,
+      "name": "SysvarScanBoundExceeded",
+      "msg": "Sysvar instruction scan exceeded the per-tx safety bound"
     }
   ],
   "types": [
