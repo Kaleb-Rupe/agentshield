@@ -5,7 +5,7 @@
  * Every error includes a category, retryability flag, and
  * recovery actions that tell the agent exactly what to do next.
  *
- * Maps all 75 on-chain error codes (6000-6074) plus 34 SDK
+ * Maps all 76 on-chain error codes (6000-6075) plus 34 SDK
  * error codes (7000-7033) to AgentError with machine-readable metadata.
  *
  * Zero dependency on @solana/web3.js or @coral-xyz/anchor.
@@ -57,7 +57,7 @@ export interface AgentError {
 }
 
 // ---------------------------------------------------------------------------
-// On-chain error code mapping (6000-6074)
+// On-chain error code mapping (6000-6075)
 // ---------------------------------------------------------------------------
 
 interface ErrorMapping {
@@ -1170,6 +1170,22 @@ export const ON_CHAIN_ERROR_MAP: Record<number, ErrorMapping> = {
       },
     ],
   },
+
+  // F-10 audit fix: durable-nonce pre-signing defense
+  6075: {
+    name: "QueuedUpdateExpired",
+    message:
+      "Queued update is too old (>MAX_APPLY_AGE_SLOTS) — re-queue to apply. Defends against durable-nonce pre-signing.",
+    category: "POLICY_VIOLATION",
+    retryable: false,
+    recovery_actions: [
+      {
+        action: "requeue",
+        description:
+          "Re-queue the update via queue_policy_update / queue_constraints_update / queue_close_constraints / queue_agent_permissions_update — the original queued update is past the freshness window.",
+      },
+    ],
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -1691,7 +1707,7 @@ const SDK_ERRORS: Record<string, ErrorMapping> = {
  * Convert any error into a structured AgentError.
  *
  * Handles:
- * - On-chain Anchor errors (code 6000-6074)
+ * - On-chain Anchor errors (code 6000-6075)
  * - SDK errors (code 7000-7033)
  * - Network/RPC errors (from message patterns)
  * - Unknown errors (wrapped as FATAL)
@@ -2044,7 +2060,7 @@ function extractErrorCode(error: unknown): number | null {
   const e = error as Record<string, unknown>;
 
   // Direct code property
-  if (typeof e.code === "number" && e.code >= 6000 && e.code <= 6074)
+  if (typeof e.code === "number" && e.code >= 6000 && e.code <= 6075)
     return e.code;
 
   // Anchor error structure
@@ -2061,7 +2077,7 @@ function extractErrorCode(error: unknown): number | null {
     const match = e.message.match(/custom program error: 0x([0-9a-fA-F]+)/);
     if (match) {
       const code = parseInt(match[1], 16);
-      if (code >= 6000 && code <= 6074) return code;
+      if (code >= 6000 && code <= 6075) return code;
     }
   }
 
@@ -2302,7 +2318,7 @@ export class SigilSdkError extends Error implements AgentError {
  * Returns a SigilSdkError (extends Error) so instanceof Error checks still work.
  *
  * Processing order:
- * 1. Try on-chain error extraction via toAgentError() (numeric codes 6000-6074)
+ * 1. Try on-chain error extraction via toAgentError() (numeric codes 6000-6075)
  * 2. Pattern-match SDK error messages (11 patterns from seal.ts throw sites)
  * 3. Fallback to UNKNOWN/FATAL
  */
