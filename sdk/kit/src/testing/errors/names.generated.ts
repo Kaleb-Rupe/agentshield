@@ -94,6 +94,7 @@ export const SIGIL_ERRORS = {
   ConstraintsVaultMismatch: 6073,
   BlockedSplOpcode: 6074,
   QueuedUpdateExpired: 6075,
+  AccountWritabilityMismatch: 6076,
 } as const;
 
 /**

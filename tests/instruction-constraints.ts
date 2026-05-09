@@ -1152,7 +1152,9 @@ describe("instruction-constraints", () => {
           {
             programId: jupiterProgramId,
             dataConstraints: [], // No data constraints — any instruction from Jupiter passes
-            accountConstraints: [{ index: 0, expected: jupiterProgramId }],
+            accountConstraints: [
+              { index: 0, isWritableRequired: 0, expected: jupiterProgramId },
+            ],
             discriminatorFormat: { anchor8: {} },
           },
         ],
@@ -2310,6 +2312,167 @@ describe("instruction-constraints", () => {
         cvConstraints,
         cvPendingCloseConstraints,
       );
+    });
+
+    // ─── M5: AccountConstraint.is_writable_required (Squads SAP parity) ─────
+    //
+    // PR 9 closes the attack class where an owner constrains a pubkey
+    // expecting read-only access but the agent submits the same pubkey at
+    // the same index with `is_writable: true`, gaining write access without
+    // breaking the pubkey check. The matcher now optionally enforces the
+    // `is_writable` flag on the AccountMeta:
+    //   0 = "any"          (backwards-compat default — no writable check)
+    //   1 = "must be read-only" → AccountWritabilityMismatch if writable
+    //   2 = "must be writable"  → AccountWritabilityMismatch if read-only
+    //
+    // Layout: each test routes through the mock-defi program (committed
+    // .so loaded via addProgramFromFile in createTestEnv) which has stable
+    // 8-byte Anchor discriminators. Mock-defi's `open_position` takes one
+    // signer at keys[0] — that signer is `m5Signer`, the constrained
+    // account whose writability flag is under test.
+    //
+    // The constraint pins both pubkey (m5Signer.publicKey) and the writable
+    // flag at index 0 of the mock-defi instruction.
+    const MOCK_DEFI_PROGRAM_ID = new PublicKey(
+      "2pB26qKW73sToF7ETcdhXQTj8biYwAk9TCArVwgHBe24",
+    );
+    // Mock-defi `open_position` discriminator: sha256("global:open_position")[0..8]
+    const MOCK_DEFI_OPEN_POSITION_DISC = Buffer.from([
+      0x87, 0x80, 0x2f, 0x4d, 0x0f, 0x98, 0xf0, 0x31,
+    ]);
+    const m5Signer = Keypair.generate();
+
+    function buildM5MockIx(isWritable: boolean) {
+      // Mock-defi `open_position` ix. keys[0] = m5Signer (Signer<'info> in
+      // MockNoop). The matcher reads the AccountMeta isWritable flag at
+      // index 0 against the constraint. Mock-defi's handler is a no-op so
+      // the IX executes successfully whenever the matcher allows it.
+      return new TransactionInstruction({
+        programId: MOCK_DEFI_PROGRAM_ID,
+        keys: [{ pubkey: m5Signer.publicKey, isSigner: true, isWritable }],
+        data: MOCK_DEFI_OPEN_POSITION_DISC,
+      });
+    }
+
+    // Build the constraint entries array for an M5 test.
+    function m5Entries(isWritableRequired: number) {
+      return [
+        {
+          programId: MOCK_DEFI_PROGRAM_ID,
+          dataConstraints: [
+            {
+              offset: 0,
+              operator: { eq: {} },
+              value: MOCK_DEFI_OPEN_POSITION_DISC,
+            },
+          ],
+          accountConstraints: [
+            {
+              index: 0,
+              isWritableRequired,
+              expected: m5Signer.publicKey,
+            },
+          ],
+          discriminatorFormat: { anchor8: {} },
+        },
+      ];
+    }
+
+    // Run an M5 scenario end-to-end: install the constraint, fire validate
+    // + mock-defi IX + finalize, then close constraints to leave the vault
+    // ready for the next test. If `expectErrorName` is passed, the TX must
+    // throw that Sigil error and constraints are still closed afterwards.
+    async function runM5Scenario(
+      isWritableRequired: number,
+      mockIxIsWritable: boolean,
+      expectErrorName?: import("./helpers/strict-errors").SigilErrorName,
+    ): Promise<void> {
+      createConstraintsAccount(
+        program,
+        svm,
+        owner.payer,
+        cvVault,
+        cvPolicy,
+        m5Entries(isWritableRequired),
+        false,
+      );
+
+      const validateIx = await buildCvValidateIx(
+        new BN(10_000_000),
+        MOCK_DEFI_PROGRAM_ID,
+        [{ pubkey: cvConstraints, isSigner: false, isWritable: false }],
+      );
+      const finalizeIx = await buildCvFinalizeIx();
+      const ixs = [validateIx, buildM5MockIx(mockIxIsWritable), finalizeIx];
+
+      try {
+        sendVersionedTx(svm, ixs, cvAgent, [m5Signer]);
+        if (expectErrorName) {
+          expect.fail(`Should have thrown ${expectErrorName}`);
+        }
+      } catch (err: any) {
+        if (!expectErrorName) throw err;
+        expectSigilError(err, { name: expectErrorName });
+      }
+
+      await queueAndApplyCloseConstraints(
+        cvVault,
+        cvPolicy,
+        cvConstraints,
+        cvPendingCloseConstraints,
+      );
+    }
+
+    // The mock-defi IX needs a Signer at keys[0] = m5Signer. We sign it as an
+    // additional signer to sendVersionedTx.
+    before(async () => {
+      airdropSol(svm, m5Signer.publicKey, 1 * LAMPORTS_PER_SOL);
+    });
+
+    it("M5: is_writable_required=1 (read-only) accepts read-only account", async () => {
+      await runM5Scenario(1, false);
+    });
+
+    it("M5: is_writable_required=1 (read-only) rejects writable account → AccountWritabilityMismatch", async () => {
+      await runM5Scenario(1, true, "AccountWritabilityMismatch");
+    });
+
+    it("M5: is_writable_required=2 (writable) accepts writable account", async () => {
+      await runM5Scenario(2, true);
+    });
+
+    it("M5: is_writable_required=2 (writable) rejects read-only account → AccountWritabilityMismatch", async () => {
+      await runM5Scenario(2, false, "AccountWritabilityMismatch");
+    });
+
+    it("M5: is_writable_required=0 (any) passes for read-only — backwards-compat", async () => {
+      // 0 = no writable check (existing on-chain PDAs zero-init this byte).
+      await runM5Scenario(0, false);
+    });
+
+    it("M5: is_writable_required=0 (any) passes for writable — backwards-compat", async () => {
+      // 0 = no writable check — both read-only and writable pass. Previous
+      // test covered read-only; this covers writable.
+      await runM5Scenario(0, true);
+    });
+
+    it("M5: is_writable_required=3 rejected at validate_entries → InvalidConstraintConfig", async () => {
+      // Defense-in-depth: the validator rejects values 3+ at create/queue
+      // time, so the runtime matcher never has to handle an undefined value.
+      try {
+        createConstraintsAccount(
+          program,
+          svm,
+          owner.payer,
+          cvVault,
+          cvPolicy,
+          m5Entries(3),
+          false,
+        );
+        expect.fail("Should have thrown InvalidConstraintConfig");
+      } catch (err: any) {
+        expectSigilError(err, { name: "InvalidConstraintConfig" });
+      }
     });
 
     // H-5a: cancelConstraintsUpdate when none queued → account-not-found (Anchor error)

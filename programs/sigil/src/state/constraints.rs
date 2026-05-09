@@ -82,11 +82,24 @@ pub struct DataConstraint {
     pub value: Vec<u8>,               // 4 + max 32
 }
 
-/// Account-index constraint: requires a specific pubkey at a specific account index.
+/// Account-index constraint: requires a specific pubkey at a specific account index,
+/// and optionally enforces the account-meta `is_writable` flag.
+///
+/// `is_writable_required` encoding (M5 — Squads SAP parity):
+///   0 = "any"          — do not check the writable flag (backwards-compatible default;
+///                        existing on-chain PDAs zero-init this byte → 0 → any)
+///   1 = "must be read-only" — require account_meta.is_writable == false
+///   2 = "must be writable"  — require account_meta.is_writable == true
+///   3+ = invalid (rejected at create/queue time by validate_entries)
+///
+/// Closes the attack class where an owner pins a pubkey expecting read-only access
+/// but the agent submits the same pubkey with `is_writable: true`, gaining write
+/// access to the constrained account without breaking the pubkey check.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
 pub struct AccountConstraint {
-    pub index: u8,        // 1
-    pub expected: Pubkey, // 32
+    pub index: u8,                // 1
+    pub is_writable_required: u8, // 1 — 0=any, 1=read-only, 2=writable
+    pub expected: Pubkey,         // 32
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
@@ -116,9 +129,14 @@ pub struct DataConstraintZC {
 pub struct AccountConstraintZC {
     pub expected: [u8; 32], // 32
     pub index: u8,          // 1
-    pub _padding: [u8; 7],  // 7 (align to 8 bytes: 32+1+7=40)
+    /// 0=any, 1=must-be-read-only, 2=must-be-writable. See AccountConstraint
+    /// docs for full semantics. Zero-initialized on existing V1 PDAs → 0 →
+    /// "any" (backwards-compatible — runtime ignores the writable flag for
+    /// pre-PR-9 entries that never set this byte).
+    pub is_writable_required: u8, // 1 (M5 — Squads SAP parity)
+    pub _padding: [u8; 6],  // 6 (align to 8 bytes: 32+1+1+6=40)
 }
-// = 40 bytes
+// = 40 bytes (preserved — _padding reduced by 1 to absorb is_writable_required)
 
 /// BYTE LAYOUT REGISTRY — Canonical assignment of padding bytes.
 ///
@@ -214,6 +232,17 @@ impl InstructionConstraints {
                 entry.account_constraints.len() <= MAX_ACCOUNT_CONSTRAINTS_PER_ENTRY,
                 SigilError::InvalidConstraintConfig
             );
+            // M5 (Squads SAP parity): is_writable_required must be 0/1/2.
+            // 0 = any (backwards-compat — existing PDAs zero-init this byte),
+            // 1 = must be read-only, 2 = must be writable. Reject 3+ at
+            // creation time so the runtime matcher never has to handle an
+            // undefined value. New entries must explicitly choose 0/1/2.
+            for ac in &entry.account_constraints {
+                require!(
+                    ac.is_writable_required <= 2,
+                    SigilError::InvalidConstraintConfig
+                );
+            }
             // Fix A5: every entry MUST anchor on the target instruction
             // discriminator via its FIRST DataConstraint. Without this, an
             // entry with data_constraints=[] and only account_constraints
@@ -471,6 +500,7 @@ mod tests {
             vec![],
             vec![AccountConstraint {
                 index: 0,
+                is_writable_required: 0,
                 expected: Pubkey::default(),
             }],
         )];
@@ -551,10 +581,96 @@ mod tests {
             vec![discriminator_anchor()],
             vec![AccountConstraint {
                 index: 3,
+                is_writable_required: 0,
                 expected: Pubkey::default(),
             }],
         )];
         assert!(InstructionConstraints::validate_entries(&entries).is_ok());
+    }
+
+    // ─── M5 tests: is_writable_required encoding ────────────────────────────
+
+    #[test]
+    fn validate_entries_accepts_is_writable_required_zero() {
+        // 0 = "any" — explicit backwards-compatible default.
+        let entries = vec![mk_entry_with_accounts(
+            vec![discriminator_anchor()],
+            vec![AccountConstraint {
+                index: 0,
+                is_writable_required: 0,
+                expected: Pubkey::default(),
+            }],
+        )];
+        assert!(InstructionConstraints::validate_entries(&entries).is_ok());
+    }
+
+    #[test]
+    fn validate_entries_accepts_is_writable_required_one() {
+        // 1 = "must be read-only".
+        let entries = vec![mk_entry_with_accounts(
+            vec![discriminator_anchor()],
+            vec![AccountConstraint {
+                index: 0,
+                is_writable_required: 1,
+                expected: Pubkey::default(),
+            }],
+        )];
+        assert!(InstructionConstraints::validate_entries(&entries).is_ok());
+    }
+
+    #[test]
+    fn validate_entries_accepts_is_writable_required_two() {
+        // 2 = "must be writable".
+        let entries = vec![mk_entry_with_accounts(
+            vec![discriminator_anchor()],
+            vec![AccountConstraint {
+                index: 0,
+                is_writable_required: 2,
+                expected: Pubkey::default(),
+            }],
+        )];
+        assert!(InstructionConstraints::validate_entries(&entries).is_ok());
+    }
+
+    #[test]
+    fn validate_entries_rejects_is_writable_required_three() {
+        // 3+ = invalid — runtime matcher never has to handle undefined values.
+        let entries = vec![mk_entry_with_accounts(
+            vec![discriminator_anchor()],
+            vec![AccountConstraint {
+                index: 0,
+                is_writable_required: 3,
+                expected: Pubkey::default(),
+            }],
+        )];
+        assert!(InstructionConstraints::validate_entries(&entries).is_err());
+    }
+
+    #[test]
+    fn validate_entries_rejects_is_writable_required_max() {
+        // 0xFF must also reject — defensive against bit-flip / wildcard attacks.
+        let entries = vec![mk_entry_with_accounts(
+            vec![discriminator_anchor()],
+            vec![AccountConstraint {
+                index: 0,
+                is_writable_required: 0xFF,
+                expected: Pubkey::default(),
+            }],
+        )];
+        assert!(InstructionConstraints::validate_entries(&entries).is_err());
+    }
+
+    #[test]
+    fn account_constraint_zc_size_invariant() {
+        // M5: AccountConstraintZC must remain exactly 40 bytes after adding
+        // is_writable_required. Reduced _padding from [u8; 7] to [u8; 6] to
+        // absorb the new field — total 32 + 1 + 1 + 6 = 40 bytes. This
+        // preserves the ConstraintEntryZC 560-byte invariant (5 * 40 = 200).
+        assert_eq!(
+            std::mem::size_of::<AccountConstraintZC>(),
+            40,
+            "AccountConstraintZC must be exactly 40 bytes — adjust _padding if shifting fields"
+        );
     }
 
     #[test]
@@ -912,6 +1028,7 @@ pub(crate) fn pack_entries(
         for (k, ac) in entry.account_constraints.iter().enumerate() {
             dst[i].account_constraints[k].expected = ac.expected.to_bytes();
             dst[i].account_constraints[k].index = ac.index;
+            dst[i].account_constraints[k].is_writable_required = ac.is_writable_required;
         }
     }
     *count_out = entries.len() as u8;

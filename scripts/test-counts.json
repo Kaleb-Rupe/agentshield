@@ -32,7 +32,7 @@
     },
     {
       "name": "Instruction constraints (generic enforcement)",
-      "count": 55,
+      "count": 62,
       "onChain": true,
       "claudePattern": "tests/instruction-constraints.ts` (ts-mocha + LiteSVM, %d tests)"
     },
@@ -103,7 +103,7 @@
     },
     {
       "name": "Rust unit tests (cargo test)",
-      "count": 122,
+      "count": 128,
       "onChain": true,
       "claudePattern": "cargo test --manifest-path programs/sigil/Cargo.toml` (%d tests)"
     },
