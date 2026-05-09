@@ -53,7 +53,6 @@ import {
 import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { expect } from "chai";
 import BN from "bn.js";
@@ -73,7 +72,6 @@ import {
   resetCUMeasurements,
   TestEnv,
   LiteSVM,
-  VersionedTxResult,
 } from "./helpers/litesvm-setup";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -563,7 +561,7 @@ describe("cu-budget", () => {
     );
     const finalizeIx = await buildFinalizeIx(ctx);
     const result = sendAndMeasureCU(svm, [validateIx, finalizeIx], agent);
-    recordCU("1:validate-only", result as VersionedTxResult);
+    recordCU("1:validate-only", result);
     console.log(
       `  measured: ${result.computeUnitsConsumed.toLocaleString()} CU` +
         `  (succeeded=${result.succeeded})`,
@@ -597,7 +595,7 @@ describe("cu-budget", () => {
       [validateIx, jupiterIx, finalizeIx],
       agent,
     );
-    recordCU("2:jupiter-1-step", result as VersionedTxResult);
+    recordCU("2:jupiter-1-step", result);
     console.log(
       `  measured: ${result.computeUnitsConsumed.toLocaleString()} CU` +
         `  (succeeded=${result.succeeded})` +
@@ -643,7 +641,7 @@ describe("cu-budget", () => {
       [validateIx, jupiterIx, finalizeIx],
       agent,
     );
-    recordCU("3:jupiter-10-step", result as VersionedTxResult);
+    recordCU("3:jupiter-10-step", result);
     console.log(
       `  measured: ${result.computeUnitsConsumed.toLocaleString()} CU` +
         `  (succeeded=${result.succeeded})` +
@@ -677,7 +675,7 @@ describe("cu-budget", () => {
       [validateIx, jupiterIx, finalizeIx],
       agent,
     );
-    recordCU("4:or64-fallthrough", result as VersionedTxResult);
+    recordCU("4:or64-fallthrough", result);
     console.log(
       `  measured: ${result.computeUnitsConsumed.toLocaleString()} CU` +
         `  (succeeded=${result.succeeded})` +
@@ -713,7 +711,7 @@ describe("cu-budget", () => {
       [validateIx, jupiterIx, finalizeIx],
       agent,
     );
-    recordCU("5:combined", result as VersionedTxResult);
+    recordCU("5:combined", result);
     console.log(
       `  measured: ${result.computeUnitsConsumed.toLocaleString()} CU` +
         `  (succeeded=${result.succeeded})` +
@@ -782,7 +780,7 @@ describe("cu-budget", () => {
       [validateIx, finalizeIx, ...padIxs],
       agent,
     );
-    recordCU("6:computebudget-pad32", result as VersionedTxResult);
+    recordCU("6:computebudget-pad32", result);
     console.log(
       `  measured: ${result.computeUnitsConsumed.toLocaleString()} CU` +
         `  (succeeded=${result.succeeded})` +
