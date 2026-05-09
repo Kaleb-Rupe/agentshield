@@ -681,8 +681,6 @@ export function resetCUMeasurements(): void {
 // populate into a single atomic VersionedTransaction.
 
 import { createHash } from "crypto";
-import { Program } from "@coral-xyz/anchor";
-import { Sigil } from "../../target/types/sigil";
 
 const CONSTRAINTS_SIZE = 35_888;
 const PENDING_CONSTRAINTS_SIZE = 35_912;
@@ -936,13 +934,16 @@ export async function fetchConstraints(
           return {
             offset: dc.offset,
             operator: { [opName]: {} },
-            value: Buffer.from(Array.from(dc.value).slice(0, dc.valueLen)),
+            value: Buffer.from(
+              Array.from(dc.value as ArrayLike<number>).slice(0, dc.valueLen),
+            ),
           };
         }),
         accountConstraints: Array.from({ length: accountCount }, (_, k) => {
           const ac = e.accountConstraints[k];
           return {
             index: ac.index,
+            isWritableRequired: ac.isWritableRequired ?? 0,
             expected: new PublicKey(ac.expected),
           };
         }),

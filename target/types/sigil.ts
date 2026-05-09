@@ -5866,21 +5866,42 @@ export type Sigil = {
     },
     {
       "code": 6075,
+<<<<<<< HEAD
       "name": "queuedUpdateExpired",
       "msg": "Queued update is too old (>MAX_APPLY_AGE_SLOTS) — re-queue to apply. Defends against durable-nonce pre-signing."
+=======
+      "name": "accountWritabilityMismatch",
+      "msg": "Account writability flag does not match constraint requirement"
+>>>>>>> 08fec1f (feat(sigil): add AccountConstraint.is_writable_required (M5 — Squads SAP parity))
     }
   ],
   "types": [
     {
       "name": "accountConstraint",
       "docs": [
-        "Account-index constraint: requires a specific pubkey at a specific account index."
+        "Account-index constraint: requires a specific pubkey at a specific account index,",
+        "and optionally enforces the account-meta `is_writable` flag.",
+        "",
+        "`is_writable_required` encoding (M5 — Squads SAP parity):",
+        "0 = \"any\"          — do not check the writable flag (backwards-compatible default;",
+        "existing on-chain PDAs zero-init this byte → 0 → any)",
+        "1 = \"must be read-only\" — require account_meta.is_writable == false",
+        "2 = \"must be writable\"  — require account_meta.is_writable == true",
+        "3+ = invalid (rejected at create/queue time by validate_entries)",
+        "",
+        "Closes the attack class where an owner pins a pubkey expecting read-only access",
+        "but the agent submits the same pubkey with `is_writable: true`, gaining write",
+        "access to the constrained account without breaking the pubkey check."
       ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "index",
+            "type": "u8"
+          },
+          {
+            "name": "isWritableRequired",
             "type": "u8"
           },
           {
@@ -5913,11 +5934,21 @@ export type Sigil = {
             "type": "u8"
           },
           {
+            "name": "isWritableRequired",
+            "docs": [
+              "0=any, 1=must-be-read-only, 2=must-be-writable. See AccountConstraint",
+              "docs for full semantics. Zero-initialized on existing V1 PDAs → 0 →",
+              "\"any\" (backwards-compatible — runtime ignores the writable flag for",
+              "pre-PR-9 entries that never set this byte)."
+            ],
+            "type": "u8"
+          },
+          {
             "name": "padding",
             "type": {
               "array": [
                 "u8",
-                7
+                6
               ]
             }
           }
