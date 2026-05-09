@@ -113,6 +113,9 @@ export const SIGIL_ERRORS = {
   AccountWritabilityMismatch: 6076,
   SysvarScanBoundExceeded: 6077,
   AsyncFulfillmentNotPermitted: 6078,
+  ConstraintsAlreadyPopulated: 6079,
+  OrphanPdaWrongOwner: 6080,
+  OrphanPdaPopulated: 6081,
 } as const;
 
 export type SigilErrorName = keyof typeof SIGIL_ERRORS;

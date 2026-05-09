@@ -318,3 +318,12 @@ pub struct PostAssertionChecked {
     pub passed: bool,
     pub timestamp: i64,
 }
+
+// --- Orphan constraints PDA cleanup (F3-H1 audit fix) ---
+
+#[event]
+pub struct OrphanConstraintsPdaCleaned {
+    pub vault: Pubkey,
+    pub rent_recovered: u64,
+    pub timestamp: i64,
+}

@@ -233,6 +233,13 @@ pub mod sigil {
         instructions::cancel_close_constraints::handler(ctx)
     }
 
+    /// Cleanup an orphan InstructionConstraints PDA from a partial
+    /// allocate+extend chain that never reached create_instruction_constraints.
+    /// Owner-only. Drains rent back to owner. F3-H1 audit fix.
+    pub fn cleanup_orphan_constraints_pda(ctx: Context<CleanupOrphanConstraintsPda>) -> Result<()> {
+        instructions::cleanup_orphan_constraints_pda::handler(ctx)
+    }
+
     // ─── Post-Execution Assertions (Phase B) ─────────────────────────────────
 
     /// Create post-execution assertions for a vault.

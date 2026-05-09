@@ -14,7 +14,7 @@
  */
 
 // ────────────────────────────────────────────────────────────────
-// Sigil program errors (6000-6078)
+// Sigil program errors (6000-6081)
 // ────────────────────────────────────────────────────────────────
 
 export const SIGIL_ERRORS = {
@@ -97,6 +97,9 @@ export const SIGIL_ERRORS = {
   AccountWritabilityMismatch: 6076,
   SysvarScanBoundExceeded: 6077,
   AsyncFulfillmentNotPermitted: 6078,
+  ConstraintsAlreadyPopulated: 6079,
+  OrphanPdaWrongOwner: 6080,
+  OrphanPdaPopulated: 6081,
 } as const;
 
 /**
