@@ -254,6 +254,11 @@ cargo fmt --check --manifest-path programs/sigil/Cargo.toml
 
 Raw scan output is stored as private CI artifacts (accessible to repo collaborators only). Published audit reports are added to `docs/audits/` after auditor release.
 
+## V1 Launch
+
+- [V1 Launch Runbook](./docs/V1-LAUNCH-RUNBOOK.md) — program upgrade authority handover (Drift Apr-2026 + OptiFi analog)
+- [V1 Launch Notes](./docs/V1-LAUNCH-NOTES.md) — known V1 limitations integrators must know before allowlisting protocols
+
 ## License
 
 This project is licensed under the [Apache License 2.0](./LICENSE).
