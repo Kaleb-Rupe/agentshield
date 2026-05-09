@@ -302,8 +302,8 @@ pub const JUPITER_BORROW_PROGRAM: Pubkey = Pubkey::new_from_array([
 /// Jupiter Perpetuals program
 /// Base58: PERPHjGBqRHArX4DySjwM6UJHiR3sWAatqfdBS2qQJu
 pub const JUPITER_PERPS_PROGRAM: Pubkey = Pubkey::new_from_array([
-    5, 177, 243, 202, 241, 148, 98, 239, 135, 96, 240, 171, 222, 117, 205, 61, 158, 227, 27, 58, 50,
-    198, 32, 232, 148, 18, 46, 156, 155, 129, 69, 250,
+    5, 177, 243, 202, 241, 148, 98, 239, 135, 96, 240, 171, 222, 117, 205, 61, 158, 227, 27, 58,
+    50, 198, 32, 232, 148, 18, 46, 156, 155, 129, 69, 250,
 ]);
 
 /// Drift v2 protocol program
