@@ -1152,7 +1152,9 @@ describe("instruction-constraints", () => {
           {
             programId: jupiterProgramId,
             dataConstraints: [], // No data constraints — any instruction from Jupiter passes
-            accountConstraints: [{ index: 0, isWritableRequired: 0, expected: jupiterProgramId }],
+            accountConstraints: [
+              { index: 0, isWritableRequired: 0, expected: jupiterProgramId },
+            ],
             discriminatorFormat: { anchor8: {} },
           },
         ],
@@ -2347,9 +2349,7 @@ describe("instruction-constraints", () => {
       // the IX executes successfully whenever the matcher allows it.
       return new TransactionInstruction({
         programId: MOCK_DEFI_PROGRAM_ID,
-        keys: [
-          { pubkey: m5Signer.publicKey, isSigner: true, isWritable },
-        ],
+        keys: [{ pubkey: m5Signer.publicKey, isSigner: true, isWritable }],
         data: MOCK_DEFI_OPEN_POSITION_DISC,
       });
     }

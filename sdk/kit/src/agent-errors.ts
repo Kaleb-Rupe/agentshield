@@ -1170,6 +1170,7 @@ export const ON_CHAIN_ERROR_MAP: Record<number, ErrorMapping> = {
       },
     ],
   },
+<<<<<<< HEAD
 
   // F-10 audit fix: durable-nonce pre-signing defense
   6075: {
@@ -1183,6 +1184,19 @@ export const ON_CHAIN_ERROR_MAP: Record<number, ErrorMapping> = {
         action: "requeue",
         description:
           "Re-queue the update via queue_policy_update / queue_constraints_update / queue_close_constraints / queue_agent_permissions_update — the original queued update is past the freshness window.",
+=======
+  6075: {
+    name: "AccountWritabilityMismatch",
+    message:
+      "Account writability flag does not match the constraint requirement (read-only vs writable).",
+    category: "INPUT_VALIDATION",
+    retryable: false,
+    recovery_actions: [
+      {
+        action: "fix_constraints",
+        description:
+          "Match the writability flag (read-only or writable) of the account passed to the instruction with the constraint's is_writable_required value.",
+>>>>>>> 5fbbf2a (chore(pr-9): add 6075 AccountWritabilityMismatch + regenerate codama)
       },
     ],
   },
