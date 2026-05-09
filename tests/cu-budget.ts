@@ -97,7 +97,14 @@ const CONSTRAINT_ENTRY_ZC_SIZE = 560;
 
 /** InstructionConstraints::SIZE from constraints.rs:172. */
 const INSTRUCTION_CONSTRAINTS_SIZE =
-  8 + 32 + CONSTRAINT_ENTRY_ZC_SIZE * MAX_CONSTRAINT_ENTRIES + 1 + 1 + 1 + 1 + 4;
+  8 +
+  32 +
+  CONSTRAINT_ENTRY_ZC_SIZE * MAX_CONSTRAINT_ENTRIES +
+  1 +
+  1 +
+  1 +
+  1 +
+  4;
 
 /** Protocol treasury (must match hardcoded constant in program). */
 const PROTOCOL_TREASURY = new PublicKey(
@@ -247,7 +254,12 @@ function sendAndMeasureCU(
   svm: LiteSVM,
   instructions: TransactionInstruction[],
   payer: Keypair,
-): { computeUnitsConsumed: number; succeeded: boolean; errStr: string | null; logs: string[] } {
+): {
+  computeUnitsConsumed: number;
+  succeeded: boolean;
+  errStr: string | null;
+  logs: string[];
+} {
   const messageV0 = new TransactionMessage({
     payerKey: payer.publicKey,
     recentBlockhash: svm.latestBlockhash(),
@@ -396,7 +408,11 @@ describe("cu-budget", () => {
     ctx: VaultCtx,
     amount: BN,
     targetProtocol: PublicKey,
-    remainingAccounts?: { pubkey: PublicKey; isSigner: boolean; isWritable: boolean }[],
+    remainingAccounts?: {
+      pubkey: PublicKey;
+      isSigner: boolean;
+      isWritable: boolean;
+    }[],
   ): Promise<TransactionInstruction> {
     const [session] = PublicKey.findProgramAddressSync(
       [
@@ -425,11 +441,14 @@ describe("cu-budget", () => {
         systemProgram: SystemProgram.programId,
         instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
       });
-    if (remainingAccounts) builder = builder.remainingAccounts(remainingAccounts);
+    if (remainingAccounts)
+      builder = builder.remainingAccounts(remainingAccounts);
     return builder.instruction();
   }
 
-  async function buildFinalizeIx(ctx: VaultCtx): Promise<TransactionInstruction> {
+  async function buildFinalizeIx(
+    ctx: VaultCtx,
+  ): Promise<TransactionInstruction> {
     const [session] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("session"),
@@ -464,7 +483,10 @@ describe("cu-budget", () => {
    * loop to walk all 64 entries before finding a match — the worst case for
    * the verify_against_entries_zc scan.
    */
-  function installFallthroughConstraints(ctx: VaultCtx, strictMode: boolean): void {
+  function installFallthroughConstraints(
+    ctx: VaultCtx,
+    strictMode: boolean,
+  ): void {
     const entries: SyntheticEntry[] = [];
     for (let i = 0; i < 63; i++) {
       // Distinct fake disc per entry, all with first byte 0..62 (none == 229 = ROUTE_DISC[0])
@@ -566,7 +588,9 @@ describe("cu-budget", () => {
       `  measured: ${result.computeUnitsConsumed.toLocaleString()} CU` +
         `  (succeeded=${result.succeeded})`,
     );
-    expect(result.succeeded, `unexpected failure: ${result.errStr}`).to.equal(true);
+    expect(result.succeeded, `unexpected failure: ${result.errStr}`).to.equal(
+      true,
+    );
     expect(result.computeUnitsConsumed).to.be.lessThan(THRESHOLDS.validateOnly);
   });
 
@@ -607,17 +631,20 @@ describe("cu-budget", () => {
     // the program-id check. The error must come from the JUPITER ix at
     // index 1, NOT from validate at index 0. If validate failed (e.g., due
     // to a malformed Jupiter route data buffer), we'd see index:0.
-    expect(result.errStr, "expected failure at jupiter ix, not validate").to.match(
-      /index:\s*1/,
-    );
+    expect(
+      result.errStr,
+      "expected failure at jupiter ix, not validate",
+    ).to.match(/index:\s*1/);
     // Verify validate ran the slippage parser successfully — a failed
     // verify_jupiter_slippage would produce InvalidJupiterInstruction and
     // truncate the validate instruction at index 0.
     const validateRanOk = result.logs.some((l) =>
       l.includes("Instruction: ValidateAndAuthorize"),
     );
-    expect(validateRanOk, `validate did not appear in logs: ${result.logs.join("\n")}`).to
-      .equal(true);
+    expect(
+      validateRanOk,
+      `validate did not appear in logs: ${result.logs.join("\n")}`,
+    ).to.equal(true);
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -648,7 +675,9 @@ describe("cu-budget", () => {
         (result.errStr ? `  err=${result.errStr}` : ""),
     );
     expect(result.computeUnitsConsumed).to.be.greaterThan(0);
-    expect(result.computeUnitsConsumed).to.be.lessThan(THRESHOLDS.jupiter10Step);
+    expect(result.computeUnitsConsumed).to.be.lessThan(
+      THRESHOLDS.jupiter10Step,
+    );
   });
 
   // ───────────────────────────────────────────────────────────────────────────
