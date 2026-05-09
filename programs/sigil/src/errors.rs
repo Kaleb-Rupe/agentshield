@@ -252,4 +252,8 @@ pub enum SigilError {
     // --- M5: Squads SAP parity — account writability enforcement ---
     #[msg("Account writability flag does not match constraint requirement")]
     AccountWritabilityMismatch,
+
+    // --- M11 SIMD-0296 pad-attack DoS guard ---
+    #[msg("Sysvar instruction scan exceeded the per-tx safety bound")]
+    SysvarScanBoundExceeded,
 }
