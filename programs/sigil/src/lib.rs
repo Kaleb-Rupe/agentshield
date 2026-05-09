@@ -323,7 +323,12 @@ pub mod sigil {
 
     /// Freeze the vault immediately. Preserves all agent entries.
     /// Only the owner can call this. Use reactivate_vault to unfreeze.
-    pub fn freeze_vault(ctx: Context<FreezeVault>) -> Result<()> {
+    /// F2-H1 fix: pairs of (session_pda, vault_token_account) in remaining_accounts
+    /// are revoked so a runaway agent cannot continue spending against an
+    /// in-flight session window.
+    pub fn freeze_vault<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, FreezeVault<'info>>,
+    ) -> Result<()> {
         instructions::freeze_vault::handler(ctx)
     }
 
