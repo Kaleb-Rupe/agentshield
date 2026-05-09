@@ -6039,6 +6039,31 @@ export type Sigil = {
     },
     {
       "code": 6082,
+      "name": "confidentialTransferBlocked",
+      "msg": "Token-2022 ConfidentialTransfer not permitted between validate and finalize"
+    },
+    {
+      "code": 6083,
+      "name": "permanentDelegateBlocked",
+      "msg": "Token-2022 PermanentDelegate not permitted between validate and finalize"
+    },
+    {
+      "code": 6084,
+      "name": "transferHookBlocked",
+      "msg": "Token-2022 TransferHook not permitted between validate and finalize"
+    },
+    {
+      "code": 6085,
+      "name": "lamportDrainBlocked",
+      "msg": "Token-2022 destructive-balance ix (opcodes 38/45/46) not permitted between validate and finalize"
+    },
+    {
+      "code": 6086,
+      "name": "batchInstructionBlocked",
+      "msg": "Token-2022 Batch instruction (opcode 255) is blocked outright — wraps inner instructions and bypasses byte-0 blocklist"
+    },
+    {
+      "code": 6087,
       "name": "invalidDestinationMode",
       "msg": "Invalid destination mode (must be 0 = Restricted or 1 = OpenWithCap)"
     }
