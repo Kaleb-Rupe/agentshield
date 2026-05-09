@@ -125,8 +125,8 @@ pub const PROTOCOL_TREASURY: Pubkey = Pubkey::new_from_array([
 /// validate_and_authorize}.rs` is preserved as a second layer.
 #[cfg(feature = "mainnet")]
 pub const PROTOCOL_TREASURY: Pubkey = Pubkey::new_from_array([
-    102, 115, 120, 152, 65, 88, 210, 76, 7, 220, 80, 231, 112, 6, 22, 32, 26, 4, 137, 55, 84, 52, 4,
-    200, 254, 195, 18, 105, 97, 38, 227, 136,
+    102, 115, 120, 152, 65, 88, 210, 76, 7, 220, 80, 231, 112, 6, 22, 32, 26, 4, 137, 55, 84, 52,
+    4, 200, 254, 195, 18, 105, 97, 38, 227, 136,
 ]);
 
 // --- Stablecoin mint constants ---
