@@ -350,12 +350,59 @@ pub fn handler(
             }
         }
 
-        // Token-2022: same blocked set + disc 26 (TransferCheckedWithFee)
+        // Token-2022: same SPL-shared opcodes (3, 4, 6, 8, 9, 12, 13, 15) plus
+        // Token-2022-specific opcode 26 (TransferFeeExtension prefix — covers
+        // TransferCheckedWithFee and the rest of the fee-transfer family) and
+        // opcode 27 (ConfidentialTransferExtension prefix — encrypted transfers
+        // bypass plaintext SPL Transfer/Approve blocking entirely).
+        //
+        // Audit table — opcodes 27-46 (cross-referenced against
+        // solana-program/token-2022/interface/src/instruction.rs main):
+        //   27 ConfidentialTransferExtension       → BLOCKED here (M3, this PR)
+        //   28 DefaultAccountStateExtension        → allowed (mint config; no
+        //      value movement at top-level)
+        //   29 Reallocate                          → allowed (resize only)
+        //   30 MemoTransferExtension               → allowed (memo flag)
+        //   31 CreateNativeMint                    → allowed (system-level)
+        //   32 InitializeNonTransferableMint       → allowed (mint config)
+        //   33 InterestBearingMintExtension        → allowed (mint config)
+        //   34 CpiGuardExtension                   → flagged for follow-up
+        //      (toggles a security flag on the user's token account; an agent
+        //      flipping it would weaken downstream CPI protections)
+        //   35 InitializePermanentDelegate         → flagged for follow-up
+        //      (permanent delegate bypasses Approve flow; mint-time op, but
+        //      blocking conservatively at top-level mid-tx is defensible)
+        //   36 TransferHookExtension               → flagged for follow-up
+        //      (installs/changes a transfer hook program — could redirect
+        //      future transfers)
+        //   37 ConfidentialTransferFeeExtension    → flagged for follow-up
+        //      (encrypted-balance fee accounting; pairs with 27)
+        //   38 WithdrawExcessLamports              → flagged for follow-up
+        //      (drains lamports out of a token account)
+        //   39 MetadataPointerExtension            → allowed (metadata)
+        //   40 GroupPointerExtension               → allowed (metadata)
+        //   41 GroupMemberPointerExtension         → allowed (metadata)
+        //   42 ConfidentialMintBurnExtension       → flagged for follow-up
+        //      (confidential mint/burn — value flow under encryption)
+        //   43 ScaledUiAmountExtension             → allowed (UI scaling)
+        //   44 PausableExtension                   → allowed (pause toggle;
+        //      mint-level DoS but no drain)
+        //   45 UnwrapLamports                      → flagged for follow-up
+        //      (transfers lamports from a native SOL token account)
+        //   46 PermissionedBurnExtension           → flagged for follow-up
+        //      (third-party-permissioned burn — value flow)
+        //
+        // The "flagged for follow-up" group above (34, 35, 36, 37, 38, 42,
+        // 45, 46) is intentionally NOT blocked in this PR. The minimum-scope
+        // M3 fix is opcode 27. Expanding the blocklist requires a separate
+        // change with explicit owner-allowlist UX so legitimate mint
+        // configuration flows aren't silently broken.
         if ix.program_id == TOKEN_2022_PROGRAM_ID && !ix.data.is_empty() {
             match ix.data[0] {
                 4 | 13 => return Err(error!(SigilError::UnauthorizedTokenApproval)),
                 3 | 12 | 26 => return Err(error!(SigilError::UnauthorizedTokenTransfer)),
                 6 | 8 | 9 | 15 => return Err(error!(SigilError::UnauthorizedTokenTransfer)),
+                27 => return Err(error!(SigilError::ConfidentialTransferBlocked)),
                 _ => {}
             }
         }

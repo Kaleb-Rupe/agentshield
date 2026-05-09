@@ -270,4 +270,8 @@ pub enum SigilError {
 
     #[msg("PDA is fully populated; not an orphan")]
     OrphanPdaPopulated,
+
+    // --- Token-2022 ConfidentialTransfer block (M3) ---
+    #[msg("Token-2022 ConfidentialTransfer not permitted between validate and finalize")]
+    ConfidentialTransferBlocked,
 }

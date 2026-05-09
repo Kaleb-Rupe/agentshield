@@ -116,6 +116,7 @@ export const SIGIL_ERRORS = {
   ConstraintsAlreadyPopulated: 6079,
   OrphanPdaWrongOwner: 6080,
   OrphanPdaPopulated: 6081,
+  ConfidentialTransferBlocked: 6082,
 } as const;
 
 export type SigilErrorName = keyof typeof SIGIL_ERRORS;
