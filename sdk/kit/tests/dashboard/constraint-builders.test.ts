@@ -95,12 +95,11 @@ function fullyPopulatedEntry(): ConstraintEntry {
       { offset: 24, operator: 3, value },
     ],
     accountConstraints: [
-      { index: 0, expected: ACCOUNT_PUBKEY },
-      { index: 1, expected: ACCOUNT_PUBKEY },
-      { index: 2, expected: ACCOUNT_PUBKEY },
-      { index: 3, expected: ACCOUNT_PUBKEY },
+      { index: 0, expected: ACCOUNT_PUBKEY, isWritableRequired: 0 },
+      { index: 1, expected: ACCOUNT_PUBKEY, isWritableRequired: 0 },
+      { index: 2, expected: ACCOUNT_PUBKEY, isWritableRequired: 0 },
+      { index: 3, expected: ACCOUNT_PUBKEY, isWritableRequired: 0 },
     ],
-    isSpending: 1,
     discriminatorFormat: DiscriminatorFormat.Anchor8,
   };
 }
@@ -156,7 +155,6 @@ describe("buildCreateConstraintsIxs", () => {
     expect(populate.data.entries[0]!.programId).to.equal(TARGET_PROGRAM);
     expect(populate.data.entries[0]!.dataConstraints).to.have.lengthOf(4);
     expect(populate.data.entries[0]!.accountConstraints).to.have.lengthOf(4);
-    expect(populate.data.entries[0]!.isSpending).to.equal(1);
   });
 
   it("succeeds for 2 fully-populated entries and round-trips them", async () => {
@@ -282,7 +280,6 @@ describe("buildQueueConstraintsUpdateIxs", () => {
     expect(queue.data.strictMode).to.equal(true);
     expect(queue.data.entries).to.have.lengthOf(1);
     expect(queue.data.entries[0]!.programId).to.equal(TARGET_PROGRAM);
-    expect(queue.data.entries[0]!.isSpending).to.equal(1);
   });
 
   it("succeeds for 2 fully-populated entries and round-trips them", async () => {
