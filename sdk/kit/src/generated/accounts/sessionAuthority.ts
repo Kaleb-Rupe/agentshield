@@ -73,9 +73,12 @@ export type SessionAuthority = {
    */
   isSpending: boolean;
   /**
-   * Wall-clock expiry: session is valid until this Clock::unix_timestamp.
-   * Replaces slot-based expiry (audit F5-H1) — slot times vary 400ms-1.5s
-   * under congestion.
+   * Wall-clock expiry: session is valid until this `Clock::unix_timestamp`.
+   *
+   * **Why timestamp, not slot:** Solana slot times vary 400ms-1.5s under
+   * congestion. Slot-based expiry produced a 3.75x variance window between
+   * the documented and worst-case session lifetime — see audit F5-H1.
+   * Wall-clock enforcement is congestion-immune.
    */
   expiresAtTimestamp: bigint;
   /** Whether token delegation was set up (approve CPI) */
@@ -136,9 +139,12 @@ export type SessionAuthorityArgs = {
    */
   isSpending: boolean;
   /**
-   * Wall-clock expiry: session is valid until this Clock::unix_timestamp.
-   * Replaces slot-based expiry (audit F5-H1) — slot times vary 400ms-1.5s
-   * under congestion.
+   * Wall-clock expiry: session is valid until this `Clock::unix_timestamp`.
+   *
+   * **Why timestamp, not slot:** Solana slot times vary 400ms-1.5s under
+   * congestion. Slot-based expiry produced a 3.75x variance window between
+   * the documented and worst-case session lifetime — see audit F5-H1.
+   * Wall-clock enforcement is congestion-immune.
    */
   expiresAtTimestamp: number | bigint;
   /** Whether token delegation was set up (approve CPI) */

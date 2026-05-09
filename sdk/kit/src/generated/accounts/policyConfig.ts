@@ -119,8 +119,9 @@ export type PolicyConfig = {
   protocolCaps: Array<bigint>;
   /**
    * Configurable session duration in seconds. 0 = use default
-   * (SESSION_DURATION_SECONDS = 30s).
-   * Valid range when non-zero: 5..=90 seconds (audit F5-H1).
+   * (`SESSION_DURATION_SECONDS` = 30s). Valid range when non-zero:
+   * `MIN_SESSION_DURATION_SECONDS..=MAX_OWNER_SESSION_DURATION_SECONDS`
+   * (currently 5..=90s). Wall-clock based — see audit F5-H1.
    */
   sessionExpirySeconds: bigint;
   /** Bump seed for PDA */
@@ -203,8 +204,9 @@ export type PolicyConfigArgs = {
   protocolCaps: Array<number | bigint>;
   /**
    * Configurable session duration in seconds. 0 = use default
-   * (SESSION_DURATION_SECONDS = 30s).
-   * Valid range when non-zero: 5..=90 seconds (audit F5-H1).
+   * (`SESSION_DURATION_SECONDS` = 30s). Valid range when non-zero:
+   * `MIN_SESSION_DURATION_SECONDS..=MAX_OWNER_SESSION_DURATION_SECONDS`
+   * (currently 5..=90s). Wall-clock based — see audit F5-H1.
    */
   sessionExpirySeconds: number | bigint;
   /** Bump seed for PDA */
