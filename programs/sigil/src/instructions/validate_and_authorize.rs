@@ -396,14 +396,21 @@ pub fn handler(
         //   45 UnwrapLamports                      → BLOCKED (Pentester MED:
         //      same lamport-drain class as 38 — transfers lamports out of a
         //      native SOL token account)
-        //   46 PermissionedBurnExtension           → DEFERRED (third-party-
-        //      permissioned burn; setup-only on the mint and not directly
-        //      callable as a top-level value-flow ix in the same way as 35/42)
+        //   46 PermissionedBurnExtension           → BLOCKED (third-pass audit
+        //      — third-party-permissioned forced burn; reuses LamportDrainBlocked
+        //      semantically as a destructive-balance-mutation class)
+        //  255 Batch                                → BLOCKED (third-pass audit
+        //      — Token-2022 wraps a vector of inner TokenInstructions inside a
+        //      single Batch ix. Without this guard, an attacker can wrap a
+        //      blocked op (Withdraw 38, ConfidentialTransfer::Withdraw 27/sub=6,
+        //      etc.) inside Batch (255) and the byte-0 check sees 255, not the
+        //      inner opcode. Block outright; until a legitimate Batch use-case
+        //      is identified for vault flows, no allowlist UX is offered.)
         //
-        // The DEFERRED group (34, 37, 46) is intentionally not blocked here.
-        // Each has a legitimate use case (CpiGuard setup, ConfTransferFee setup,
-        // PermissionedBurn admin) and requires explicit owner-allowlist UX
-        // before mass-blocking would not break legitimate flows.
+        // The DEFERRED group (34 CpiGuard, 37 ConfTransferFee) is intentionally
+        // not blocked here. Each has a legitimate setup-only use case and
+        // requires explicit owner-allowlist UX before mass-blocking would
+        // not break legitimate flows.
         if ix.program_id == TOKEN_2022_PROGRAM_ID && !ix.data.is_empty() {
             match ix.data[0] {
                 4 | 13 => return Err(error!(SigilError::UnauthorizedTokenApproval)),
@@ -412,7 +419,8 @@ pub fn handler(
                 27 | 42 => return Err(error!(SigilError::ConfidentialTransferBlocked)),
                 35 => return Err(error!(SigilError::PermanentDelegateBlocked)),
                 36 => return Err(error!(SigilError::TransferHookBlocked)),
-                38 | 45 => return Err(error!(SigilError::LamportDrainBlocked)),
+                38 | 45 | 46 => return Err(error!(SigilError::LamportDrainBlocked)),
+                255 => return Err(error!(SigilError::BatchInstructionBlocked)),
                 _ => {}
             }
         }

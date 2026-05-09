@@ -36,6 +36,13 @@ bytemuck = { version = "1.14", features = ["derive", "min_const_generics"] }
 blake3 = "=1.5.5"
 cvlr = { version = "0.6", optional = true }
 
+[dev-dependencies]
+# Pin Token-2022 opcode discriminants in unit tests (third-pass audit follow-up).
+# Used by integrations/token2022_opcode_test.rs to assert byte-0 tags against
+# the canonical TokenInstruction enum. Catches future renumbering before the
+# blocklist starts blocking the wrong ops in production.
+spl-token-2022-interface = "9"
+
 [package.metadata.certora]
 sources = [
     "Cargo.toml",
