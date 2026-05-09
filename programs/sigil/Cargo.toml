@@ -41,6 +41,11 @@ cvlr = { version = "0.6", optional = true }
 # Used by integrations/token2022_opcode_test.rs to assert byte-0 tags against
 # the canonical TokenInstruction enum. Catches future renumbering before the
 # blocklist starts blocking the wrong ops in production.
+#
+# 3.0.0 is needed for the `Batch` variant (opcode 255) — earlier 2.x versions
+# don't expose it. The transitive `wincode-derive` is pinned in workspace
+# Cargo.toml `[patch.crates-io]` to 0.4.3 (edition 2021) because 0.4.4
+# requires Rust edition 2024 (Certora's cargo can't parse the manifest).
 spl-token-2022-interface = "3"
 
 [package.metadata.certora]

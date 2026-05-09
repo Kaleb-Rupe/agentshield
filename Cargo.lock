@@ -3495,9 +3495,9 @@ checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.23"
+version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "537dd038a89878be9b64dd4bd1b260315c1bb94f4d784956b81e27a088d9a09e"
+checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
 
 [[package]]
 name = "unicode-segmentation"
@@ -3600,9 +3600,9 @@ dependencies = [
 
 [[package]]
 name = "wincode"
-version = "0.5.3"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4c754f1fc41250f2f742a27ba0fcc9f73df1dec23f6878490770855d43c322d"
+checksum = "b2f42dd20febad683d07044c5f543e57f822512ebebaf2c827705c99a0ad4575"
 dependencies = [
  "pastey",
  "proc-macro2",
@@ -3613,9 +3613,9 @@ dependencies = [
 
 [[package]]
 name = "wincode-derive"
-version = "0.4.4"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e070787599c7c067b89598cd3eda440cca1b69eda9e0ff7c725fc8679ce9eb4"
+checksum = "fca057fc9a13dd19cdb64ef558635d43c42667c0afa1ae7915ea1fa66993fd1a"
 dependencies = [
  "darling 0.21.3",
  "proc-macro2",
