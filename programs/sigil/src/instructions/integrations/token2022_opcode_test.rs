@@ -16,7 +16,6 @@
 
 #[cfg(test)]
 mod tests {
-    use solana_program::pubkey::Pubkey;
     use spl_token_2022_interface::extension::confidential_transfer::instruction::ConfidentialTransferInstruction;
     use spl_token_2022_interface::instruction::TokenInstruction;
 
@@ -41,10 +40,13 @@ mod tests {
             "opcode 42 must remain ConfidentialMintBurnExtension"
         );
 
-        // PermanentDelegate (parses a Pubkey, but byte-0 is still 35)
+        // PermanentDelegate (parses an Address, but byte-0 is still 35).
+        // `solana_address::Address` impls `From<[u8; 32]>` so we construct
+        // without importing the crate (kept implicit via the variant's
+        // field type).
         assert_eq!(
             tag_of(&TokenInstruction::InitializePermanentDelegate {
-                delegate: Pubkey::new_unique(),
+                delegate: [1u8; 32].into(),
             }),
             35,
             "opcode 35 must remain InitializePermanentDelegate",
