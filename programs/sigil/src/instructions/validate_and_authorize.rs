@@ -350,12 +350,77 @@ pub fn handler(
             }
         }
 
-        // Token-2022: same blocked set + disc 26 (TransferCheckedWithFee)
+        // Token-2022: same SPL-shared opcodes (3, 4, 6, 8, 9, 12, 13, 15) plus
+        // Token-2022-specific opcode 26 (TransferFeeExtension prefix — covers
+        // TransferCheckedWithFee and the rest of the fee-transfer family),
+        // opcode 27 (ConfidentialTransferExtension prefix — encrypted transfers
+        // bypass plaintext SPL Transfer/Approve blocking entirely), and the
+        // Pentester HIGH/MED follow-up batch: 35, 36, 38, 42, 45.
+        //
+        // Audit table — opcodes 27-46 (cross-referenced against
+        // solana-program/token-2022/interface/src/instruction.rs main):
+        //   27 ConfidentialTransferExtension       → BLOCKED (M3, PR 7)
+        //   28 DefaultAccountStateExtension        → allowed (mint config; no
+        //      value movement at top-level)
+        //   29 Reallocate                          → allowed (resize only)
+        //   30 MemoTransferExtension               → allowed (memo flag)
+        //   31 CreateNativeMint                    → allowed (system-level)
+        //   32 InitializeNonTransferableMint       → allowed (mint config)
+        //   33 InterestBearingMintExtension        → allowed (mint config)
+        //   34 CpiGuardExtension                   → DEFERRED (toggles a
+        //      security flag on the user's token account; an agent flipping
+        //      it weakens downstream CPI protections — needs explicit
+        //      owner-allowlist UX, blocking now would break setup flows)
+        //   35 InitializePermanentDelegate         → BLOCKED (Pentester MED:
+        //      permanent delegate can transfer-from any holder of the mint
+        //      without Approve; one-shot install survives session expiry)
+        //   36 TransferHookExtension               → BLOCKED (Pentester MED:
+        //      installs hostile hook program on the user's mint that survives
+        //      session expiry and routes all future transfers through it)
+        //   37 ConfidentialTransferFeeExtension    → DEFERRED (encrypted-balance
+        //      fee accounting; pairs with 27 but is downstream-dependent —
+        //      blocking 27 already neuters the value-flow path)
+        //   38 WithdrawExcessLamports              → BLOCKED (Pentester MED:
+        //      transfers lamports out of token accounts, bypassing the
+        //      plaintext SPL transfer blocks entirely)
+        //   39 MetadataPointerExtension            → allowed (metadata)
+        //   40 GroupPointerExtension               → allowed (metadata)
+        //   41 GroupMemberPointerExtension         → allowed (metadata)
+        //   42 ConfidentialMintBurnExtension       → BLOCKED (Pentester HIGH:
+        //      drains pre-existing confidential balance — plaintext snapshot
+        //      diff won't trip; reuses ConfidentialTransferBlocked since this
+        //      is the same confidential-transfer-extension class)
+        //   43 ScaledUiAmountExtension             → allowed (UI scaling)
+        //   44 PausableExtension                   → allowed (pause toggle;
+        //      mint-level DoS but no drain)
+        //   45 UnwrapLamports                      → BLOCKED (Pentester MED:
+        //      same lamport-drain class as 38 — transfers lamports out of a
+        //      native SOL token account)
+        //   46 PermissionedBurnExtension           → BLOCKED (third-pass audit
+        //      — third-party-permissioned forced burn; reuses LamportDrainBlocked
+        //      semantically as a destructive-balance-mutation class)
+        //  255 Batch                                → BLOCKED (third-pass audit
+        //      — Token-2022 wraps a vector of inner TokenInstructions inside a
+        //      single Batch ix. Without this guard, an attacker can wrap a
+        //      blocked op (Withdraw 38, ConfidentialTransfer::Withdraw 27/sub=6,
+        //      etc.) inside Batch (255) and the byte-0 check sees 255, not the
+        //      inner opcode. Block outright; until a legitimate Batch use-case
+        //      is identified for vault flows, no allowlist UX is offered.)
+        //
+        // The DEFERRED group (34 CpiGuard, 37 ConfTransferFee) is intentionally
+        // not blocked here. Each has a legitimate setup-only use case and
+        // requires explicit owner-allowlist UX before mass-blocking would
+        // not break legitimate flows.
         if ix.program_id == TOKEN_2022_PROGRAM_ID && !ix.data.is_empty() {
             match ix.data[0] {
                 4 | 13 => return Err(error!(SigilError::UnauthorizedTokenApproval)),
                 3 | 12 | 26 => return Err(error!(SigilError::UnauthorizedTokenTransfer)),
                 6 | 8 | 9 | 15 => return Err(error!(SigilError::UnauthorizedTokenTransfer)),
+                27 | 42 => return Err(error!(SigilError::ConfidentialTransferBlocked)),
+                35 => return Err(error!(SigilError::PermanentDelegateBlocked)),
+                36 => return Err(error!(SigilError::TransferHookBlocked)),
+                38 | 45 | 46 => return Err(error!(SigilError::LamportDrainBlocked)),
+                255 => return Err(error!(SigilError::BatchInstructionBlocked)),
                 _ => {}
             }
         }

@@ -14,7 +14,7 @@
  */
 
 // ────────────────────────────────────────────────────────────────
-// Sigil program errors (6000-6081)
+// Sigil program errors (6000-6086)
 // ────────────────────────────────────────────────────────────────
 
 export const SIGIL_ERRORS = {
@@ -100,6 +100,11 @@ export const SIGIL_ERRORS = {
   ConstraintsAlreadyPopulated: 6079,
   OrphanPdaWrongOwner: 6080,
   OrphanPdaPopulated: 6081,
+  ConfidentialTransferBlocked: 6082,
+  PermanentDelegateBlocked: 6083,
+  TransferHookBlocked: 6084,
+  LamportDrainBlocked: 6085,
+  BatchInstructionBlocked: 6086,
 } as const;
 
 /**

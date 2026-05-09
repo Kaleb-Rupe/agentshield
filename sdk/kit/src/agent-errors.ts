@@ -5,7 +5,7 @@
  * Every error includes a category, retryability flag, and
  * recovery actions that tell the agent exactly what to do next.
  *
- * Maps all 82 on-chain error codes (6000-6081) plus 34 SDK
+ * Maps all 87 on-chain error codes (6000-6086) plus 34 SDK
  * error codes (7000-7033) to AgentError with machine-readable metadata.
  *
  * Zero dependency on @solana/web3.js or @coral-xyz/anchor.
@@ -57,7 +57,7 @@ export interface AgentError {
 }
 
 // ---------------------------------------------------------------------------
-// On-chain error code mapping (6000-6081)
+// On-chain error code mapping (6000-6086)
 // ---------------------------------------------------------------------------
 
 interface ErrorMapping {
@@ -1275,6 +1275,78 @@ export const ON_CHAIN_ERROR_MAP: Record<number, ErrorMapping> = {
       },
     ],
   },
+
+  // PR 7: Token-2022 opcode blocks (M3 + Pentester HIGH/MED + third-pass audit)
+  6082: {
+    name: "ConfidentialTransferBlocked",
+    message:
+      "Token-2022 ConfidentialTransfer is not permitted between validate_and_authorize and finalize_session.",
+    category: "POLICY_VIOLATION",
+    retryable: false,
+    recovery_actions: [
+      {
+        action: "use_supported_protocol",
+        description:
+          "Token-2022 ConfidentialTransfer (opcode 27/42) hides spending amounts from sysvar accounting and cannot be tracked. Use the standard SPL Token transfer or Jupiter swap path instead.",
+      },
+    ],
+  },
+  6083: {
+    name: "PermanentDelegateBlocked",
+    message:
+      "Token-2022 PermanentDelegate is not permitted between validate_and_authorize and finalize_session.",
+    category: "POLICY_VIOLATION",
+    retryable: false,
+    recovery_actions: [
+      {
+        action: "use_supported_protocol",
+        description:
+          "Token-2022 PermanentDelegate (opcode 35) installs a session-bound delegate that survives finalize. Reject up-front; use a per-tx Approve instead.",
+      },
+    ],
+  },
+  6084: {
+    name: "TransferHookBlocked",
+    message:
+      "Token-2022 TransferHook is not permitted between validate_and_authorize and finalize_session.",
+    category: "POLICY_VIOLATION",
+    retryable: false,
+    recovery_actions: [
+      {
+        action: "use_supported_protocol",
+        description:
+          "Token-2022 TransferHook (opcode 36) routes mid-tx control to attacker-chosen code. Use a non-hook mint or whitelist the hook program in V1.1.",
+      },
+    ],
+  },
+  6085: {
+    name: "LamportDrainBlocked",
+    message:
+      "Token-2022 destructive-balance instruction (opcode 38/45/46) is not permitted between validate_and_authorize and finalize_session.",
+    category: "POLICY_VIOLATION",
+    retryable: false,
+    recovery_actions: [
+      {
+        action: "use_supported_protocol",
+        description:
+          "WithdrawExcessLamports/UnwrapLamports/PermissionedBurnExtension drain SOL or balances outside the spending-cap path. Block at the gate; V1.1 may add an owner-allowlist for legitimate uses.",
+      },
+    ],
+  },
+  6086: {
+    name: "BatchInstructionBlocked",
+    message:
+      "Token-2022 Batch instruction (opcode 255) is blocked outright — wraps inner instructions and bypasses the byte-0 blocklist.",
+    category: "POLICY_VIOLATION",
+    retryable: false,
+    recovery_actions: [
+      {
+        action: "use_supported_protocol",
+        description:
+          "Token-2022 Batch (opcode 255) wraps inner TokenInstructions; the byte-0 blocklist cannot see them. Submit each inner ix as its own top-level instruction so guards can inspect each.",
+      },
+    ],
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -1796,7 +1868,7 @@ const SDK_ERRORS: Record<string, ErrorMapping> = {
  * Convert any error into a structured AgentError.
  *
  * Handles:
- * - On-chain Anchor errors (code 6000-6081)
+ * - On-chain Anchor errors (code 6000-6086)
  * - SDK errors (code 7000-7033)
  * - Network/RPC errors (from message patterns)
  * - Unknown errors (wrapped as FATAL)
@@ -2149,7 +2221,7 @@ function extractErrorCode(error: unknown): number | null {
   const e = error as Record<string, unknown>;
 
   // Direct code property
-  if (typeof e.code === "number" && e.code >= 6000 && e.code <= 6081)
+  if (typeof e.code === "number" && e.code >= 6000 && e.code <= 6086)
     return e.code;
 
   // Anchor error structure
@@ -2166,7 +2238,7 @@ function extractErrorCode(error: unknown): number | null {
     const match = e.message.match(/custom program error: 0x([0-9a-fA-F]+)/);
     if (match) {
       const code = parseInt(match[1], 16);
-      if (code >= 6000 && code <= 6081) return code;
+      if (code >= 6000 && code <= 6086) return code;
     }
   }
 
@@ -2407,7 +2479,7 @@ export class SigilSdkError extends Error implements AgentError {
  * Returns a SigilSdkError (extends Error) so instanceof Error checks still work.
  *
  * Processing order:
- * 1. Try on-chain error extraction via toAgentError() (numeric codes 6000-6081)
+ * 1. Try on-chain error extraction via toAgentError() (numeric codes 6000-6086)
  * 2. Pattern-match SDK error messages (11 patterns from seal.ts throw sites)
  * 3. Fallback to UNKNOWN/FATAL
  */
