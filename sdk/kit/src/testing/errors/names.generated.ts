@@ -14,7 +14,7 @@
  */
 
 // ────────────────────────────────────────────────────────────────
-// Sigil program errors (6000-6075)
+// Sigil program errors (6000-6077)
 // ────────────────────────────────────────────────────────────────
 
 export const SIGIL_ERRORS = {
@@ -95,6 +95,7 @@ export const SIGIL_ERRORS = {
   BlockedSplOpcode: 6074,
   QueuedUpdateExpired: 6075,
   AccountWritabilityMismatch: 6076,
+  SysvarScanBoundExceeded: 6077,
 } as const;
 
 /**

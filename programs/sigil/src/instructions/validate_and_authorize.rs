@@ -11,6 +11,24 @@ use crate::state::*;
 
 use super::integrations::{generic_constraints, jupiter};
 
+/// Maximum instructions to scan from any sysvar introspection loop.
+///
+/// Solana's per-tx instruction count is bounded at 64 by the v0 transaction
+/// message format (1-byte length, but in practice limited by tx size and the
+/// sysvar instructions accounting). This constant is a defense-in-depth cap
+/// against SIMD-0296-class pad-attack DoS where an adversary fills a tx with
+/// cheap ComputeBudget no-ops to inflate the cost of O(n) sysvar scans.
+///
+/// The constant is shared by:
+///   - validate_and_authorize: backward pre-validate scan (5a)
+///   - validate_and_authorize: forward spending/non-spending scans (6, 6b)
+///   - finalize_session: post-finalize defense-in-depth scan
+///
+/// At 64, this is unreachable in legitimate flows (Solana caps tx ix count
+/// at 64 already); only an attacker pushing ix beyond the protocol limit
+/// would trip this.
+pub const MAX_SYSVAR_SCAN_ITERATIONS: usize = 64;
+
 #[derive(Accounts)]
 #[instruction(token_mint: Pubkey)]
 pub struct ValidateAndAuthorize<'info> {
@@ -275,7 +293,18 @@ pub fn handler(
     // Reject any non-infrastructure instructions BEFORE validate_and_authorize.
     // Prevents DeFi-before-validate ordering attack where an agent places the
     // DeFi instruction first to make snapshot capture post-modification state.
+    //
+    // M11 hardening (SIMD-0296 pad-attack DoS guard): cap iterations at
+    // MAX_SYSVAR_SCAN_ITERATIONS. In legitimate flows current_idx_usize <= 64
+    // (Solana v0 tx caps at 64 ix), so the cap is unreachable; only an attacker
+    // would trip it, in which case we return an explicit error rather than
+    // silently truncating the scan (the unscanned ixs could be hostile).
+    let mut pre_iter_count: usize = 0;
     for pre_idx in 0..current_idx_usize {
+        require!(
+            pre_iter_count < MAX_SYSVAR_SCAN_ITERATIONS,
+            SigilError::SysvarScanBoundExceeded
+        );
         if let Ok(ix) = load_instruction_at_checked(pre_idx, &ix_sysvar) {
             require!(
                 ix.program_id == compute_budget_id
@@ -283,6 +312,7 @@ pub fn handler(
                 SigilError::UnauthorizedPreValidateInstruction
             );
         }
+        pre_iter_count = pre_iter_count.saturating_add(1);
     }
     let finalize_hash = FINALIZE_SESSION_DISCRIMINATOR;
 
@@ -394,8 +424,14 @@ pub fn handler(
         let mut defi_ix_count: u8 = 0;
         let mut found_finalize = false;
         let mut scan_idx = current_idx_usize.saturating_add(1);
+        // M11 hardening (SIMD-0296 pad-attack DoS): bound iteration count.
+        let mut iter_count: usize = 0;
 
         while let Ok(ix) = load_instruction_at_checked(scan_idx, &ix_sysvar) {
+            require!(
+                iter_count < MAX_SYSVAR_SCAN_ITERATIONS,
+                SigilError::SysvarScanBoundExceeded
+            );
             match scan_instruction_shared(
                 &ix,
                 &spl_token_id,
@@ -410,6 +446,7 @@ pub fn handler(
                 }
                 ScanAction::Infrastructure => {
                     scan_idx = scan_idx.saturating_add(1);
+                    iter_count = iter_count.saturating_add(1);
                     continue;
                 }
                 ScanAction::PassedSharedChecks => {
@@ -438,6 +475,7 @@ pub fn handler(
                 }
             }
             scan_idx = scan_idx.saturating_add(1);
+            iter_count = iter_count.saturating_add(1);
         }
 
         // DeFi instruction count enforcement
@@ -454,8 +492,14 @@ pub fn handler(
     if !is_spending {
         let mut found_finalize = false;
         let mut idx = current_idx_usize.saturating_add(1);
+        // M11 hardening (SIMD-0296 pad-attack DoS): bound iteration count.
+        let mut iter_count: usize = 0;
 
         while let Ok(ix) = load_instruction_at_checked(idx, &ix_sysvar) {
+            require!(
+                iter_count < MAX_SYSVAR_SCAN_ITERATIONS,
+                SigilError::SysvarScanBoundExceeded
+            );
             match scan_instruction_shared(
                 &ix,
                 &spl_token_id,
@@ -470,6 +514,7 @@ pub fn handler(
                 }
                 ScanAction::Infrastructure => {
                     idx = idx.saturating_add(1);
+                    iter_count = iter_count.saturating_add(1);
                     continue;
                 }
                 ScanAction::PassedSharedChecks => {
@@ -484,6 +529,7 @@ pub fn handler(
                 }
             }
             idx = idx.saturating_add(1);
+            iter_count = iter_count.saturating_add(1);
         }
 
         require!(found_finalize, SigilError::MissingFinalizeInstruction);

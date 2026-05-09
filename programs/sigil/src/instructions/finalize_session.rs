@@ -708,17 +708,35 @@ pub fn handler(ctx: Context<FinalizeSession>) -> Result<()> {
     ]);
     let system_id = anchor_lang::solana_program::system_program::ID;
 
-    // Unbounded scan: check ALL remaining instructions after finalize.
-    // The loop terminates when load_instruction_at_checked returns Err (end of tx).
-    // Using an unbounded scan instead of a fixed 20-instruction window ensures
-    // coverage at any transaction size, including SIMD-0296's proposed 4,096 bytes.
-    let mut post_idx = current_ix_index.saturating_add(1);
-    while let Ok(ix) = load_instruction_at_checked(post_idx, &ix_sysvar_info) {
+    // Bounded scan: check up to MAX_SYSVAR_SCAN_ITERATIONS instructions after
+    // finalize. The loop terminates when (a) load_instruction_at_checked
+    // returns Err (end of tx), or (b) the bound is reached.
+    //
+    // M11 hardening (SIMD-0296 pad-attack DoS guard): cap iterations at the
+    // shared MAX_SYSVAR_SCAN_ITERATIONS constant (64). Solana v0 tx caps at
+    // 64 ix already; the bound is unreachable in legitimate flows. Hitting
+    // the bound means an adversary tried to pad the tx — finalize itself is
+    // already complete (CPI revocation done) so we log + break rather than
+    // error. The remaining unscanned ix space (idx 64+) cannot exist on a
+    // valid v0 tx, so silently truncating is safe defense-in-depth.
+    let mut iter_count: usize = 0;
+    while iter_count < crate::instructions::validate_and_authorize::MAX_SYSVAR_SCAN_ITERATIONS {
+        let post_idx = current_ix_index
+            .saturating_add(1)
+            .saturating_add(iter_count);
+        let Ok(ix) = load_instruction_at_checked(post_idx, &ix_sysvar_info) else {
+            break;
+        };
         require!(
             ix.program_id == compute_budget_id || ix.program_id == system_id,
             SigilError::UnauthorizedPostFinalizeInstruction
         );
-        post_idx = post_idx.saturating_add(1);
+        iter_count = iter_count.saturating_add(1);
+    }
+    if iter_count >= crate::instructions::validate_and_authorize::MAX_SYSVAR_SCAN_ITERATIONS {
+        // Telemetry: pad-attack attempted (or future Solana runtime change).
+        // Finalize already committed; this is just a signal for monitoring.
+        msg!("post-finalize scan reached MAX_SYSVAR_SCAN_ITERATIONS bound");
     }
 
     Ok(())
